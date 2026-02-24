@@ -1,8 +1,8 @@
 # WebCite MCP Server
 
-MCP (Model Context Protocol) server for WebCite - enables AI assistants to verify factual claims against authoritative sources.
+MCP (Model Context Protocol) server for WebCite - enables any AI agent or tool to verify factual claims against authoritative sources.
 
-Works with **Claude Desktop**, **Claude Code**, **Cursor**, **Continue**, **Cody**, **Zed**, and any MCP-compatible client.
+Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
 ## Features
 

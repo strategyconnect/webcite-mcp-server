@@ -1,7 +1,7 @@
 {
   "name": "webcite-mcp-server",
-  "version": "1.2.2",
-  "description": "WebCite MCP Server for Claude - Fact-check claims against authoritative sources with stance analysis and verdicts",
+  "version": "1.2.3",
+  "description": "WebCite MCP Server - Fact-check AI claims against authoritative sources. Works with any MCP-compatible agent or tool.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
