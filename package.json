@@ -1,7 +1,7 @@
 {
   "name": "webcite-mcp-server",
-  "version": "1.2.1",
-  "description": "WebCite MCP Server for Claude - Fact verification and citation API",
+  "version": "1.2.2",
+  "description": "WebCite MCP Server for Claude - Fact-check claims against authoritative sources with stance analysis and verdicts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -16,12 +16,20 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "claude",
     "anthropic",
     "fact-check",
+    "fact-checking",
     "citation",
     "webcite",
-    "verification"
+    "verification",
+    "ai-safety",
+    "hallucination-detection",
+    "source-verification",
+    "cursor",
+    "claude-desktop"
   ],
   "author": "WebCite",
   "license": "MIT",
@@ -39,5 +47,12 @@
     "dist",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/strategyconnect/webcite-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/strategyconnect/webcite-mcp-server/issues"
+  },
   "homepage": "https://webcite.co"
 }
