@@ -11,6 +11,7 @@
  * - list_citations: List past verification results
  * - get_citation: Get details of a specific verification
  * - upload_file: Upload a file for use as verification context
+ * - get_source_preview: Resolve a citation to its source with a bindBack (grounded) check
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -20,6 +21,7 @@ import {
   WebCiteApiClient,
   type Citation,
   type ClaimGroup,
+  type SourcePreviewResponse,
   type SSEEvent,
   type Verdict,
   type VerifyClaimResponse,
@@ -215,7 +217,78 @@ Use this when you need to:
       required: ['file_path'],
     },
   },
+  {
+    name: 'get_source_preview',
+    description: `Resolve a citation back to its exact source and render it, so you can show the evidence behind a claim.
+
+Use this when you need to:
+- Show the exact passage a citation came from (not just the URL)
+- Get a deep link that scrolls to the quote (web) or opens the cited PDF page
+- Verify a quote is actually present in its source before relying on it
+
+Works for two source types:
+- **Web** (pass \`url\`): returns a text-fragment deep link (url#:~:text=quote).
+- **Document** (pass \`asset_id\` from upload_file): returns the cited page's extracted text and an asset_url#page=N link. Spreadsheets return the sheet grid.
+
+Every preview reports **bindBack**: whether the quote was found in the source (grounded) and how it matched (exact / normalized / unbound). A quote that cannot be bound back is never reported as grounded.
+
+Credits: 0 (free)`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        url: {
+          type: 'string',
+          description: 'Web source URL to preview (provide this OR asset_id).',
+        },
+        asset_id: {
+          type: 'string',
+          description:
+            'Uploaded asset ID from upload_file (provide this OR url). Also accepts an "asset://<id>" citation url.',
+        },
+        page: {
+          type: 'number',
+          description: '1-based page (PDF) or sheet index (spreadsheet). Default: 1',
+        },
+        quote: {
+          type: 'string',
+          description: 'The cited quote to bind back against the source and highlight.',
+        },
+      },
+    },
+  },
 ];
+
+/**
+ * Format a source preview for display
+ */
+function formatSourcePreview(p: SourcePreviewResponse): string {
+  const parts: string[] = [];
+  const groundedMark = p.binding.grounded ? '✓ grounded' : '✗ not grounded';
+
+  if (p.kind === 'web') {
+    parts.push(`# Source Preview (web)\n`);
+    if (p.title) parts.push(`**${p.title}**`);
+    parts.push(`**URL:** ${p.url}`);
+  } else if (p.kind === 'grid') {
+    parts.push(`# Source Preview (spreadsheet)\n`);
+    if (p.sheet) parts.push(`**Sheet:** ${p.sheet}`);
+    parts.push(`**Asset:** ${p.asset_id} (page ${p.page})`);
+  } else {
+    parts.push(`# Source Preview (document page)\n`);
+    parts.push(`**Asset:** ${p.asset_id} (page ${p.page})`);
+  }
+
+  if (p.quote) parts.push(`**Quote:** "${p.quote}"`);
+  parts.push(`**Binding:** ${groundedMark} (${p.binding.method})`);
+  parts.push(`**Deep link:** ${p.deep_link}`);
+
+  if (p.text) {
+    parts.push(`\n---\n`);
+    parts.push(p.text);
+  }
+
+  return parts.join('\n');
+}
 
 /**
  * Format a citation for display
@@ -669,6 +742,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         return {
           content: [{ type: 'text', text: parts.join('\n') }],
+        };
+      }
+
+      case 'get_source_preview': {
+        const url = args?.url as string | undefined;
+        const assetId = args?.asset_id as string | undefined;
+
+        if (!url && !assetId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Error: provide either url (web source) or asset_id (uploaded document)',
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const result = await client.sourcePreview({
+          url,
+          asset_id: assetId,
+          page: args?.page as number | undefined,
+          quote: args?.quote as string | undefined,
+        });
+
+        return {
+          content: [{ type: 'text', text: formatSourcePreview(result) }],
         };
       }
 
