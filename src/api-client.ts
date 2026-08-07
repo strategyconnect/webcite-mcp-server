@@ -25,6 +25,37 @@ export interface ListCitationsOptions {
   thread_id?: string;
 }
 
+export interface SourcePreviewOptions {
+  /** Web source URL to preview (provide this OR asset_id). */
+  url?: string;
+  /** Uploaded asset ID to preview (provide this OR url). Also accepts "asset://<id>". */
+  asset_id?: string;
+  /** 1-based page (PDF) or sheet index (spreadsheet). */
+  page?: number;
+  /** The cited quote to bind back against the source and highlight. */
+  quote?: string;
+  title?: string;
+  highlight_terms?: string[];
+}
+
+export interface SourcePreviewResponse {
+  kind: 'web' | 'page' | 'grid';
+  url?: string;
+  asset_id?: string;
+  page?: number;
+  sheet?: string | null;
+  text?: string;
+  title?: string;
+  quote?: string;
+  highlight_terms?: string[];
+  deep_link: string;
+  binding: {
+    grounded: boolean;
+    method: 'exact' | 'normalized' | 'unbound';
+    matched_quote?: string;
+  };
+}
+
 export interface Citation {
   id: string;
   title: string;
@@ -279,6 +310,13 @@ export class WebCiteApiClient {
 
   async getCitation(citationId: string): Promise<{ data: { prompt: string; citation: string | Citation[] } }> {
     return this.request(`/api/v1/citations/${encodeURIComponent(citationId)}`, { method: 'GET' });
+  }
+
+  async sourcePreview(options: SourcePreviewOptions): Promise<SourcePreviewResponse> {
+    return this.request('/api/v1/citations/source-preview', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
   }
 
   async uploadFile(filePath: string): Promise<UploadResponse> {
