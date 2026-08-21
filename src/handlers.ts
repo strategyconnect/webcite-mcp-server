@@ -60,8 +60,9 @@ function verifyOptions(args: Args): VerifyClaimOptions {
   };
 }
 
+// Matches the pre-1.3.0 behaviour: 0, NaN and a non-number all fall back to the default.
 function clamp(value: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof value === 'number' ? value : fallback;
+  const n = typeof value === 'number' && Number.isFinite(value) && value !== 0 ? value : fallback;
   return Math.min(Math.max(n, min), max);
 }
 

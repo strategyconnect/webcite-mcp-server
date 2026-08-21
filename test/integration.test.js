@@ -116,6 +116,7 @@ function startStub() {
       seen.push({
         method: req.method,
         path: url.pathname,
+        query: url.search,
         apiKey: req.headers['x-api-key'],
         body: body ? JSON.parse(body) : undefined,
       });
@@ -293,4 +294,43 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(bad.result.isError, true);
     assert.match(bad.result.content[0].text, /WebCite API error \(404\)/);
   });
+});
+
+test('paging and limit arguments keep their pre-1.3.0 defaults', async (t) => {
+  const { server, seen, port } = await startStub();
+  const { child, rpc, notify } = startServer(port);
+  t.after(() => {
+    child.kill();
+    server.close();
+  });
+
+  await rpc('initialize', {
+    protocolVersion: '2024-11-05',
+    capabilities: {},
+    clientInfo: { name: 'integration', version: '1' },
+  });
+  notify('notifications/initialized');
+
+  // The stub does not serve /api/v1/citations, so the tool reports an error — but the
+  // request it sent is recorded, and the query string is what these assertions check.
+  const sent = async (args) => {
+    await rpc('tools/call', { name: 'list_citations', arguments: args });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v1/citations');
+    return req.query;
+  };
+
+  assert.equal(await sent({}), '?page=1&limit=10');
+  // 0 is not "a smaller page" — it falls back to the default, as before 1.3.0.
+  assert.equal(await sent({ page: 0, limit: 0 }), '?page=1&limit=10');
+  // NaN serialises to null over JSON-RPC; a non-number must not reach the query string.
+  assert.equal(await sent({ limit: NaN }), '?page=1&limit=10');
+  assert.equal(await sent({ page: 3, limit: 25 }), '?page=3&limit=25');
+  // Out-of-range values are clamped, not forwarded.
+  assert.equal(await sent({ limit: 500 }), '?page=1&limit=50');
+
+  await rpc('tools/call', { name: 'search_sources', arguments: { query: 'x', limit: 0 } });
+  assert.equal(seen.at(-1).body.limit, 10);
+  await rpc('tools/call', { name: 'search_sources', arguments: { query: 'x', limit: 99 } });
+  assert.equal(seen.at(-1).body.limit, 20);
 });
