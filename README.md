@@ -1,6 +1,6 @@
 # WebCite MCP Server
 
-MCP (Model Context Protocol) server for WebCite - enables any AI agent or tool to verify factual claims against authoritative sources.
+MCP (Model Context Protocol) server for WebCite — lets any AI agent verify factual claims against authoritative sources, bind quotes back to the passage they came from, and read the numbers out of documents deterministically.
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
@@ -13,7 +13,25 @@ Works with **any MCP-compatible client** including Claude Desktop, Claude Code, 
 | `search_sources` | Quick citation search without analysis | 2 |
 | `list_citations` | List your past verifications | Free |
 | `get_citation` | Get details of a specific verification | Free |
-| `upload_file` | Upload a document for use as verification context | - |
+| `upload_file` | Upload a document for use as verification context | Free |
+| `get_source_preview` | Resolve a citation to its source, with a bindBack check | Free |
+| `verify_batch` | Check up to 200 quotes against their sources in one call | Free |
+| `verify_feedback` | Accept, reject or flag a batch result | Free |
+| `analyze_conflicts` | Recompute and cross-check figures you already extracted | Free |
+| `analyze_document` | Extract, recompute and cross-check a spreadsheet or PDF | Free* |
+| `classify_document` | Category + covered types for an uploaded document | 1 |
+| `document_gaps` | "Usually also here" checklist for a category | 1 |
+| `extract_document` | Any format to normalized text + units with provenance | 1 |
+| `extract_figures` | Every number as a tagged, source-grounded figure | 2 |
+| `accuracy_report` | The engine's measured accuracy against its gold set | Free |
+
+\* Spreadsheets are free (compute and file I/O only). The PDF path makes a vision-model
+call per page and will be metered once usage billing lands.
+
+Verification tools bind a quote back to its source and report **how** it matched
+(exact / normalized / fuzzy / unbound). A fuzzy match is capped at `needs_review` and
+is never reported as verified. The numeric tools are deterministic: they recompute
+figures rather than asking a model whether the numbers look right.
 
 ## Installation
 
@@ -31,7 +49,7 @@ Add to `claude_desktop_config.json`:
       "command": "npx",
       "args": ["-y", "webcite-mcp-server"],
       "env": {
-        "WEBCITE_API_KEY": "wc_your_api_key_here"
+        "WEBCITE_API_KEY": "webcite_your_api_key_here"
       }
     }
   }
@@ -45,7 +63,7 @@ Add to `claude_desktop_config.json`:
 claude mcp add webcite -- npx -y webcite-mcp-server
 
 # Set API key
-export WEBCITE_API_KEY=wc_your_api_key_here
+export WEBCITE_API_KEY=webcite_your_api_key_here
 ```
 
 Or add to `~/.claude/claude_settings.json`:
@@ -57,7 +75,7 @@ Or add to `~/.claude/claude_settings.json`:
       "command": "npx",
       "args": ["-y", "webcite-mcp-server"],
       "env": {
-        "WEBCITE_API_KEY": "wc_your_api_key_here"
+        "WEBCITE_API_KEY": "webcite_your_api_key_here"
       }
     }
   }
@@ -75,7 +93,7 @@ Add to `.cursor/mcp.json` in your project or `~/.cursor/mcp.json` globally:
       "command": "npx",
       "args": ["-y", "webcite-mcp-server"],
       "env": {
-        "WEBCITE_API_KEY": "wc_your_api_key_here"
+        "WEBCITE_API_KEY": "webcite_your_api_key_here"
       }
     }
   }
@@ -97,7 +115,7 @@ Add to `~/.continue/config.json`:
           "args": ["-y", "webcite-mcp-server"]
         },
         "env": {
-          "WEBCITE_API_KEY": "wc_your_api_key_here"
+          "WEBCITE_API_KEY": "webcite_your_api_key_here"
         }
       }
     ]
@@ -116,7 +134,7 @@ Add to VS Code settings (`settings.json`):
       "command": "npx",
       "args": ["-y", "webcite-mcp-server"],
       "env": {
-        "WEBCITE_API_KEY": "wc_your_api_key_here"
+        "WEBCITE_API_KEY": "webcite_your_api_key_here"
       }
     }
   }
@@ -136,7 +154,7 @@ Add to `~/.config/zed/settings.json`:
         "args": ["-y", "webcite-mcp-server"]
       },
       "env": {
-        "WEBCITE_API_KEY": "wc_your_api_key_here"
+        "WEBCITE_API_KEY": "webcite_your_api_key_here"
       }
     }
   }
@@ -150,10 +168,10 @@ Add to `~/.config/zed/settings.json`:
 npm install -g webcite-mcp-server
 
 # Run with API key
-WEBCITE_API_KEY=wc_xxx webcite-mcp-server
+WEBCITE_API_KEY=webcite_xxx webcite-mcp-server
 
 # Or with npx (no install)
-WEBCITE_API_KEY=wc_xxx npx webcite-mcp-server
+WEBCITE_API_KEY=webcite_xxx npx webcite-mcp-server
 ```
 
 ## Getting Your API Key
@@ -240,6 +258,56 @@ Filename: research-paper.pdf
 Type: application/pdf
 Size: 245832 bytes
 ```
+
+### Check Every Citation in a Draft at Once
+
+```
+User: Check every quote in this draft against its source
+
+# Batch Verification: 12 item(s)
+
+**Grounded:** 10/12
+
+1. ✓ "Revenue grew 40% in FY2024."
+   Binding: grounded (normalized, score 0.97)
+   Matched: "in FY2024 revenue grew 40%"
+   Verification: verified | layer bindback | confidence 92
+   Feedback token: ft_abc123
+
+7. ✗ "Headcount doubled."
+   Binding: not grounded (unbound, score 0.21)
+   Verification: unverified | layer none | confidence 10 | review: no passage matched
+```
+
+Reject a wrong result with `verify_feedback` using its token — corrections accumulate.
+
+### Read the Numbers Out of a Model
+
+```
+User: Upload this financial model and tell me if the numbers hold up
+
+# Document Analysis
+
+**Category:** financials | **Covers:** p&l, cap table
+
+**Review:** ⚠ needs review
+- Recomputed gross_margin does not match the stated value.
+
+## Conflicts (1)
+
+1. **arr** — delta 500000
+   - 4500000 currency from model.xlsx (sheet P&L B4) [rule read]
+   - 5000000 currency from deck.pdf (p.7) [model read]
+   Ask: Which ARR is current — the deck or the model?
+
+## Recomputations (1)
+
+1. ✗ **gross_margin** — computed 58 percent, stated 62 percent
+   - revenue = 1000 from model.xlsx (sheet P&L B4) [rule read]
+```
+
+`extract_figures` returns the same figures on their own; `analyze_conflicts` runs the
+check over figures from your own pipeline.
 
 ### Review Past Verifications
 
@@ -328,10 +396,125 @@ Get full details of a specific verification.
 
 ### upload_file
 
-Upload a file to WebCite for use as verification context. Supports documents (PDF, DOCX, TXT) and other common file types.
+Upload a file to WebCite for use as verification context. Supports documents (PDF, DOCX, TXT) and other common file types. Returns a file ID usable as `asset_id` everywhere below.
 
 **Parameters:**
 - `file_path` (required): Absolute path to the file to upload
+
+**Credit Cost:** Free
+
+### get_source_preview
+
+Resolve a citation back to its exact source and render it, so you can show the evidence behind a claim.
+
+- **Web** (`url`): returns a text-fragment deep link (`url#:~:text=quote`).
+- **Document** (`asset_id`): returns the cited page's extracted text and an `asset_url#page=N` link. Spreadsheets return the sheet grid.
+
+Every preview reports **bindBack** — whether the quote was found in the source and how it matched (exact / normalized / unbound). A quote that cannot be bound back is never reported as grounded.
+
+**Parameters:**
+- `url`: Web source URL (provide this OR `asset_id`)
+- `asset_id`: Uploaded asset ID (provide this OR `url`); also accepts `asset://<id>`
+- `page`: 1-based page (PDF) or sheet index (spreadsheet)
+- `quote`: The cited quote to bind back and highlight
+
+**Credit Cost:** Free
+
+### verify_batch
+
+Check many quotes against their sources in one call. Each item carries its own source: inline text, a URL, or an uploaded asset.
+
+Per item you get back whether the quote is grounded, how it matched (exact / normalized / fuzzy / unbound), the best-matching passage and score even when unbound, a verification band, and a `feedback_token`. A fuzzy match is capped at `needs_review`, never verified.
+
+**Parameters:**
+- `items` (required): 1-200 items, each `{ id?, quote, source_text? | url? | asset_id?, page? }`
+
+**Credit Cost:** Free (deterministic, no model calls)
+
+### verify_feedback
+
+Record a human verdict on a `verify_batch` result. The token carries the result summary, so token plus verdict is enough. Feedback is stored, so corrections accumulate.
+
+**Parameters:**
+- `token` (required): The `feedback_token` from a batch result
+- `verdict` (required): `correct` | `incorrect` | `unsure`
+- `note`: Optional note or correction
+
+**Credit Cost:** Free
+
+### analyze_conflicts
+
+Verify numbers, not just text. Give figures you already extracted and the engine recomputes every derivable metric from its primitives, detects cross-document conflicts, flags jointly-impossible values, and returns a review flag with concrete reasons.
+
+Deterministic — a conflict either exists or it does not, so this is a flag with reasons, not a probability.
+
+**Parameters:**
+- `figures` (required): `{ metric, value, unit, entity?, period?, provenance }[]`
+
+**Credit Cost:** Free
+
+### analyze_document
+
+Document-in numeric analysis. Give an uploaded asset ID; the file is downloaded, its figures extracted, then recomputed and cross-checked. Returns figures plus conflicts, recomputations, a review flag and the document's category.
+
+Spreadsheets are read deterministically with exact cell provenance. PDFs are read by a vision model (it never computes) — those are model reads, capped at `needs_review`.
+
+**Parameters:**
+- `asset_id` (required): Uploaded spreadsheet or PDF
+
+**Credit Cost:** Free for spreadsheets; the PDF path will be metered per page
+
+### classify_document
+
+Coarse **category** plus the fine multi-type **covers** a document holds (a bundled workbook covers several). Deterministic and model-free — works with no model configured.
+
+**Parameters:**
+- `asset_id` or `asset_url` (one required)
+- `taxonomy`: `vc` (venture data-room, default) or `ma`
+
+**Credit Cost:** 1
+
+### document_gaps
+
+The "usually also here" checklist for a category: each expected document type flagged present or absent. An item is present when any document matches it by filename, category, or covered type. Advisory — nothing blocks.
+
+**Parameters:**
+- `category` (required)
+- `docs`: `{ filename?, label?, category?, covers? }[]` already filed in that category
+- `taxonomy`: `vc` (default) or `ma`
+- `stage`: `early` or `growth`
+
+**Credit Cost:** 1
+
+### extract_document
+
+Extract any document into normalized text with provenance: whole-doc markdown, per-page/sheet units, and sheet names for spreadsheets. PDF, spreadsheets, docx, pptx, html and txt. Deterministic-first; scanned PDFs fall back to vision OCR. Never hard-fails — an unreadable asset returns empty text.
+
+Long documents are truncated in the tool output; use `get_source_preview` for a specific page.
+
+**Parameters:**
+- `asset_id` or `asset_url` (one required)
+
+**Credit Cost:** 1
+
+### extract_figures
+
+Every number in a document as a tagged, source-grounded figure: value normalized to its canonical unit, `metric`, `unit`, optional `entity`/`period`, a confidence `band`, whether it was confirmed against the cited cell (`bound`), and full `provenance`.
+
+Header scale (`$M`, `'000`), accounting negatives, period columns and unit declarations are all honoured, so a percentage is never mis-read as a currency. Feed the result straight into `analyze_conflicts`.
+
+**Parameters:**
+- `asset_id` or `asset_url` (one required)
+
+**Credit Cost:** 2
+
+### accuracy_report
+
+The numeric engine's measured accuracy against its gold-set corpus: conflict detection rate and precision, and recompute correctness. Reproducible and gated on every build.
+
+**Parameters:** none
+
+**Credit Cost:** Free
 
 ## Environment Variables
 

@@ -4,161 +4,34 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import type {
+  AccuracyReport,
+  AnalyzeResult,
+  BatchItem,
+  BatchResultItem,
+  Citation,
+  ClassifyOptions,
+  ClassifyResult,
+  DocumentAnalysisResponse,
+  ExtractedDoc,
+  ExtractedFigure,
+  AssetRefOptions,
+  FeedbackVerdict,
+  FiguresResponse,
+  GapsOptions,
+  GapsResponse,
+  ListCitationsOptions,
+  ListCitationsResponse,
+  SearchSourcesOptions,
+  SourcePreviewOptions,
+  SourcePreviewResponse,
+  SSEEvent,
+  UploadResponse,
+  VerifyClaimOptions,
+  VerifyClaimResponse,
+} from './types.js';
 
-export interface VerifyClaimOptions {
-  claim: string;
-  thread_id?: string;
-  include_stance?: boolean;
-  include_verdict?: boolean;
-  decompose_claim?: boolean;
-  use_claim_decomposition?: boolean;
-}
-
-export interface SearchSourcesOptions {
-  query: string;
-  limit?: number;
-}
-
-export interface ListCitationsOptions {
-  page?: number;
-  limit?: number;
-  thread_id?: string;
-}
-
-export interface SourcePreviewOptions {
-  /** Web source URL to preview (provide this OR asset_id). */
-  url?: string;
-  /** Uploaded asset ID to preview (provide this OR url). Also accepts "asset://<id>". */
-  asset_id?: string;
-  /** 1-based page (PDF) or sheet index (spreadsheet). */
-  page?: number;
-  /** The cited quote to bind back against the source and highlight. */
-  quote?: string;
-  title?: string;
-  highlight_terms?: string[];
-}
-
-export interface SourcePreviewResponse {
-  kind: 'web' | 'page' | 'grid';
-  url?: string;
-  asset_id?: string;
-  page?: number;
-  sheet?: string | null;
-  text?: string;
-  title?: string;
-  quote?: string;
-  highlight_terms?: string[];
-  deep_link: string;
-  binding: {
-    grounded: boolean;
-    method: 'exact' | 'normalized' | 'unbound';
-    matched_quote?: string;
-  };
-}
-
-export interface Citation {
-  id: string;
-  title: string;
-  url: string;
-  snippet: string;
-  author?: string;
-  status?: string;
-  credibility_score?: number;
-  rank?: number;
-  stance?: 'supports' | 'contradicts' | 'partially_supports' | 'neutral' | 'irrelevant';
-  stance_confidence?: number;
-  stance_explanation?: string;
-  ranking_factors?: {
-    source_authority: number;
-    content_relevance: number;
-    recency: number;
-  };
-  source_metadata?: {
-    domain: string;
-    domain_category: string;
-    is_primary_source: boolean;
-    is_fact_check_site: boolean;
-  };
-  publication_year?: number;
-}
-
-export interface Verdict {
-  claim: string;
-  result: 'supported' | 'partially_supported' | 'contradicted' | 'mixed' | 'unverifiable';
-  confidence: number;
-  summary: string;
-  stance_breakdown: {
-    supports: number;
-    partially_supports: number;
-    contradicts: number;
-    neutral: number;
-  };
-  key_findings?: Array<{
-    finding: string;
-    citation_ids: string[];
-    confidence: number;
-  }>;
-  corrections?: Array<{
-    claimed: string;
-    actual: string;
-    citation_ids: string[];
-  }>;
-  unverified_claims?: string[];
-}
-
-export interface ClaimGroup {
-  claim_id: string;
-  claim_index: number;
-  claim: string;
-  stance_summary: 'supported' | 'contradicted' | 'mixed' | 'unverifiable';
-  citation_count: number;
-  citations: Citation[];
-  verdict?: Verdict;
-}
-
-export interface VerifyClaimResponse {
-  claim_groups: ClaimGroup[];
-  totalResults: number;
-  thread_id: string;
-  citations?: Citation[];
-  verdict?: Verdict;
-  generated_prompts?: string[];
-  credit_usage?: {
-    credits_used: number;
-    credits_remaining: number;
-  };
-}
-
-export interface CitationRecord {
-  id: string;
-  thread_id: string;
-  prompt: string;
-  citation?: string | Citation[];
-  created_at?: string;
-}
-
-export interface ListCitationsResponse {
-  data: CitationRecord[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
-export interface SSEEvent {
-  event: string;
-  data: unknown;
-}
-
-export interface UploadResponse {
-  success: boolean;
-  file_id: string;
-  filename: string;
-  mime_type: string;
-  size: number;
-}
+export * from './types.js';
 
 export class WebCiteApiClient {
   private baseUrl: string;
@@ -188,16 +61,20 @@ export class WebCiteApiClient {
     return response.json() as Promise<T>;
   }
 
+  private verifyBody(options: VerifyClaimOptions): string {
+    return JSON.stringify({
+      claim: options.claim,
+      thread_id: options.thread_id,
+      include_stance: options.include_stance !== false,
+      include_verdict: options.include_verdict !== false,
+      decompose_claim: options.decompose_claim ?? options.use_claim_decomposition ?? false,
+    });
+  }
+
   async verifyClaim(options: VerifyClaimOptions): Promise<VerifyClaimResponse> {
     return this.request('/api/v1/verify', {
       method: 'POST',
-      body: JSON.stringify({
-        claim: options.claim,
-        thread_id: options.thread_id,
-        include_stance: options.include_stance !== false,
-        include_verdict: options.include_verdict !== false,
-        decompose_claim: options.decompose_claim ?? options.use_claim_decomposition ?? false,
-      }),
+      body: this.verifyBody(options),
     });
   }
 
@@ -210,13 +87,7 @@ export class WebCiteApiClient {
         'x-api-key': this.apiKey,
         Accept: 'text/event-stream',
       },
-      body: JSON.stringify({
-        claim: options.claim,
-        thread_id: options.thread_id,
-        include_stance: options.include_stance !== false,
-        include_verdict: options.include_verdict !== false,
-        decompose_claim: options.decompose_claim ?? options.use_claim_decomposition ?? false,
-      }),
+      body: this.verifyBody(options),
     });
 
     if (!response.ok) {
@@ -317,6 +188,74 @@ export class WebCiteApiClient {
       method: 'POST',
       body: JSON.stringify(options),
     });
+  }
+
+  /** Bind many quotes back to their sources in one call. */
+  async verifyBatch(items: BatchItem[]): Promise<BatchResultItem[]> {
+    return this.request('/api/v1/verify/batch', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    });
+  }
+
+  /** Record a human verdict on a batch result, using its feedback_token. */
+  async verifyFeedback(
+    token: string,
+    verdict: FeedbackVerdict,
+    note?: string,
+  ): Promise<{ recorded: true }> {
+    return this.request('/api/v1/verify/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ token, verdict, note }),
+    });
+  }
+
+  /** Recompute and cross-check figures you already extracted. */
+  async analyzeConflicts(figures: ExtractedFigure[]): Promise<AnalyzeResult> {
+    return this.request('/api/v1/analyze/conflicts', {
+      method: 'POST',
+      body: JSON.stringify({ figures }),
+    });
+  }
+
+  /** Extract, recompute and cross-check a spreadsheet or PDF in one call. */
+  async analyzeDocument(assetId: string): Promise<DocumentAnalysisResponse> {
+    return this.request('/api/v1/analyze/document', {
+      method: 'POST',
+      body: JSON.stringify({ asset_id: assetId }),
+    });
+  }
+
+  async classifyDocument(options: ClassifyOptions): Promise<ClassifyResult> {
+    return this.request('/api/v1/classify', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
+
+  async documentGaps(options: GapsOptions): Promise<GapsResponse> {
+    return this.request('/api/v1/gaps', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
+
+  async extractDocument(options: AssetRefOptions): Promise<ExtractedDoc> {
+    return this.request('/api/v1/extract', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
+
+  async extractFigures(options: AssetRefOptions): Promise<FiguresResponse> {
+    return this.request('/api/v1/extract/figures', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
+
+  async accuracyReport(): Promise<AccuracyReport> {
+    return this.request('/api/v1/accuracy', { method: 'GET' });
   }
 
   async uploadFile(filePath: string): Promise<UploadResponse> {
