@@ -11,22 +11,19 @@ Works with **any MCP-compatible client** including Claude Desktop, Claude Code, 
 | `verify_claim` | Full fact verification with stance analysis and verdict | 2-4 |
 | `verify_claim_stream` | Streaming verification for complex/long-running claims | 2-4 |
 | `search_sources` | Quick citation search without analysis | 2 |
-| `list_citations` | List your past verifications | Free |
-| `get_citation` | Get details of a specific verification | Free |
-| `upload_file` | Upload a document for use as verification context | Free |
-| `get_source_preview` | Resolve a citation to its source, with a bindBack check | Free |
-| `verify_batch` | Check up to 200 quotes against their sources in one call | Free |
-| `verify_feedback` | Accept, reject or flag a batch result | Free |
-| `analyze_conflicts` | Recompute and cross-check figures you already extracted | Free |
-| `analyze_document` | Extract, recompute and cross-check a spreadsheet or PDF | Free* |
+| `list_citations` | List your past verifications | 1 |
+| `get_citation` | Get details of a specific verification | 1 |
+| `upload_file` | Upload a document for use as verification context | 1 |
+| `get_source_preview` | Resolve a citation to its source, with a bindBack check | 1 |
+| `verify_batch` | Check up to 200 quotes against their sources in one call | 1 per item |
+| `verify_feedback` | Accept, reject or flag a batch result | 1 |
+| `analyze_conflicts` | Recompute and cross-check figures you already extracted | 1 |
+| `analyze_document` | Extract, recompute and cross-check a spreadsheet or PDF | 3 |
 | `classify_document` | Category + covered types for an uploaded document | 1 |
 | `document_gaps` | "Usually also here" checklist for a category | 1 |
 | `extract_document` | Any format to normalized text + units with provenance | 1 |
 | `extract_figures` | Every number as a tagged, source-grounded figure | 2 |
-| `accuracy_report` | The engine's measured accuracy against its gold set | Free |
-
-\* Spreadsheets are free (compute and file I/O only). The PDF path makes a vision-model
-call per page and will be metered once usage billing lands.
+| `accuracy_report` | The engine's measured accuracy against its gold set | 1 |
 
 Verification tools bind a quote back to its source and report **how** it matched
 (exact / normalized / fuzzy / unbound). A fuzzy match is capped at `needs_review` and
@@ -383,7 +380,7 @@ List your past verification results.
 - `limit` (optional, default: 10): Results per page (max 50)
 - `thread_id` (optional): Filter by conversation thread
 
-**Credit Cost:** Free
+**Credit Cost:** 1
 
 ### get_citation
 
@@ -392,7 +389,7 @@ Get full details of a specific verification.
 **Parameters:**
 - `citation_id` (required): The citation ID to retrieve
 
-**Credit Cost:** Free
+**Credit Cost:** 1
 
 ### upload_file
 
@@ -401,7 +398,7 @@ Upload a file to WebCite for use as verification context. Supports documents (PD
 **Parameters:**
 - `file_path` (required): Absolute path to the file to upload
 
-**Credit Cost:** Free
+**Credit Cost:** 1
 
 ### get_source_preview
 
@@ -418,7 +415,7 @@ Every preview reports **bindBack** — whether the quote was found in the source
 - `page`: 1-based page (PDF) or sheet index (spreadsheet)
 - `quote`: The cited quote to bind back and highlight
 
-**Credit Cost:** Free
+**Credit Cost:** 1
 
 ### verify_batch
 
@@ -429,7 +426,7 @@ Per item you get back whether the quote is grounded, how it matched (exact / nor
 **Parameters:**
 - `items` (required): 1-200 items, each `{ id?, quote, source_text? | url? | asset_id?, page? }`
 
-**Credit Cost:** Free (deterministic, no model calls)
+**Credit Cost:** 1 per item — the work is per item, so a 200-claim batch costs 200
 
 ### verify_feedback
 
@@ -440,7 +437,7 @@ Record a human verdict on a `verify_batch` result. The token carries the result 
 - `verdict` (required): `correct` | `incorrect` | `unsure`
 - `note`: Optional note or correction
 
-**Credit Cost:** Free
+**Credit Cost:** 1
 
 ### analyze_conflicts
 
@@ -451,7 +448,7 @@ Deterministic — a conflict either exists or it does not, so this is a flag wit
 **Parameters:**
 - `figures` (required): `{ metric, value, unit, entity?, period?, provenance }[]`
 
-**Credit Cost:** Free
+**Credit Cost:** 1 (deterministic, no model calls, but still server compute)
 
 ### analyze_document
 
@@ -462,7 +459,7 @@ Spreadsheets are read deterministically with exact cell provenance. PDFs are rea
 **Parameters:**
 - `asset_id` (required): Uploaded spreadsheet or PDF
 
-**Credit Cost:** Free for spreadsheets; the PDF path will be metered per page
+**Credit Cost:** 3 — the document is downloaded, parsed and, for PDFs, read page by page by a vision model
 
 ### classify_document
 
@@ -514,7 +511,7 @@ The numeric engine's measured accuracy against its gold-set corpus: conflict det
 
 **Parameters:** none
 
-**Credit Cost:** Free
+**Credit Cost:** 1
 
 ## Environment Variables
 

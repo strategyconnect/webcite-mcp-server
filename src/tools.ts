@@ -145,7 +145,7 @@ Credits: 2 (search only)`,
     name: 'list_citations',
     description: `List your past verification results. Useful for reviewing previous fact-checks or continuing a research session.
 
-Credits: 0 (free)`,
+Credits: 1`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -173,7 +173,7 @@ Credits: 0 (free)`,
     name: 'get_citation',
     description: `Get the full details of a specific past verification by its ID.
 
-Credits: 0 (free)`,
+Credits: 1`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -194,7 +194,9 @@ Use this when you need to:
 - Provide additional context for fact-checking
 - Upload research papers or reports for analysis
 
-Returns a file ID you can pass as asset_id to get_source_preview, extract_document, extract_figures, classify_document and analyze_document.`,
+Returns a file ID you can pass as asset_id to get_source_preview, extract_document, extract_figures, classify_document and analyze_document.
+
+Credits: 1`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -221,7 +223,7 @@ Works for two source types:
 
 Every preview reports **bindBack**: whether the quote was found in the source (grounded) and how it matched (exact / normalized / unbound). A quote that cannot be bound back is never reported as grounded.
 
-Credits: 0 (free)`,
+Credits: 1`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -258,7 +260,7 @@ Use this when you need to:
 - Confirm quotes you (or another model) produced actually appear in their sources
 - Get feedback tokens so a human can accept or reject each result
 
-Deterministic — no model calls. Credits: 0 (free). Max 200 items per call.`,
+Deterministic — no model calls. Credits: 1 per item — the work is per item, so a 200-claim batch costs 200. Max 200 items per call.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -299,7 +301,7 @@ Deterministic — no model calls. Credits: 0 (free). Max 200 items per call.`,
 
 Feedback is stored, so corrections accumulate over time.
 
-Credits: 0 (free)`,
+Credits: 1`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -329,7 +331,7 @@ Credits: 0 (free)`,
 - **flags semantic conflicts** — values that are each plausible alone but jointly impossible;
 - returns a **review** flag with the concrete reasons a human should look.
 
-Deterministic — no model calls, so a conflict either exists or it does not. Credits: 0 (free).
+Deterministic — no model calls, so a conflict either exists or it does not. Credits: 1.
 
 Prefer analyze_document when you have a file rather than a figure list.`,
     inputSchema: {
@@ -388,7 +390,7 @@ Prefer analyze_document when you have a file rather than a figure list.`,
 - **Spreadsheets** (xlsx/xls/csv): extracted deterministically with exact cell provenance. No model calls.
 - **PDFs**: a vision model reads the printed figures (it never computes); those are model reads, capped at needs_review. Requires a configured vision model.
 
-Credits: 0 today for spreadsheets (the PDF path makes vision calls and will be metered per page once usage billing lands). Rate-limited more strictly than compute-only endpoints.`,
+Credits: 3. The document is downloaded, parsed and — for PDFs — read page by page by a vision model. Rate-limited more strictly than compute-only endpoints.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -503,7 +505,7 @@ Feed the result straight into analyze_conflicts. Credits: 2`,
 
 Use this when you need to state how accurate the verification is, rather than assert it.
 
-Credits: 0 (free)`,
+Credits: 1`,
     inputSchema: {
       type: 'object' as const,
       properties: {},
