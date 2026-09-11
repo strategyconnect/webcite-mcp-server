@@ -199,6 +199,7 @@ export function validateCreatePacket(raw: unknown): CreateEvidencePacketResponse
   return {
     packet_id: requireString(root, 'packet_id', 'CreateEvidencePacket'),
     content_hash: typeof root.content_hash === 'string' ? root.content_hash : undefined,
+    input_packet_id: typeof root.input_packet_id === 'string' ? root.input_packet_id : undefined,
     operation_id: typeof root.operation_id === 'string' ? root.operation_id : undefined,
     gaps: Array.isArray(root.gaps) ? (root.gaps as string[]) : undefined,
     engine: typeof root.engine === 'string' ? root.engine : undefined,

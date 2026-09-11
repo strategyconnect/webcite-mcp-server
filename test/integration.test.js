@@ -196,8 +196,9 @@ const ROUTES = {
   },
 };
 
-function startStub() {
+function startStub(options = {}) {
   const seen = [];
+  const routes = { ...ROUTES, ...(options.routes || {}) };
   const server = http.createServer((req, res) => {
     let body = '';
     req.on('data', (c) => (body += c));
@@ -208,9 +209,45 @@ function startStub() {
         path: url.pathname,
         query: url.search,
         apiKey: req.headers['x-api-key'],
+        idempotencyKey: req.headers['idempotency-key'],
         body: body ? JSON.parse(body) : undefined,
       });
-      const payload = ROUTES[url.pathname];
+
+      // Dynamic query_context no-match when client asks for "nomatch"
+      if (url.pathname === '/api/v2/context/query' && body) {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed.text === 'nomatch') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                operatorClass: 'select_passage',
+                status: 'refuse',
+                refuseReason: 'insufficient',
+                queryPlan: {
+                  operatorClass: 'select_passage',
+                  seeds: [],
+                  truncated: false,
+                  traversedRelationIds: [],
+                },
+                refs: [],
+                gaps: ['insufficient'],
+                engine: 'context_graph',
+              }),
+            );
+            return;
+          }
+          if (parsed.text === 'badshape') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'weird', refs: null }));
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
+      }
+
+      const payload = routes[url.pathname];
       res.writeHead(payload ? 200 : 404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(payload ?? { message: 'not stubbed' }));
     });
@@ -409,7 +446,7 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /\*\*Result:\*\* same/);
   });
 
-  await t.test('create_evidence_packet seals bindings server-side', async () => {
+  await t.test('create_evidence_packet posts context inputs and returns packet id', async () => {
     const text = await call('create_evidence_packet', {
       claim_text: 'Revenue grew 18%.',
       bindings: [
@@ -420,12 +457,24 @@ test('every tool round-trips through the real server against the API', async (t)
           snippet: 'Revenue grew 18%.',
         },
       ],
+      idempotency_key: 'create-1',
     });
     const req = seen.at(-1);
     assert.equal(req.path, '/api/v2/context/evidence-packets');
     assert.equal(req.body.claim_text, 'Revenue grew 18%.');
     assert.equal(req.body.bindings[0].source_version_id, 'sv1');
+    assert.equal(req.idempotencyKey, 'create-1');
     assert.match(text, /packet-new/);
+  });
+
+  await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {
+    const packet = await call('get_evidence_packet', { packet_id: 'packet-1' });
+    assert.equal(seen.at(-1).path, '/api/v2/evidence-packets/packet-1');
+    assert.match(packet, /Evidence Packet/);
+
+    const impact = await call('get_change_impact', { answer_revision_id: 'answer-v1' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/change-impact');
+    assert.match(impact, /Change Impact/);
   });
 
   await t.test('eval_catalog denies private gold on the wire', async () => {
@@ -485,4 +534,172 @@ test('paging and limit arguments keep their pre-1.3.0 defaults', async (t) => {
   assert.equal(seen.at(-1).body.limit, 10);
   await rpc('tools/call', { name: 'search_sources', arguments: { query: 'x', limit: 99 } });
   assert.equal(seen.at(-1).body.limit, 20);
+});
+
+test('A_MCP: context tools round-trip against fake HTTP boundary', async (t) => {
+  const { server, seen, port } = await startStub();
+  const { child, rpc, notify } = startServer(port);
+  t.after(() => {
+    child.kill();
+    server.close();
+  });
+
+  await rpc('initialize', {
+    protocolVersion: '2024-11-05',
+    capabilities: {},
+    clientInfo: { name: 'integration', version: '1' },
+  });
+  notify('notifications/initialized');
+
+  const listed = await rpc('tools/list', {});
+  const names = listed.result.tools.map((t) => t.name);
+  assert.ok(names.includes('query_context'));
+  assert.ok(names.includes('get_answer'));
+  assert.ok(names.includes('verify_claim'));
+
+  const call = async (name, args) => {
+    const res = await rpc('tools/call', { name, arguments: args });
+    assert.ok(!res.result.isError, `${name} errored: ${res.result.content?.[0]?.text}`);
+    return res.result;
+  };
+
+  await t.test('get_answer validates and returns structuredContent', async () => {
+    const result = await call('get_answer', { revision_id: 'answer-v1' });
+    assert.equal(seen.at(-1).method, 'GET');
+    assert.equal(seen.at(-1).path, '/api/v2/answers/answer-v1');
+    assert.match(result.content[0].text, /Answer Revision/);
+    assert.match(result.content[0].text, /Revenue grew 18%/);
+    assert.equal(result.structuredContent.answer.revisionId, 'answer-v1');
+    assert.equal(result.structuredContent.answer.contentHash, 'ans-hash');
+  });
+
+  await t.test('get_evidence_packet resolves by id', async () => {
+    const result = await call('get_evidence_packet', { packet_id: 'packet-1' });
+    assert.equal(seen.at(-1).path, '/api/v2/evidence-packets/packet-1');
+    assert.equal(result.structuredContent.packet.id, 'packet-1');
+    assert.match(result.content[0].text, /Evidence Packet/);
+  });
+
+  await t.test('query_context posts body and forwards idempotency key', async () => {
+    const result = await call('query_context', {
+      text: 'Where does the report discuss revenue?',
+      source_texts: ['Revenue grew 40% in FY2024.'],
+      idempotency_key: 'ctx-query-1',
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/query');
+    assert.equal(req.idempotencyKey, 'ctx-query-1');
+    assert.equal(req.body.text, 'Where does the report discuss revenue?');
+    assert.equal(result.structuredContent.status, 'ok');
+    assert.match(result.content[0].text, /Context Query/);
+  });
+
+  await t.test('compare_assertions / change_impact / create / eval_catalog', async () => {
+    const compare = await call('compare_assertions', {
+      left: { metric: 'revenue', period: 'FY24' },
+      right: { metric: 'revenue', period: 'FY24' },
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/compare-assertions');
+    assert.equal(compare.structuredContent.result, 'same');
+
+    const impact = await call('get_change_impact', { answer_revision_id: 'answer-v1' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/change-impact');
+    assert.equal(impact.structuredContent.freshness.coverage, 'complete');
+
+    const created = await call('create_evidence_packet', {
+      claim_text: 'seed claim',
+      bindings: [
+        {
+          source_version_id: 'sv1',
+          source_unit_id: 'u1',
+          representation_id: 'rep1',
+        },
+      ],
+      idempotency_key: 'pkt-1',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/evidence-packets');
+    assert.equal(seen.at(-1).idempotencyKey, 'pkt-1');
+    assert.equal(created.structuredContent.packet_id, 'packet-new');
+
+    const catalog = await call('eval_catalog', {});
+    assert.equal(seen.at(-1).method, 'GET');
+    assert.equal(seen.at(-1).path, '/api/v2/context/eval/catalog');
+    assert.equal(catalog.structuredContent.private_gold_denied, true);
+  });
+});
+
+test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad API shape', async (t) => {
+  const { server, seen, port } = await startStub();
+  const { child, rpc, notify } = startServer(port);
+  t.after(() => {
+    child.kill();
+    server.close();
+  });
+
+  await rpc('initialize', {
+    protocolVersion: '2024-11-05',
+    capabilities: {},
+    clientInfo: { name: 'integration', version: '1' },
+  });
+  notify('notifications/initialized');
+
+  await t.test('invalid argument → isError with typed failure', async () => {
+    const res = await rpc('tools/call', { name: 'query_context', arguments: {} });
+    assert.equal(res.result.isError, true);
+    assert.match(res.result.content[0].text, /invalid_argument/);
+    assert.equal(res.result.structuredContent.code, 'invalid_argument');
+  });
+
+  await t.test('successful no-match remains distinguishable from failure', async () => {
+    const res = await rpc('tools/call', {
+      name: 'query_context',
+      arguments: { text: 'nomatch', source_texts: [''] },
+    });
+    assert.ok(!res.result.isError);
+    assert.equal(res.result.structuredContent.status, 'refuse');
+    assert.equal(res.result.structuredContent.refs.length, 0);
+    assert.match(res.result.content[0].text, /successful no-match/i);
+  });
+
+  await t.test('invalid API output → isError invalid_api_output', async () => {
+    const res = await rpc('tools/call', {
+      name: 'query_context',
+      arguments: { text: 'badshape' },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+  });
+
+  await t.test('API 404 surfaces typed not_found isError', async () => {
+    const res = await rpc('tools/call', {
+      name: 'get_answer',
+      arguments: { revision_id: 'missing' },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'not_found');
+    assert.match(res.result.content[0].text, /404/);
+  });
+
+  await t.test('unknown tool → protocol error (not isError tool result)', async () => {
+    const res = await rpc('tools/call', { name: 'not_a_real_tool', arguments: {} });
+    assert.ok(res.error, 'expected JSON-RPC error');
+    assert.ok(
+      res.error.message.includes('Unknown tool') || res.error.code === -32601,
+      `unexpected error: ${JSON.stringify(res.error)}`,
+    );
+  });
+
+  await t.test('legacy client still receives text content on success', async () => {
+    const res = await rpc('tools/call', {
+      name: 'compare_assertions',
+      arguments: {
+        left: { metric: 'revenue' },
+        right: { metric: 'revenue' },
+      },
+    });
+    // Stub always returns different; text must still be present for older clients.
+    assert.ok(!res.result.isError);
+    assert.ok(res.result.content?.[0]?.text?.length > 20);
+    assert.ok(seen.length > 0);
+  });
 });
