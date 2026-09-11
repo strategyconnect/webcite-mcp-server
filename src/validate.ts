@@ -9,6 +9,7 @@ import type {
   CompareAssertionsResponse,
   ContextQueryResponse,
   CreateEvidencePacketResponse,
+  AssessSupportResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -202,6 +203,28 @@ export function validateCreatePacket(raw: unknown): CreateEvidencePacketResponse
     input_packet_id: typeof root.input_packet_id === 'string' ? root.input_packet_id : undefined,
     operation_id: typeof root.operation_id === 'string' ? root.operation_id : undefined,
     gaps: Array.isArray(root.gaps) ? (root.gaps as string[]) : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateAssessSupport(raw: unknown): AssessSupportResponse {
+  const root = requireObject(raw, 'AssessSupport');
+  const judgment = requireObject(root.judgment, 'AssessSupport.judgment');
+  return {
+    assessmentId: requireString(root, 'assessmentId', 'AssessSupport'),
+    target: requireObject(root.target, 'AssessSupport.target') as Record<string, unknown>,
+    evidenceGroupRevisionId: requireString(
+      root,
+      'evidenceGroupRevisionId',
+      'AssessSupport',
+    ),
+    alternativeFragmentId:
+      root.alternativeFragmentId === null || typeof root.alternativeFragmentId === 'string'
+        ? (root.alternativeFragmentId as string | null)
+        : undefined,
+    judgment: judgment as Record<string, unknown>,
+    bindings: Array.isArray(root.bindings) ? root.bindings : undefined,
+    explanation: typeof root.explanation === 'string' ? root.explanation : undefined,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

@@ -15,6 +15,7 @@ import {
   formatCompareAssertions,
   formatContextQuery,
   formatCreatePacket,
+  formatAssessSupport,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -42,6 +43,7 @@ import {
   validateCompareAssertions,
   validateContextQuery,
   validateCreatePacket,
+  validateAssessSupport,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -472,6 +474,37 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateCreatePacket(raw);
     return ok(formatCreatePacket(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  assess_support: async (args, client) => {
+    const claimRevisionId = requireString(args, 'claim_revision_id');
+    const claimHash = requireString(args, 'claim_hash');
+    const evidenceGroupRevisionId = requireString(args, 'evidence_group_revision_id');
+    const tierRaw = args?.tier;
+    const tier =
+      tierRaw === 1 || tierRaw === 2 || tierRaw === 3
+        ? (tierRaw as 1 | 2 | 3)
+        : undefined;
+    const raw = await wrapApi(
+      client.assessSupport({
+        claim_revision_id: claimRevisionId,
+        claim_hash: claimHash,
+        evidence_group_revision_id: evidenceGroupRevisionId,
+        alternative_fragment_id:
+          typeof args?.alternative_fragment_id === 'string'
+            ? args.alternative_fragment_id
+            : args?.alternative_fragment_id === null
+              ? null
+              : undefined,
+        tier,
+        proposed: typeof args?.proposed === 'string' ? args.proposed : undefined,
+        binding: typeof args?.binding === 'string' ? args.binding : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateAssessSupport(raw);
+    return ok(formatAssessSupport(validated), validated as unknown as Record<string, unknown>);
   },
 
   eval_catalog: async (_args, client) => {

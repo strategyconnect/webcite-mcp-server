@@ -190,6 +190,22 @@ const ROUTES = {
     input_packet_id: 'input-new',
     engine: 'context_graph',
   },
+  '/api/v2/context/assess-support': {
+    assessmentId: 'assess:hash-1:eg-r1',
+    target: { kind: 'claim', claimRevisionId: 'claim-r1' },
+    evidenceGroupRevisionId: 'eg-r1',
+    alternativeFragmentId: null,
+    judgment: {
+      binding: 'exact',
+      support: 'not_checked',
+      checkedClaimHash: null,
+      checkerVersion: null,
+      operationId: null,
+    },
+    bindings: [],
+    explanation: 'Support not checked; exact binding alone is insufficient',
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -465,6 +481,25 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(req.body.bindings[0].source_version_id, 'sv1');
     assert.equal(req.idempotencyKey, 'create-1');
     assert.match(text, /packet-new/);
+  });
+
+  await t.test('assess_support posts claim hashes and returns tier-capped judgment', async () => {
+    const text = await call('assess_support', {
+      claim_revision_id: 'claim-r1',
+      claim_hash: 'hash-1',
+      evidence_group_revision_id: 'eg-r1',
+      tier: 3,
+      binding: 'exact',
+      proposed: 'supported',
+      idempotency_key: 'assess-1',
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/assess-support');
+    assert.equal(req.body.claim_revision_id, 'claim-r1');
+    assert.equal(req.body.claim_hash, 'hash-1');
+    assert.equal(req.idempotencyKey, 'assess-1');
+    assert.match(text, /not_checked/);
+    assert.match(text, /assess:hash-1:eg-r1/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {
