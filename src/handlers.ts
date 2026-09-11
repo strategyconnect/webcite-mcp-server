@@ -479,4 +479,102 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateEvalCatalog(raw);
     return ok(formatEvalCatalog(validated), validated as unknown as Record<string, unknown>);
   },
+
+  publish_context_workflow: async (args, client) => {
+    if (!args?.workflow || typeof args.workflow !== 'object' || Array.isArray(args.workflow)) {
+      throw new ToolFailure('invalid_argument', 'workflow object is required');
+    }
+    const raw = await wrapApi(
+      client.publishContextWorkflow(
+        args.workflow as import('./types.js').SavedWorkflowPayload,
+        typeof args.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      ),
+    );
+    return ok(
+      `# Workflow Published\n\n**Revision:** ${(raw as any).revision ?? (raw as any).workflow?.revision}`,
+      raw as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_context_workflow: async (args, client) => {
+    const revisionId = requireString(args, 'revision_id');
+    const raw = await wrapApi(client.getContextWorkflow(revisionId));
+    return ok(
+      `# Context Workflow\n\n**Revision:** ${raw.revision}\n**Kind:** ${raw.kind}\n**Trigger:** ${raw.trigger}`,
+      raw as unknown as Record<string, unknown>,
+    );
+  },
+
+  run_saved_workflow: async (args, client) => {
+    const revisionId = requireString(args, 'revision_id');
+    const mode = requireString(args, 'mode');
+    if (mode !== 'preview' && mode !== 'propose') {
+      throw new ToolFailure('invalid_argument', 'mode must be preview or propose');
+    }
+    const eventId = requireString(args, 'event_id');
+    if (!args?.input || typeof args.input !== 'object' || Array.isArray(args.input)) {
+      throw new ToolFailure('invalid_argument', 'input object is required');
+    }
+    const raw = await wrapApi(
+      client.runSavedWorkflow({
+        revision_id: revisionId,
+        mode,
+        event_id: eventId,
+        input: args.input as Record<string, unknown>,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    return ok(
+      `# Workflow Run\n\n**Run:** ${raw.runId}\n**Mode:** ${raw.mode}\n**Review item:** ${
+        raw.reviewItem ? `${raw.reviewItem.system}/${raw.reviewItem.id}` : 'null'
+      }`,
+      raw as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_workflow_run: async (args, client) => {
+    const runId = requireString(args, 'run_id');
+    const raw = await wrapApi(client.getWorkflowRun(runId));
+    return ok(
+      `# Workflow Run\n\n**Run:** ${raw.runId}\n**Workflow revision:** ${raw.workflowRevision}`,
+      raw as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_evaluation: async (args, client) => {
+    const runId = requireString(args, 'run_id');
+    const raw = await wrapApi(client.getEvaluation(runId));
+    return ok(
+      `# Evaluation Run\n\n**Run:** ${raw.run_id}\n**Private gold denied:** ${raw.private_gold_denied ? 'yes' : 'no'}`,
+      raw as unknown as Record<string, unknown>,
+    );
+  },
+
+  compare_evaluations: async (args, client) => {
+    const baseline = requireString(args, 'baseline_run_id');
+    const candidate = requireString(args, 'candidate_run_id');
+    const raw = await wrapApi(
+      client.compareEvaluations({
+        baseline_run_id: baseline,
+        candidate_run_id: candidate,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    return ok(
+      `# Evaluation Compare\n\n**Baseline:** ${raw.baseline_run_id}\n**Candidate:** ${raw.candidate_run_id}`,
+      raw as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_evaluation_case: async (args, client) => {
+    const runId = requireString(args, 'run_id');
+    const caseId = requireString(args, 'case_id');
+    const raw = await wrapApi(client.getEvaluationCase(runId, caseId));
+    return ok(
+      `# Evaluation Case\n\n**Run:** ${raw.run_id}\n**Case:** ${raw.case_id}`,
+      raw as unknown as Record<string, unknown>,
+    );
+  },
 };

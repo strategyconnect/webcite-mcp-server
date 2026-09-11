@@ -21,6 +21,9 @@ import type {
   CreateEvidencePacketResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
+  EvaluationCaseResponse,
+  EvaluationCompareResponse,
+  EvaluationDescribeResponse,
   ExtractedDoc,
   ExtractedFigure,
   AssetRefOptions,
@@ -33,6 +36,7 @@ import type {
   QueryContextOptions,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
+  SavedWorkflowPayload,
   SearchSourcesOptions,
   SourcePreviewOptions,
   SourcePreviewResponse,
@@ -40,6 +44,7 @@ import type {
   UploadResponse,
   VerifyClaimOptions,
   VerifyClaimResponse,
+  WorkflowExecutionResponse,
 } from './types.js';
 import { ApiClientError } from './errors.js';
 
@@ -360,5 +365,72 @@ export class WebCiteApiClient {
 
   async evalCatalog(): Promise<EvalCatalogResponse> {
     return this.request('/api/v2/context/eval/catalog', { method: 'GET' });
+  }
+
+  async publishContextWorkflow(
+    workflow: SavedWorkflowPayload,
+    idempotencyKey?: string,
+  ): Promise<{ revision?: string; workflow?: SavedWorkflowPayload } & SavedWorkflowPayload> {
+    return this.request(
+      '/api/v2/context/workflows',
+      { method: 'POST', body: JSON.stringify(workflow) },
+      { idempotencyKey },
+    );
+  }
+
+  async getContextWorkflow(revisionId: string): Promise<SavedWorkflowPayload> {
+    return this.request(`/api/v2/context/workflows/${encodeURIComponent(revisionId)}`, {
+      method: 'GET',
+    });
+  }
+
+  async runSavedWorkflow(options: {
+    revision_id: string;
+    mode: 'preview' | 'propose';
+    event_id: string;
+    input: Record<string, unknown>;
+    idempotency_key?: string;
+  }): Promise<WorkflowExecutionResponse> {
+    const { revision_id, idempotency_key, ...body } = options;
+    return this.request(
+      `/api/v2/context/workflows/${encodeURIComponent(revision_id)}/runs`,
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async getWorkflowRun(runId: string): Promise<WorkflowExecutionResponse> {
+    return this.request(`/api/v2/context/runs/${encodeURIComponent(runId)}`, {
+      method: 'GET',
+    });
+  }
+
+  async getEvaluation(runId: string): Promise<EvaluationDescribeResponse> {
+    return this.request(`/api/v2/context/evaluations/${encodeURIComponent(runId)}`, {
+      method: 'GET',
+    });
+  }
+
+  async compareEvaluations(options: {
+    baseline_run_id: string;
+    candidate_run_id: string;
+    idempotency_key?: string;
+  }): Promise<EvaluationCompareResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/evaluations/compare',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async getEvaluationCase(
+    runId: string,
+    caseId: string,
+  ): Promise<EvaluationCaseResponse> {
+    return this.request(
+      `/api/v2/context/evaluations/${encodeURIComponent(runId)}/cases/${encodeURIComponent(caseId)}`,
+      { method: 'GET' },
+    );
   }
 }
