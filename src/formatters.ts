@@ -19,6 +19,10 @@ import type {
   FindContradictionsResponse,
   FormalEligibilityResponse,
   FormalCheckResponse,
+  CreateClaimRelationResponse,
+  ListClaimRelationsResponse,
+  CreateMetricDefinitionResponse,
+  ListMetricDefinitionsResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -625,6 +629,26 @@ export function formatFormalCheck(result: FormalCheckResponse): string {
   if (result.mode) parts.push(`**Mode:** ${result.mode}`);
   if (result.reason) parts.push(`**Reason:** ${result.reason}`);
   return parts.join('\n');
+}
+
+export function formatCreateClaimRelation(result: CreateClaimRelationResponse): string {
+  return `# Claim Relation\n\n**Id:** ${result.relation.id}\n**Predicate:** ${result.relation.predicate}\n**Args:** ${result.relation.argumentIds.join(', ')}`;
+}
+
+export function formatListClaimRelations(result: ListClaimRelationsResponse): string {
+  return `# Claim Relations\n\n**Count:** ${result.relations.length}\n**Recognised:** ${result.recognised.join(', ')}`;
+}
+
+export function formatCreateMetricDefinition(
+  result: CreateMetricDefinitionResponse,
+): string {
+  return `# Metric Definition\n\n**Revision:** ${result.revisionId}\n**Hash:** ${result.contentHash}`;
+}
+
+export function formatListMetricDefinitions(
+  result: ListMetricDefinitionsResponse,
+): string {
+  return `# Metric Definitions\n\n**Count:** ${result.definitions.length}`;
 }
 
 export function formatEvalCatalog(result: EvalCatalogResponse): string {

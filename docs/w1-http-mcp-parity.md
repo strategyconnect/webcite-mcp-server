@@ -30,6 +30,10 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `find_contradictions` | `POST /api/v2/context/contradictions` | claims[] | count + pairs | auth / <2 claims | 0 | intervals + values |
 | `formal_eligibility` | `POST /api/v2/context/formal/eligibility` | decimal/unit/scale/basis_reviewed/recognition | eligible + scaling_ok | auth / invalid recognition | 0 | — |
 | `formal_check` | `POST /api/v2/context/formal/check` | source (+ optional toolchain/digest) | status + toolchain + digests | auth / missing source | 0 | Lean template text |
+| `create_claim_relation` | `POST /api/v2/context/claim-relations` | predicate, argument_ids, arguments_resolved | relation row | unrecognised predicate refused | 0 | claim args |
+| `list_claim_relations` | `GET /api/v2/context/claim-relations` | predicate?, claim_revision_id? | relations + recognised | auth | 0 | tenant catalog |
+| `create_metric_definition` | `POST /api/v2/context/metric-definitions` | definition | revisionId + contentHash | duplicate revision conflict | 0 | definition revision |
+| `list_metric_definitions` | `GET /api/v2/context/metric-definitions` | metric? | definitions[] | auth | 0 | tenant catalog |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |
 | `eval_catalog` | `GET /api/v2/context/eval/catalog` | — | suite ids + `private_gold_denied` | auth | 0 | E1 catalog only |
 

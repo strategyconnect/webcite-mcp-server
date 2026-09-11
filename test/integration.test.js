@@ -235,6 +235,34 @@ const ROUTES = {
     checkerPolicyRevision: 'abc123',
     engine: 'context_graph',
   },
+  '/api/v2/context/claim-relations': {
+    relation: {
+      id: 'rel-1',
+      predicate: 'equals',
+      argumentIds: ['a', 'b'],
+      argumentsResolved: true,
+      claimRevisionId: 'claim-1',
+      contentHash: 'a'.repeat(64),
+    },
+    relations: [
+      {
+        id: 'rel-1',
+        predicate: 'equals',
+        argumentIds: ['a', 'b'],
+        argumentsResolved: true,
+        claimRevisionId: 'claim-1',
+        contentHash: 'a'.repeat(64),
+      },
+    ],
+    recognised: ['equals', 'changed_by'],
+    engine: 'context_graph',
+  },
+  '/api/v2/context/metric-definitions': {
+    revisionId: 'def-1-r1',
+    contentHash: 'b'.repeat(64),
+    definitions: [{ revisionId: 'def-1-r1', metric: 'total_revenue' }],
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -575,6 +603,33 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/formal/check');
     assert.match(text, /Status:\*\* rejected_false/);
+  });
+
+  await t.test('create_claim_relation and list_claim_relations hit catalog routes', async () => {
+    const created = await call('create_claim_relation', {
+      predicate: 'equals',
+      argument_ids: ['a', 'b'],
+      arguments_resolved: true,
+      claim_revision_id: 'claim-1',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/claim-relations');
+    assert.match(created, /Predicate:\*\* equals/);
+
+    const listed = await call('list_claim_relations', { predicate: 'equals' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/claim-relations');
+    assert.match(listed, /Count:\*\* 1/);
+  });
+
+  await t.test('create_metric_definition and list_metric_definitions hit catalog routes', async () => {
+    const created = await call('create_metric_definition', {
+      definition: { revisionId: 'def-1-r1', metric: 'total_revenue' },
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/metric-definitions');
+    assert.match(created, /Revision:\*\* def-1-r1/);
+
+    const listed = await call('list_metric_definitions', { metric: 'total_revenue' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/metric-definitions');
+    assert.match(listed, /Count:\*\* 1/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {

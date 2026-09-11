@@ -20,6 +20,10 @@ import {
   formatFindContradictions,
   formatFormalEligibility,
   formatFormalCheck,
+  formatCreateClaimRelation,
+  formatListClaimRelations,
+  formatCreateMetricDefinition,
+  formatListMetricDefinitions,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -53,6 +57,10 @@ import {
   validateFindContradictions,
   validateFormalEligibility,
   validateFormalCheck,
+  validateCreateClaimRelation,
+  validateListClaimRelations,
+  validateCreateMetricDefinition,
+  validateListMetricDefinitions,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -590,6 +598,79 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateFormalCheck(raw);
     return ok(formatFormalCheck(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  create_claim_relation: async (args, client) => {
+    if (typeof args?.predicate !== 'string' || !Array.isArray(args?.argument_ids)) {
+      throw new ToolFailure('invalid_argument', 'predicate and argument_ids are required');
+    }
+    if (typeof args?.arguments_resolved !== 'boolean') {
+      throw new ToolFailure('invalid_argument', 'arguments_resolved is required');
+    }
+    const raw = await wrapApi(
+      client.createClaimRelation({
+        predicate: args.predicate,
+        argument_ids: args.argument_ids as string[],
+        arguments_resolved: args.arguments_resolved,
+        claim_revision_id:
+          typeof args?.claim_revision_id === 'string' || args?.claim_revision_id === null
+            ? (args.claim_revision_id as string | null)
+            : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateCreateClaimRelation(raw);
+    return ok(
+      formatCreateClaimRelation(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  list_claim_relations: async (args, client) => {
+    const raw = await wrapApi(
+      client.listClaimRelations({
+        predicate: typeof args?.predicate === 'string' ? args.predicate : undefined,
+        claim_revision_id:
+          typeof args?.claim_revision_id === 'string' ? args.claim_revision_id : undefined,
+      }),
+    );
+    const validated = validateListClaimRelations(raw);
+    return ok(
+      formatListClaimRelations(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  create_metric_definition: async (args, client) => {
+    if (!args?.definition || typeof args.definition !== 'object' || Array.isArray(args.definition)) {
+      throw new ToolFailure('invalid_argument', 'definition object is required');
+    }
+    const raw = await wrapApi(
+      client.createMetricDefinition({
+        definition: args.definition as Record<string, unknown>,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateCreateMetricDefinition(raw);
+    return ok(
+      formatCreateMetricDefinition(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  list_metric_definitions: async (args, client) => {
+    const raw = await wrapApi(
+      client.listMetricDefinitions({
+        metric: typeof args?.metric === 'string' ? args.metric : undefined,
+      }),
+    );
+    const validated = validateListMetricDefinitions(raw);
+    return ok(
+      formatListMetricDefinitions(validated),
+      validated as unknown as Record<string, unknown>,
+    );
   },
 
   eval_catalog: async (_args, client) => {
