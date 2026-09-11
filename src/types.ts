@@ -343,3 +343,191 @@ export interface ExtractedDoc {
 export interface FiguresResponse {
   figures: ExtractedFigure[];
 }
+
+/* ---------------------------------------------------------- context graph (v2) */
+
+export interface ClaimScope {
+  entityId?: string | null;
+  metric?: string;
+  period?: string | null;
+  unit?: string | null;
+  currency?: string | null;
+  scale?: string | null;
+  basis?: 'actual' | 'forecast' | 'assumption' | 'unknown';
+  definition?: string | null;
+}
+
+export interface EvidenceRef {
+  sourceVersionId: string;
+  sourceUnitId: string;
+  anchorId: string;
+}
+
+export interface NumberedRef {
+  n: number;
+  ref: EvidenceRef;
+}
+
+export interface QueryContextOptions {
+  text: string;
+  source_texts?: string[];
+  source_version_ids?: string[];
+  filters?: Partial<ClaimScope>;
+  max_hops?: 0 | 1 | 2;
+  limit?: number;
+  /** Logical idempotency key forwarded to the API; never used as scope. */
+  idempotency_key?: string;
+}
+
+export interface ContextQueryRef {
+  sourceVersionId: string;
+  kind: 'number' | 'passage';
+  nodeId: string;
+  snippet: string;
+}
+
+export interface ContextQueryResponse {
+  operatorClass: string;
+  status: 'ok' | 'refuse';
+  refuseReason?: string;
+  queryPlan: {
+    operatorClass: string;
+    seeds: string[];
+    truncated: boolean;
+    traversedRelationIds: string[];
+  };
+  refs: ContextQueryRef[];
+  gaps: string[];
+  engine: 'context_graph';
+  presentation?: { numbered_refs: NumberedRef[] };
+}
+
+export interface CompareAssertionsOptions {
+  left: Partial<ClaimScope>;
+  right: Partial<ClaimScope>;
+  idempotency_key?: string;
+}
+
+export type ScopeCompareResult = 'same' | 'different' | 'unknown';
+
+export interface CompareAssertionsResponse {
+  result: ScopeCompareResult;
+  left: Partial<ClaimScope>;
+  right: Partial<ClaimScope>;
+}
+
+export interface ChangeImpactOptions {
+  answer_revision_id: string;
+  idempotency_key?: string;
+}
+
+export interface FreshnessObservation {
+  claimRevisionIds: string[];
+  coverage: 'complete' | 'unknown';
+  unresolvedSourceVersionIds: string[];
+  reasons: string[];
+  selectionState?: 'unknown';
+  observation?: 'newer_known_version' | 'no_newer_known_version' | 'undetermined';
+}
+
+export interface ChangeImpactResponse {
+  answer_revision_id: string;
+  freshness: FreshnessObservation;
+  engine: 'context_graph';
+}
+
+export interface CreateEvidencePacketOptions {
+  claim_text: string;
+  operator_class?: string;
+  bindings: Array<{
+    source_version_id: string;
+    source_unit_id: string;
+    representation_id: string;
+    snippet?: string;
+    seed?: string;
+  }>;
+  idempotency_key?: string;
+}
+
+export interface CreateEvidencePacketResponse {
+  packet_id: string;
+  content_hash?: string;
+  input_packet_id?: string;
+  operation_id?: string;
+  gaps?: string[];
+  engine?: string;
+  presentation?: { numbered_refs: NumberedRef[] };
+}
+
+export interface AnswerArtifactSummary {
+  id: string;
+  revisionId: string;
+  contentHash: string;
+  text: string;
+  textHash?: string;
+  inputPacketId: string;
+  inputPacketContentHash: string;
+  outputPacketId: string;
+  schemaVersion?: number;
+  justifications?: unknown[];
+  spans?: unknown[];
+}
+
+export interface EvidencePacketSummary {
+  id: string;
+  contentHash: string;
+  operationId?: string;
+  engineVersion?: string;
+  refs?: EvidenceRef[];
+  gaps?: string[];
+  assertions?: Array<{ revisionId?: string; text?: string; scope?: Partial<ClaimScope> }>;
+  queryPlan?: { seeds?: string[]; truncated?: boolean };
+  usage?: { knownCredits?: number; completeness?: string; operationIds?: string[] };
+  stopReason?: string;
+}
+
+export interface ResolvedAnswerResponse {
+  answer: AnswerArtifactSummary;
+  evidence: {
+    packet: EvidencePacketSummary;
+    fragments?: unknown[];
+    inferences?: unknown[];
+    [key: string]: unknown;
+  };
+  publication?: unknown;
+  freshness?: FreshnessObservation;
+  presentation?: { numbered_refs: NumberedRef[] };
+}
+
+export interface ResolvedPacketResponse {
+  packet: EvidencePacketSummary;
+  fragments?: unknown[];
+  presentation?: { numbered_refs: NumberedRef[] };
+  [key: string]: unknown;
+}
+
+export interface EvalCatalogResponse {
+  suites: Array<{
+    id: string;
+    caseCount: number;
+    surfaceIds: string[];
+  }>;
+  private_gold_denied: boolean;
+}
+
+/** Typed tool/business failure surfaced as isError:true (not a protocol error). */
+export type ToolFailureCode =
+  | 'invalid_argument'
+  | 'invalid_api_output'
+  | 'api_error'
+  | 'not_found'
+  | 'integrity_error'
+  | 'unauthorized'
+  | 'partial_result';
+
+export interface ToolFailurePayload {
+  code: ToolFailureCode;
+  message: string;
+  details?: Record<string, unknown>;
+  actionable?: string;
+}

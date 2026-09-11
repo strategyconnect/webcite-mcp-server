@@ -1,0 +1,60 @@
+# MCP ↔ HTTP parity table
+
+Maps every WebCite MCP tool to its HTTP route, request fields, output shape,
+failure/partial semantics, credit cost, and source-identity rules.
+
+Scope always comes from the authenticated WebCite API key. MCP annotations
+(`readOnlyHint`, `idempotentHint`, etc.) are descriptive only and never supply
+tenant or permission scope.
+
+---
+
+## v1 tools (existing)
+
+| MCP tool | HTTP | Request fields | Output | Failure / partial | Credits | Source identity |
+|---|---|---|---|---|---|---|
+| `verify_claim` | `POST /api/v1/verify` | `claim`, optional `thread_id`, stance/verdict/decompose flags | Verdict + citations (text) | API error → `isError` | 2–4 | Citation IDs from API |
+| `verify_claim_stream` | `POST /api/v1/verify/stream` | same as verify | Assembled verify result or raw events | Stream/API error → `isError` | same | same |
+| `search_sources` | `POST /api/v1/sources/search` | `query`, `limit` | Citation list; empty = no sources | API error → `isError` | 2 | Citation IDs |
+| `list_citations` | `GET /api/v1/citations` | `page`, `limit`, `thread_id` | Paginated history | API error → `isError` | 1 | Citation record IDs |
+| `get_citation` | `GET /api/v1/citations/:id` | `citation_id` | Prompt + sources | 404 → `isError` | 1 | Citation ID |
+| `get_source_preview` | `POST /api/v1/citations/source-preview` | `url` or `asset_id`, `page`, `quote` | Preview + bindBack | Missing arg / API error | 1 | URL or asset ID + binding method |
+| `verify_batch` | `POST /api/v1/verify/batch` | `items[]` (quote + source) | Per-item binding + `feedback_token` | Invalid items / API error | 1/item | Per-item source + feedback token |
+| `verify_feedback` | `POST /api/v1/verify/feedback` | `token`, `verdict`, `note` | Recorded ack | Invalid verdict / API error | 1 | Feedback token identity |
+| `analyze_conflicts` | `POST /api/v1/analyze/conflicts` | `figures[]` | Conflicts, recomputes, review | Empty figures / API error | 1 | Figure provenance (`assetId`, cell, page) |
+| `analyze_document` | `POST /api/v1/analyze/document` | `asset_id` | Figures + analysis + category | API error | 3 | Asset ID + provenance |
+| `classify_document` | `POST /api/v1/classify` | `asset_id` or `asset_url`, `taxonomy` | `category`, `covers` | Missing asset ref | 1 | Asset ID/URL |
+| `document_gaps` | `POST /api/v1/gaps` | `category`, `docs`, `taxonomy`, `stage` | Present/absent checklist | Missing category | 1 | Filename/category/covers (advisory) |
+| `extract_document` | `POST /api/v1/extract` | `asset_id` or `asset_url` | Markdown + units (truncated in text) | Missing asset ref | 1 | Asset + page/sheet provenance |
+| `extract_figures` | `POST /api/v1/extract/figures` | `asset_id` or `asset_url` | Tagged figures | Missing asset ref | 2 | Cell/page provenance |
+| `accuracy_report` | `GET /api/v1/accuracy` | (none) | Measured detection/recompute rates | API error | 1 | Gold-set corpus (no caller sources) |
+| `upload_file` | `POST /api/v1/upload` | `file_path` (local) | `file_id` | Missing path / upload error | 1 | Returned `file_id` |
+
+---
+
+## Context / evidence tools (W1, v2)
+
+| MCP tool | HTTP | Request fields | Output (text + `structuredContent`) | Failure / partial / no-match | Credits | Source identity |
+|---|---|---|---|---|---|---|
+| `get_answer` | `GET /api/v2/answers/:revisionId` | `revision_id` | Sealed answer text, packet IDs/hashes, presentation refs, freshness | Unknown/unauthorized → `not_found`/`unauthorized`; integrity → `integrity_error`; invalid body → `invalid_api_output`. Never regenerates. | 1 | `answer.revisionId` + `contentHash`; input/output packet IDs + hashes |
+| `get_evidence_packet` | `GET /api/v2/evidence-packets/:id` | `packet_id` | Sealed packet + presentation refs | Same as above; zero extraction on resolve | 1 | `packet.id` + `contentHash` |
+| `query_context` | `POST /api/v2/context/query` | `text`, optional `source_texts`, `source_version_ids`, `filters`, `max_hops`, `limit`, `idempotency_key` | `status`, operator, refs, gaps, presentation | **Successful no-match:** `status: refuse` / empty refs, `isError` false. Invalid args → `invalid_argument`. Malformed API → `invalid_api_output`. | 1 | `sourceVersionId` + `nodeId` (presentation numbers are display-only) |
+| `compare_assertions` | `POST /api/v2/context/compare-assertions` | `left`, `right` claim scopes; optional `idempotency_key` | `result`: `same` \| `different` \| `unknown` | `unknown` is not contradiction. Missing scopes → `invalid_argument`. | 1 | Scope field equality; unknown fields stay unknown |
+| `get_change_impact` | `POST /api/v2/context/change-impact` | `answer_revision_id`; optional `idempotency_key` | Freshness coverage, affected claims, unresolved sources | Historical answer stays sealed. Undetermined coverage reported, not silent “no changes”. | 1 | Answer revision ID; source version IDs in freshness |
+| `create_evidence_packet` | `POST /api/v2/context/evidence-packets` | `text` and/or `source_texts` / `source_version_ids` / `assertion_revision_ids`; `idempotency_key` | `packet_id`, optional `content_hash`, gaps | Empty input → `invalid_argument`. Retries must reuse `idempotency_key`. Does not invent support states. | 2 | Returned `packet_id` (+ hash when present) |
+| `eval_catalog` | `GET /api/v2/context/eval/catalog` | (none) | Suite list; `private_gold_denied: true` for non-evaluators | Malformed catalog → `invalid_api_output`; never exposes private gold | 1 | Suite IDs / surface IDs only |
+
+---
+
+## Error semantics (all tools)
+
+| Case | MCP response |
+|---|---|
+| Unknown tool name | JSON-RPC protocol error (`MethodNotFound`) |
+| Malformed `tools/call` envelope (missing name) | JSON-RPC protocol error (`InvalidParams`) |
+| Invalid tool arguments | `isError: true` + typed `invalid_argument` in `structuredContent` |
+| Invalid / incomplete API payload | `isError: true` + typed `invalid_api_output` |
+| HTTP/API business failure | `isError: true` + typed `api_error` / `not_found` / `unauthorized` / `integrity_error` |
+| Successful no-match (`query_context` refuse) | Success (`isError` absent/false); status and empty refs in structured content |
+
+Text content is always rendered from the validated structured object for context tools — never by regenerating evidence through a model.

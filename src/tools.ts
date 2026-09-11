@@ -1,8 +1,8 @@
 /**
- * MCP tool schemas — one entry per WebCite public API v1 endpoint.
+ * MCP tool schemas — v1 tools stay 1:1 with public API v1 endpoints.
  *
- * Every endpoint the API exposes has a tool here; `tools.test.js` fails the build
- * if a tool has no handler or a handler has no tool.
+ * Context/evidence (v2) tools live in CONTEXT_TOOLS so the v1 ENDPOINT_TOOLS
+ * coverage guard in `tools.test.js` stays exact. ListTools serves ALL_TOOLS.
  */
 
 export interface ToolDefinition {
@@ -512,3 +512,221 @@ Credits: 1`,
     },
   },
 ];
+
+const claimScopeProperties = {
+  entityId: { type: 'string', description: 'Entity scope id, or omit/null when unknown.' },
+  metric: { type: 'string', description: 'Metric key, e.g. revenue.' },
+  period: { type: 'string', description: 'Period label, e.g. FY2024.' },
+  unit: { type: 'string', description: 'Unit when known.' },
+  currency: { type: 'string', description: 'ISO currency when known.' },
+  scale: { type: 'string', description: 'Scale declaration when known.' },
+  basis: {
+    type: 'string',
+    enum: ['actual', 'forecast', 'assumption', 'unknown'],
+    description: 'Claim basis.',
+  },
+  definition: { type: 'string', description: 'Definition text when known.' },
+};
+
+/**
+ * W1 context/evidence tools — map to WebCite HTTP v2 routes.
+ * Scope always comes from the authenticated API key, never from MCP annotations.
+ */
+export const CONTEXT_TOOLS: ToolDefinition[] = [
+  {
+    name: 'get_answer',
+    description: `Resolve an immutable answer revision by ID. Returns the sealed answer text, packet identities, justifications, spans and presentation numbers.
+
+Does not regenerate evidence or call a model — retrieval only. Unknown or unauthorized IDs fail explicitly.
+
+Credits: 1. HTTP: GET /api/v2/answers/:revisionId`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        revision_id: {
+          type: 'string',
+          description: 'Immutable answer revision ID (not the logical history id alone).',
+        },
+      },
+      required: ['revision_id'],
+    },
+  },
+  {
+    name: 'get_evidence_packet',
+    description: `Resolve a sealed evidence packet by ID. Returns the frozen packet, refs and presentation numbers without re-running extraction or support checks.
+
+Credits: 1. HTTP: GET /api/v2/evidence-packets/:id`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        packet_id: {
+          type: 'string',
+          description: 'Sealed evidence packet ID.',
+        },
+      },
+      required: ['packet_id'],
+    },
+  },
+  {
+    name: 'query_context',
+    description: `Query persisted context for numbers or passages. A successful no-match (status refuse / empty refs) is not a tool failure — it means nothing matched under current authorization.
+
+Never supply tenant/scope fields; the API derives scope from the API key.
+
+Credits: 1. HTTP: POST /api/v2/context/query`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        text: {
+          type: 'string',
+          description: 'Natural-language query (e.g. "What was revenue in FY2024?").',
+        },
+        source_texts: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional inline source texts to materialize for the query.',
+        },
+        source_version_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional persisted source version IDs aligned with source_texts.',
+        },
+        filters: {
+          type: 'object',
+          description: 'Optional claim-scope filters (metric, period, entityId, …).',
+          properties: claimScopeProperties,
+        },
+        max_hops: {
+          type: 'number',
+          enum: [0, 1, 2],
+          description: 'Authorized expansion hops. Default: 1',
+          default: 1,
+        },
+        limit: {
+          type: 'number',
+          description: 'Max passage refs to return. Default: 10',
+          default: 10,
+          minimum: 1,
+          maximum: 50,
+        },
+        idempotency_key: {
+          type: 'string',
+          description: 'Logical idempotency key for chargeable/settled calls. Not a scope field.',
+        },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'compare_assertions',
+    description: `Compare two claim scopes. Returns same, different, or unknown — unknown is never treated as contradiction.
+
+Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        left: {
+          type: 'object',
+          description: 'Left claim scope.',
+          properties: claimScopeProperties,
+        },
+        right: {
+          type: 'object',
+          description: 'Right claim scope.',
+          properties: claimScopeProperties,
+        },
+        idempotency_key: {
+          type: 'string',
+          description: 'Logical idempotency key. Not a scope field.',
+        },
+      },
+      required: ['left', 'right'],
+    },
+  },
+  {
+    name: 'get_change_impact',
+    description: `Inspect freshness/change impact for an immutable answer revision. Historical answer content stays sealed; this returns observational coverage only.
+
+Credits: 1. HTTP: POST /api/v2/context/change-impact`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        answer_revision_id: {
+          type: 'string',
+          description: 'Answer revision to inspect for source change impact.',
+        },
+        idempotency_key: {
+          type: 'string',
+          description: 'Logical idempotency key. Not a scope field.',
+        },
+      },
+      required: ['answer_revision_id'],
+    },
+  },
+  {
+    name: 'create_evidence_packet',
+    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload.
+
+Scope comes from the authenticated API. Pass idempotency_key to settle once under retries.
+
+Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        claim_text: {
+          type: 'string',
+          description: 'Claim text frozen into the packet assertions.',
+        },
+        operator_class: {
+          type: 'string',
+          description: 'Optional operator class label (default select_passage).',
+        },
+        bindings: {
+          type: 'array',
+          description: 'Authorized source unit bindings to seal.',
+          items: {
+            type: 'object',
+            properties: {
+              source_version_id: { type: 'string' },
+              source_unit_id: { type: 'string' },
+              representation_id: { type: 'string' },
+              snippet: { type: 'string' },
+              seed: { type: 'string' },
+            },
+            required: ['source_version_id', 'source_unit_id', 'representation_id'],
+          },
+          minItems: 1,
+        },
+        idempotency_key: {
+          type: 'string',
+          description: 'Logical idempotency key so retries settle once.',
+        },
+      },
+      required: ['claim_text', 'bindings'],
+    },
+  },
+  {
+    name: 'eval_catalog',
+    description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
+
+Credits: 1. HTTP: GET /api/v2/context/eval/catalog`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+];
+
+/** All tools advertised over ListTools (v1 + context v2). */
+export const ALL_TOOLS: ToolDefinition[] = [...TOOLS, ...CONTEXT_TOOLS];
+
+/** HTTP route each context tool maps to — used by tests and docs. */
+export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
+  'GET /api/v2/answers/:revisionId': 'get_answer',
+  'GET /api/v2/evidence-packets/:id': 'get_evidence_packet',
+  'POST /api/v2/context/query': 'query_context',
+  'POST /api/v2/context/compare-assertions': 'compare_assertions',
+  'POST /api/v2/context/change-impact': 'get_change_impact',
+  'POST /api/v2/context/evidence-packets': 'create_evidence_packet',
+  'GET /api/v2/context/eval/catalog': 'eval_catalog',
+};

@@ -6,16 +6,23 @@ import type {
   AccuracyReport,
   AnalyzeResult,
   BatchResultItem,
+  ChangeImpactResponse,
   Citation,
   ClaimGroup,
   ClassifyResult,
+  CompareAssertionsResponse,
   Conflict,
+  ContextQueryResponse,
+  CreateEvidencePacketResponse,
   DocumentAnalysisResponse,
+  EvalCatalogResponse,
   ExtractedDoc,
   ExtractedFigure,
   FigureProvenance,
   GapsResponse,
   Recomputation,
+  ResolvedAnswerResponse,
+  ResolvedPacketResponse,
   SourcePreviewResponse,
   Verdict,
   VerifyClaimResponse,
@@ -427,5 +434,156 @@ export function formatAccuracyReport(report: AccuracyReport): string {
   parts.push(`- Precision: ${t.conflicts.precision}`);
   parts.push(`\n## Recompute`);
   parts.push(`- Checked: ${t.recompute.checked} | Correct: ${t.recompute.correct}`);
+  return parts.join('\n');
+}
+
+/* ---------------------------------------------------------- context graph (v2) */
+
+export function formatResolvedAnswer(result: ResolvedAnswerResponse): string {
+  const { answer, evidence } = result;
+  const parts: string[] = [];
+  parts.push(`# Answer Revision\n`);
+  parts.push(`**Revision:** ${answer.revisionId}`);
+  parts.push(`**Content hash:** ${answer.contentHash}`);
+  parts.push(`**Input packet:** ${answer.inputPacketId} (${answer.inputPacketContentHash})`);
+  parts.push(`**Output packet:** ${answer.outputPacketId}`);
+  if (answer.text) {
+    parts.push(`\n## Text\n`);
+    parts.push(truncate(answer.text));
+  }
+  const refs = result.presentation?.numbered_refs;
+  if (refs?.length) {
+    parts.push(`\n## Presentation refs\n`);
+    refs.forEach((item) => {
+      parts.push(
+        `${item.n}. ${item.ref.sourceVersionId} / ${item.ref.sourceUnitId} / ${item.ref.anchorId}`,
+      );
+    });
+  }
+  if (evidence.packet.gaps?.length) {
+    parts.push(`\n## Gaps\n`);
+    evidence.packet.gaps.forEach((g) => parts.push(`- ${g}`));
+  }
+  if (result.freshness) {
+    parts.push(`\n## Freshness\n`);
+    parts.push(`**Coverage:** ${result.freshness.coverage}`);
+    if (result.freshness.observation) parts.push(`**Observation:** ${result.freshness.observation}`);
+    (result.freshness.reasons ?? []).forEach((r) => parts.push(`- ${r}`));
+  }
+  return parts.join('\n');
+}
+
+export function formatResolvedPacket(result: ResolvedPacketResponse): string {
+  const { packet } = result;
+  const parts: string[] = [];
+  parts.push(`# Evidence Packet\n`);
+  parts.push(`**Packet ID:** ${packet.id}`);
+  parts.push(`**Content hash:** ${packet.contentHash}`);
+  if (packet.engineVersion) parts.push(`**Engine:** ${packet.engineVersion}`);
+  if (packet.stopReason) parts.push(`**Stop reason:** ${packet.stopReason}`);
+  const refs = result.presentation?.numbered_refs ?? [];
+  parts.push(`\n## Presentation refs (${refs.length})\n`);
+  if (refs.length) {
+    refs.forEach((item) => {
+      parts.push(
+        `${item.n}. ${item.ref.sourceVersionId} / ${item.ref.sourceUnitId} / ${item.ref.anchorId}`,
+      );
+    });
+  } else {
+    parts.push('No presentation refs.');
+  }
+  if (packet.gaps?.length) {
+    parts.push(`\n## Gaps\n`);
+    packet.gaps.forEach((g) => parts.push(`- ${g}`));
+  }
+  return parts.join('\n');
+}
+
+export function formatContextQuery(result: ContextQueryResponse): string {
+  const parts: string[] = [];
+  parts.push(`# Context Query\n`);
+  parts.push(`**Status:** ${result.status}`);
+  parts.push(`**Operator:** ${result.operatorClass}`);
+  if (result.refuseReason) parts.push(`**Refuse reason:** ${result.refuseReason}`);
+  parts.push(`**Engine:** ${result.engine}`);
+
+  if (result.status === 'refuse' || result.refs.length === 0) {
+    parts.push(`\nNo matching refs under current authorization (successful no-match).`);
+  } else {
+    parts.push(`\n## Refs (${result.refs.length})\n`);
+    result.refs.forEach((ref, i) => {
+      parts.push(
+        `${i + 1}. [${ref.kind}] ${ref.sourceVersionId} / ${ref.nodeId}: "${truncate(ref.snippet, 200)}"`,
+      );
+    });
+  }
+
+  if (result.gaps.length) {
+    parts.push(`\n## Gaps\n`);
+    result.gaps.forEach((g) => parts.push(`- ${g}`));
+  }
+  if (result.queryPlan.truncated) {
+    parts.push(`\nQuery plan was truncated.`);
+  }
+  return parts.join('\n');
+}
+
+export function formatCompareAssertions(result: CompareAssertionsResponse): string {
+  const parts: string[] = [];
+  parts.push(`# Assertion Comparison\n`);
+  parts.push(`**Result:** ${result.result}`);
+  if (result.result === 'unknown') {
+    parts.push(`Unknown is not a contradiction — at least one scope field is missing or unknown.`);
+  }
+  parts.push(`\n**Left:** ${JSON.stringify(result.left)}`);
+  parts.push(`**Right:** ${JSON.stringify(result.right)}`);
+  return parts.join('\n');
+}
+
+export function formatChangeImpact(result: ChangeImpactResponse): string {
+  const f = result.freshness;
+  const parts: string[] = [];
+  parts.push(`# Change Impact\n`);
+  parts.push(`**Answer revision:** ${result.answer_revision_id}`);
+  parts.push(`**Coverage:** ${f.coverage}`);
+  if (f.observation) parts.push(`**Observation:** ${f.observation}`);
+  parts.push(`**Affected claims:** ${f.claimRevisionIds.length}`);
+  f.claimRevisionIds.forEach((id) => parts.push(`- ${id}`));
+  if (f.unresolvedSourceVersionIds.length) {
+    parts.push(`\n**Unresolved sources:**`);
+    f.unresolvedSourceVersionIds.forEach((id) => parts.push(`- ${id}`));
+  }
+  if (f.reasons.length) {
+    parts.push(`\n**Reasons:**`);
+    f.reasons.forEach((r) => parts.push(`- ${r}`));
+  }
+  return parts.join('\n');
+}
+
+export function formatCreatePacket(result: CreateEvidencePacketResponse): string {
+  const parts: string[] = [];
+  parts.push(`# Evidence Packet Created\n`);
+  parts.push(`**Packet ID:** ${result.packet_id}`);
+  if (result.content_hash) parts.push(`**Content hash:** ${result.content_hash}`);
+  if (result.operation_id) parts.push(`**Operation:** ${result.operation_id}`);
+  if (result.gaps?.length) {
+    parts.push(`\n## Gaps\n`);
+    result.gaps.forEach((g) => parts.push(`- ${g}`));
+  }
+  return parts.join('\n');
+}
+
+export function formatEvalCatalog(result: EvalCatalogResponse): string {
+  const parts: string[] = [];
+  parts.push(`# Evaluation Catalog\n`);
+  parts.push(
+    `**Private gold denied:** ${result.private_gold_denied ? 'yes' : 'no'}`,
+  );
+  parts.push(`**Suites:** ${result.suites.length}\n`);
+  result.suites.forEach((suite, i) => {
+    parts.push(
+      `${i + 1}. **${suite.id}** — ${suite.caseCount} case(s); surfaces: ${suite.surfaceIds.join(', ') || '(none)'}`,
+    );
+  });
   return parts.join('\n');
 }
