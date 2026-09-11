@@ -715,6 +715,108 @@ Credits: 1. HTTP: GET /api/v2/context/eval/catalog`,
       properties: {},
     },
   },
+  {
+    name: 'publish_context_workflow',
+    description: `Publish an immutable saved-context workflow revision. Returns the stored revision identity. Scope comes from the API key.
+
+Credits: 1. HTTP: POST /api/v2/context/workflows`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        workflow: {
+          type: 'object',
+          description: 'SavedWorkflow payload (id, revision, kind, schemas, trigger, budget, reviewDestination).',
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['workflow'],
+    },
+  },
+  {
+    name: 'get_context_workflow',
+    description: `Read one immutable saved-context workflow revision.
+
+Credits: 1. HTTP: GET /api/v2/context/workflows/:revisionId`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        revision_id: { type: 'string', description: 'Workflow revision ID.' },
+      },
+      required: ['revision_id'],
+    },
+  },
+  {
+    name: 'run_saved_workflow',
+    description: `Run a saved workflow in preview or propose mode. Preview keeps reviewItem and proposalId null and must not deliver notifications. Propose creates one typed review item. Idempotent on tenant/revision/mode/event_id/input.
+
+Credits: 2. HTTP: POST /api/v2/context/workflows/:revisionId/runs`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        revision_id: { type: 'string' },
+        mode: { type: 'string', enum: ['preview', 'propose'] },
+        event_id: { type: 'string' },
+        input: { type: 'object', description: 'Validated workflow input object.' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['revision_id', 'mode', 'event_id', 'input'],
+    },
+  },
+  {
+    name: 'get_workflow_run',
+    description: `Fetch an authorized workflow run artifact by run ID.
+
+Credits: 1. HTTP: GET /api/v2/context/runs/:runId`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        run_id: { type: 'string' },
+      },
+      required: ['run_id'],
+    },
+  },
+  {
+    name: 'get_evaluation',
+    description: `Describe an authorized evaluation run. Private gold stays denied.
+
+Credits: 1. HTTP: GET /api/v2/context/evaluations/:runId`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        run_id: { type: 'string' },
+      },
+      required: ['run_id'],
+    },
+  },
+  {
+    name: 'compare_evaluations',
+    description: `Compare two frozen evaluation runs via the E1 comparator (does not recompute grades).
+
+Credits: 1. HTTP: POST /api/v2/context/evaluations/compare`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        baseline_run_id: { type: 'string' },
+        candidate_run_id: { type: 'string' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['baseline_run_id', 'candidate_run_id'],
+    },
+  },
+  {
+    name: 'get_evaluation_case',
+    description: `Open one evaluation case artifact from a stored run without synthesizing a winner.
+
+Credits: 1. HTTP: GET /api/v2/context/evaluations/:runId/cases/:caseId`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        run_id: { type: 'string' },
+        case_id: { type: 'string' },
+      },
+      required: ['run_id', 'case_id'],
+    },
+  },
 ];
 
 /** All tools advertised over ListTools (v1 + context v2). */
@@ -729,4 +831,11 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/change-impact': 'get_change_impact',
   'POST /api/v2/context/evidence-packets': 'create_evidence_packet',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
+  'POST /api/v2/context/workflows': 'publish_context_workflow',
+  'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',
+  'POST /api/v2/context/workflows/:revisionId/runs': 'run_saved_workflow',
+  'GET /api/v2/context/runs/:runId': 'get_workflow_run',
+  'GET /api/v2/context/evaluations/:runId': 'get_evaluation',
+  'POST /api/v2/context/evaluations/compare': 'compare_evaluations',
+  'GET /api/v2/context/evaluations/:runId/cases/:caseId': 'get_evaluation_case',
 };

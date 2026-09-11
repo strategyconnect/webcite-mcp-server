@@ -515,6 +515,55 @@ export interface EvalCatalogResponse {
   private_gold_denied: boolean;
 }
 
+export interface SavedWorkflowPayload {
+  id: string;
+  revision: string;
+  kind: 'source_impact' | 'evidence_satisfied' | string;
+  inputSchemaHash: string;
+  outputSchemaHash: string;
+  workflowVersion: string;
+  trigger: 'manual' | 'source_revision' | 'enters_satisfied' | string;
+  budgetPolicy: {
+    maxCredits: number;
+    maxTokens: number;
+    maxDurationMs: number;
+  };
+  reviewDestination: { system: 'webcite' | 'dd'; bindingId: string };
+  [key: string]: unknown;
+}
+
+export interface WorkflowExecutionResponse {
+  runId: string;
+  workflowRevision: string;
+  mode: 'preview' | 'propose';
+  packetId: string;
+  proposalId: string | null;
+  traceArtifactId: string;
+  reviewItem: { system: 'webcite' | 'dd'; id: string; revision: string } | null;
+  [key: string]: unknown;
+}
+
+export interface EvaluationDescribeResponse {
+  run_id: string;
+  private_gold_denied: boolean;
+  [key: string]: unknown;
+}
+
+export interface EvaluationCompareResponse {
+  baseline_run_id: string;
+  candidate_run_id: string;
+  private_gold_denied: boolean;
+  comparison?: unknown;
+  [key: string]: unknown;
+}
+
+export interface EvaluationCaseResponse {
+  run_id: string;
+  case_id: string;
+  private_gold_denied: boolean;
+  [key: string]: unknown;
+}
+
 /** Typed tool/business failure surfaced as isError:true (not a protocol error). */
 export type ToolFailureCode =
   | 'invalid_argument'
