@@ -500,6 +500,39 @@ export interface AssessMeaningResponse {
   engine?: string;
 }
 
+export interface FindContradictionsOptions {
+  claims: Array<{
+    interval: { from: string | null; to: string | null };
+    decimal_value: string | null;
+  }>;
+  idempotency_key?: string;
+}
+
+export interface FindContradictionsResponse {
+  count: number;
+  pairs: Array<{
+    left: { interval: unknown; decimal_value: string | null };
+    right: { interval: unknown; decimal_value: string | null };
+  }>;
+  engine?: string;
+}
+
+export interface FormalEligibilityOptions {
+  decimal?: string | null;
+  unit?: string | null;
+  scale?: string | null;
+  basis_reviewed: boolean;
+  recognition: 'native' | 'reviewed' | 'uncertain';
+  idempotency_key?: string;
+}
+
+export interface FormalEligibilityResponse {
+  eligible: boolean;
+  scaling_ok: boolean;
+  scaling_error: string | null;
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;

@@ -212,6 +212,22 @@ const ROUTES = {
     falseClaimSupport: 'not_checked',
     engine: 'context_graph',
   },
+  '/api/v2/context/contradictions': {
+    count: 1,
+    pairs: [
+      {
+        left: { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' },
+        right: { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
+      },
+    ],
+    engine: 'context_graph',
+  },
+  '/api/v2/context/formal/eligibility': {
+    eligible: false,
+    scaling_ok: true,
+    scaling_error: null,
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -521,6 +537,29 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(seen.at(-1).path, '/api/v2/context/assess-meaning');
     assert.match(text, /Meaning:\*\* faithful/);
     assert.match(text, /Authority:\*\* not_checked/);
+  });
+
+  await t.test('find_contradictions posts claims and returns count', async () => {
+    const text = await call('find_contradictions', {
+      claims: [
+        { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' },
+        { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
+      ],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/contradictions');
+    assert.match(text, /Count:\*\* 1/);
+  });
+
+  await t.test('formal_eligibility refuses uncertain recognition', async () => {
+    const text = await call('formal_eligibility', {
+      decimal: '12000',
+      unit: 'USD',
+      scale: '1',
+      basis_reviewed: true,
+      recognition: 'uncertain',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/formal/eligibility');
+    assert.match(text, /Eligible:\*\* no/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {

@@ -774,6 +774,56 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
     },
   },
   {
+    name: 'find_contradictions',
+    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown bounds never invent a contradiction.
+
+Credits: 1. HTTP: POST /api/v2/context/contradictions`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        claims: {
+          type: 'array',
+          minItems: 2,
+          items: {
+            type: 'object',
+            properties: {
+              interval: {
+                type: 'object',
+                properties: {
+                  from: { type: ['string', 'null'] },
+                  to: { type: ['string', 'null'] },
+                },
+                required: ['from', 'to'],
+              },
+              decimal_value: { type: ['string', 'null'] },
+            },
+            required: ['interval', 'decimal_value'],
+          },
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['claims'],
+    },
+  },
+  {
+    name: 'formal_eligibility',
+    description: `Check exact-proof obligation eligibility (P1). Uncertain recognition never promotes.
+
+Credits: 1. HTTP: POST /api/v2/context/formal/eligibility`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        decimal: { type: ['string', 'null'] },
+        unit: { type: ['string', 'null'] },
+        scale: { type: ['string', 'null'] },
+        basis_reviewed: { type: 'boolean' },
+        recognition: { type: 'string', enum: ['native', 'reviewed', 'uncertain'] },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['basis_reviewed', 'recognition'],
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -900,6 +950,8 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/evidence-packets': 'create_evidence_packet',
   'POST /api/v2/context/assess-support': 'assess_support',
   'POST /api/v2/context/assess-meaning': 'assess_meaning',
+  'POST /api/v2/context/contradictions': 'find_contradictions',
+  'POST /api/v2/context/formal/eligibility': 'formal_eligibility',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

@@ -17,6 +17,8 @@ import {
   formatCreatePacket,
   formatAssessSupport,
   formatAssessMeaning,
+  formatFindContradictions,
+  formatFormalEligibility,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -29,6 +31,7 @@ import {
 } from './formatters.js';
 import { collectStreamEvents } from './stream.js';
 import type {
+  FindContradictionsOptions,
   AssetRefOptions,
   BatchItem,
   Citation,
@@ -46,6 +49,8 @@ import {
   validateCreatePacket,
   validateAssessSupport,
   validateAssessMeaning,
+  validateFindContradictions,
+  validateFormalEligibility,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -524,6 +529,44 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateAssessMeaning(raw);
     return ok(formatAssessMeaning(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  find_contradictions: async (args, client) => {
+    if (!Array.isArray(args?.claims) || args.claims.length < 2) {
+      throw new ToolFailure('invalid_argument', 'claims must contain at least two rows');
+    }
+    const raw = await wrapApi(
+      client.findContradictions({
+        claims: args.claims as FindContradictionsOptions['claims'],
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateFindContradictions(raw);
+    return ok(formatFindContradictions(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  formal_eligibility: async (args, client) => {
+    if (typeof args?.basis_reviewed !== 'boolean' || typeof args?.recognition !== 'string') {
+      throw new ToolFailure('invalid_argument', 'basis_reviewed and recognition are required');
+    }
+    const recognition = args.recognition;
+    if (recognition !== 'native' && recognition !== 'reviewed' && recognition !== 'uncertain') {
+      throw new ToolFailure('invalid_argument', 'recognition must be native|reviewed|uncertain');
+    }
+    const raw = await wrapApi(
+      client.formalEligibility({
+        decimal: (args.decimal as string | null | undefined) ?? null,
+        unit: (args.unit as string | null | undefined) ?? null,
+        scale: (args.scale as string | null | undefined) ?? null,
+        basis_reviewed: args.basis_reviewed,
+        recognition,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateFormalEligibility(raw);
+    return ok(formatFormalEligibility(validated), validated as unknown as Record<string, unknown>);
   },
 
   eval_catalog: async (_args, client) => {

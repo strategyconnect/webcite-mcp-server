@@ -27,6 +27,8 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `get_change_impact` | `POST /api/v2/context/change-impact` | answer_revision_id | freshness observation | integrity | 0 | answer sources |
 | `create_evidence_packet` | `POST /api/v2/context/evidence-packets` | claim_text + bindings | packet_id + hashes | auth / missing binding | 0 | sealed server-built packet |
 | `assess_support` | `POST /api/v2/context/assess-support` | claim_revision_id, claim_hash, evidence_group_revision_id, tier? | SupportResult (tier-capped) | auth / missing ids | 0 | claim + claim hashes |
+| `find_contradictions` | `POST /api/v2/context/contradictions` | claims[] | count + pairs | auth / <2 claims | 0 | intervals + values |
+| `formal_eligibility` | `POST /api/v2/context/formal/eligibility` | decimal/unit/scale/basis_reviewed/recognition | eligible + scaling_ok | auth / invalid recognition | 0 | — |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |
 | `eval_catalog` | `GET /api/v2/context/eval/catalog` | — | suite ids + `private_gold_denied` | auth | 0 | E1 catalog only |
 

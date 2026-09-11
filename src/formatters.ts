@@ -16,6 +16,8 @@ import type {
   CreateEvidencePacketResponse,
   AssessSupportResponse,
   AssessMeaningResponse,
+  FindContradictionsResponse,
+  FormalEligibilityResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -601,6 +603,14 @@ export function formatAssessMeaning(result: AssessMeaningResponse): string {
   parts.push(`**Authority:** ${result.authority}`);
   parts.push(`**False-claim support:** ${result.falseClaimSupport}`);
   return parts.join('\n');
+}
+
+export function formatFindContradictions(result: FindContradictionsResponse): string {
+  return `# Contradictions\n\n**Count:** ${result.count}\n**Pairs:** ${result.pairs.length}`;
+}
+
+export function formatFormalEligibility(result: FormalEligibilityResponse): string {
+  return `# Formal Eligibility\n\n**Eligible:** ${result.eligible ? 'yes' : 'no'}\n**Scaling ok:** ${result.scaling_ok ? 'yes' : 'no'}`;
 }
 
 export function formatEvalCatalog(result: EvalCatalogResponse): string {

@@ -11,6 +11,8 @@ import type {
   CreateEvidencePacketResponse,
   AssessSupportResponse,
   AssessMeaningResponse,
+  FindContradictionsResponse,
+  FormalEligibilityResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -236,6 +238,28 @@ export function validateAssessMeaning(raw: unknown): AssessMeaningResponse {
     meaning: requireString(root, 'meaning', 'AssessMeaning'),
     authority: requireString(root, 'authority', 'AssessMeaning'),
     falseClaimSupport: requireString(root, 'falseClaimSupport', 'AssessMeaning'),
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateFindContradictions(raw: unknown): FindContradictionsResponse {
+  const root = requireObject(raw, 'FindContradictions');
+  if (!Array.isArray(root.pairs)) {
+    throw new ToolFailure('invalid_api_output', 'FindContradictions.pairs must be an array');
+  }
+  return {
+    count: typeof root.count === 'number' ? root.count : root.pairs.length,
+    pairs: root.pairs as FindContradictionsResponse['pairs'],
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateFormalEligibility(raw: unknown): FormalEligibilityResponse {
+  const root = requireObject(raw, 'FormalEligibility');
+  return {
+    eligible: root.eligible === true,
+    scaling_ok: root.scaling_ok === true,
+    scaling_error: typeof root.scaling_error === 'string' ? root.scaling_error : null,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
