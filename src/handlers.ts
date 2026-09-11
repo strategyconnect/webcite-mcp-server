@@ -1,19 +1,27 @@
 /**
- * Tool handlers — one per entry in TOOLS. Each returns the text shown to the agent;
- * throwing marks the tool call as an error.
+ * Tool handlers — one per entry in ALL_TOOLS.
+ * Context tools validate API responses before structuredContent and render text
+ * from that same validated object (never regenerate evidence via a model).
  */
 
-import type { WebCiteApiClient } from './api-client.js';
+import { ApiClientError, ToolFailure, type WebCiteApiClient } from './api-client.js';
 import {
   formatAccuracyReport,
   formatAnalyzeResult,
   formatBatchResults,
+  formatChangeImpact,
   formatCitation,
   formatClassify,
+  formatCompareAssertions,
+  formatContextQuery,
+  formatCreatePacket,
   formatDocumentAnalysis,
+  formatEvalCatalog,
   formatExtractedDoc,
   formatFigures,
   formatGaps,
+  formatResolvedAnswer,
+  formatResolvedPacket,
   formatSourcePreview,
   formatVerifyResult,
 } from './formatters.js';
@@ -22,21 +30,43 @@ import type {
   AssetRefOptions,
   BatchItem,
   Citation,
+  ClaimScope,
   ExtractedFigure,
   FeedbackVerdict,
   GapDoc,
   Taxonomy,
   VerifyClaimOptions,
 } from './types.js';
+import {
+  validateChangeImpact,
+  validateCompareAssertions,
+  validateContextQuery,
+  validateCreatePacket,
+  validateEvalCatalog,
+  validateResolvedAnswer,
+  validateResolvedPacket,
+} from './validate.js';
 
 type Args = Record<string, unknown> | undefined;
 
-export type ToolHandler = (args: Args, client: WebCiteApiClient) => Promise<string>;
+export type ToolSuccess = {
+  text: string;
+  structuredContent?: Record<string, unknown>;
+};
+
+export type ToolHandler = (args: Args, client: WebCiteApiClient) => Promise<ToolSuccess>;
+
+function ok(text: string, structuredContent?: Record<string, unknown>): ToolSuccess {
+  return structuredContent ? { text, structuredContent } : { text };
+}
 
 function requireString(args: Args, key: string): string {
   const value = args?.[key];
   if (typeof value !== 'string' || !value.trim()) {
-    throw new Error(`${key} is required`);
+    throw new ToolFailure('invalid_argument', `${key} is required`, {
+      details: { field: key },
+      actionable: `Provide a non-empty string for ${key}.`,
+    });
   }
   return value;
 }
@@ -45,7 +75,11 @@ function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
   if (!assetId && !assetUrl) {
-    throw new Error('provide either asset_id (uploaded file) or asset_url (direct file URL)');
+    throw new ToolFailure(
+      'invalid_argument',
+      'provide either asset_id (uploaded file) or asset_url (direct file URL)',
+      { actionable: 'Pass asset_id from upload_file, or a direct asset_url.' },
+    );
   }
   return { asset_id: assetId, asset_url: assetUrl };
 }
@@ -66,30 +100,57 @@ function clamp(value: unknown, fallback: number, min: number, max: number): numb
   return Math.min(Math.max(n, min), max);
 }
 
+function asScope(value: unknown, field: string): Partial<ClaimScope> {
+  if (value === undefined || value === null) {
+    throw new ToolFailure('invalid_argument', `${field} is required`, {
+      details: { field },
+      actionable: `Provide a claim-scope object for ${field}.`,
+    });
+  }
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new ToolFailure('invalid_argument', `${field} must be an object`, {
+      details: { field },
+      actionable: `Pass a claim-scope object for ${field}.`,
+    });
+  }
+  return value as Partial<ClaimScope>;
+}
+
+function wrapApi<T>(promise: Promise<T>): Promise<T> {
+  return promise.catch((error: unknown) => {
+    if (error instanceof ApiClientError) throw error.toToolFailure();
+    throw error;
+  });
+}
+
 export const handlers: Record<string, ToolHandler> = {
   verify_claim: async (args, client) => {
     const options = verifyOptions(args);
-    const result = await client.verifyClaim(options);
-    return formatVerifyResult(options.claim, result);
+    const result = await wrapApi(client.verifyClaim(options));
+    return ok(formatVerifyResult(options.claim, result));
   },
 
   verify_claim_stream: async (args, client) => {
     const options = verifyOptions(args);
-    const { result, events } = await collectStreamEvents(client.verifyClaimStream(options));
-
-    if (result) return formatVerifyResult(options.claim, result);
-
-    // Fallback: return raw events if we couldn't assemble a result
-    const eventSummary = events
-      .map((e) => `[${e.event}] ${typeof e.data === 'string' ? e.data : JSON.stringify(e.data)}`)
-      .join('\n');
-    return `# Streaming Verification: "${options.claim}"\n\nReceived ${events.length} events but could not assemble a structured result.\n\n## Raw Events:\n${eventSummary}`;
+    try {
+      const { result, events } = await collectStreamEvents(client.verifyClaimStream(options));
+      if (result) return ok(formatVerifyResult(options.claim, result));
+      const eventSummary = events
+        .map((e) => `[${e.event}] ${typeof e.data === 'string' ? e.data : JSON.stringify(e.data)}`)
+        .join('\n');
+      return ok(
+        `# Streaming Verification: "${options.claim}"\n\nReceived ${events.length} events but could not assemble a structured result.\n\n## Raw Events:\n${eventSummary}`,
+      );
+    } catch (error) {
+      if (error instanceof ApiClientError) throw error.toToolFailure();
+      throw error;
+    }
   },
 
   search_sources: async (args, client) => {
     const query = requireString(args, 'query');
     const limit = clamp(args?.limit, 10, 1, 20);
-    const result = await client.searchSources({ query, limit });
+    const result = await wrapApi(client.searchSources({ query, limit }));
 
     const parts: string[] = [];
     parts.push(`# Search Results: "${query}"\n`);
@@ -105,17 +166,19 @@ export const handlers: Record<string, ToolHandler> = {
       parts.push('No sources found for this query.');
     }
 
-    return parts.join('\n');
+    return ok(parts.join('\n'));
   },
 
   list_citations: async (args, client) => {
     const page = clamp(args?.page, 1, 1, Number.MAX_SAFE_INTEGER);
     const limit = clamp(args?.limit, 10, 1, 50);
-    const result = await client.listCitations({
-      page,
-      limit,
-      thread_id: args?.thread_id as string | undefined,
-    });
+    const result = await wrapApi(
+      client.listCitations({
+        page,
+        limit,
+        thread_id: args?.thread_id as string | undefined,
+      }),
+    );
 
     const parts: string[] = [];
     parts.push(`# Your Verification History\n`);
@@ -136,12 +199,12 @@ export const handlers: Record<string, ToolHandler> = {
       parts.push('No verification history found.');
     }
 
-    return parts.join('\n');
+    return ok(parts.join('\n'));
   },
 
   get_citation: async (args, client) => {
     const citationId = requireString(args, 'citation_id');
-    const result = await client.getCitation(citationId);
+    const result = await wrapApi(client.getCitation(citationId));
 
     const parts: string[] = [];
     parts.push(`# Verification Details\n`);
@@ -166,12 +229,12 @@ export const handlers: Record<string, ToolHandler> = {
       });
     }
 
-    return parts.join('\n');
+    return ok(parts.join('\n'));
   },
 
   upload_file: async (args, client) => {
     const filePath = requireString(args, 'file_path');
-    const result = await client.uploadFile(filePath);
+    const result = await wrapApi(client.uploadFile(filePath));
 
     const parts: string[] = [];
     parts.push(`# File Uploaded Successfully\n`);
@@ -180,7 +243,7 @@ export const handlers: Record<string, ToolHandler> = {
     parts.push(`**Type:** ${result.mime_type}`);
     parts.push(`**Size:** ${result.size} bytes`);
 
-    return parts.join('\n');
+    return ok(parts.join('\n'));
   },
 
   get_source_preview: async (args, client) => {
@@ -188,91 +251,232 @@ export const handlers: Record<string, ToolHandler> = {
     const assetId = args?.asset_id as string | undefined;
 
     if (!url && !assetId) {
-      throw new Error('provide either url (web source) or asset_id (uploaded document)');
+      throw new ToolFailure(
+        'invalid_argument',
+        'provide either url (web source) or asset_id (uploaded document)',
+        { actionable: 'Pass url or asset_id.' },
+      );
     }
 
-    const result = await client.sourcePreview({
-      url,
-      asset_id: assetId,
-      page: args?.page as number | undefined,
-      quote: args?.quote as string | undefined,
-    });
+    const result = await wrapApi(
+      client.sourcePreview({
+        url,
+        asset_id: assetId,
+        page: args?.page as number | undefined,
+        quote: args?.quote as string | undefined,
+      }),
+    );
 
-    return formatSourcePreview(result);
+    return ok(formatSourcePreview(result));
   },
 
   verify_batch: async (args, client) => {
     const items = args?.items as BatchItem[] | undefined;
     if (!Array.isArray(items) || items.length === 0) {
-      throw new Error('items is required and must be a non-empty array');
+      throw new ToolFailure('invalid_argument', 'items is required and must be a non-empty array', {
+        actionable: 'Pass 1-200 items, each with a quote and a source.',
+      });
     }
     if (items.length > 200) {
-      throw new Error(`items holds ${items.length} entries; the maximum per call is 200`);
+      throw new ToolFailure(
+        'invalid_argument',
+        `items holds ${items.length} entries; the maximum per call is 200`,
+        { actionable: 'Split the batch into chunks of at most 200.' },
+      );
     }
 
-    const results = await client.verifyBatch(items);
-    return formatBatchResults(results);
+    const results = await wrapApi(client.verifyBatch(items));
+    return ok(formatBatchResults(results));
   },
 
   verify_feedback: async (args, client) => {
     const token = requireString(args, 'token');
     const verdict = requireString(args, 'verdict') as FeedbackVerdict;
     if (!['correct', 'incorrect', 'unsure'].includes(verdict)) {
-      throw new Error('verdict must be one of: correct, incorrect, unsure');
+      throw new ToolFailure('invalid_argument', 'verdict must be one of: correct, incorrect, unsure', {
+        actionable: 'Use correct, incorrect, or unsure.',
+      });
     }
 
-    await client.verifyFeedback(token, verdict, args?.note as string | undefined);
-    return `# Feedback Recorded\n\n**Verdict:** ${verdict}${args?.note ? `\n**Note:** ${args.note}` : ''}`;
+    await wrapApi(client.verifyFeedback(token, verdict, args?.note as string | undefined));
+    return ok(
+      `# Feedback Recorded\n\n**Verdict:** ${verdict}${args?.note ? `\n**Note:** ${args.note}` : ''}`,
+    );
   },
 
   analyze_conflicts: async (args, client) => {
     const figures = args?.figures as ExtractedFigure[] | undefined;
     if (!Array.isArray(figures) || figures.length === 0) {
-      throw new Error('figures is required and must be a non-empty array');
+      throw new ToolFailure('invalid_argument', 'figures is required and must be a non-empty array', {
+        actionable: 'Pass figures from extract_figures or your own pipeline.',
+      });
     }
 
-    const result = await client.analyzeConflicts(figures);
-    return `# Numeric Analysis: ${figures.length} figure(s)\n\n${formatAnalyzeResult(result)}`;
+    const result = await wrapApi(client.analyzeConflicts(figures));
+    return ok(`# Numeric Analysis: ${figures.length} figure(s)\n\n${formatAnalyzeResult(result)}`);
   },
 
   analyze_document: async (args, client) => {
     const assetId = requireString(args, 'asset_id');
-    const result = await client.analyzeDocument(assetId);
-    return formatDocumentAnalysis(result);
+    const result = await wrapApi(client.analyzeDocument(assetId));
+    return ok(formatDocumentAnalysis(result));
   },
 
   classify_document: async (args, client) => {
-    const result = await client.classifyDocument({
-      ...assetRef(args),
-      taxonomy: args?.taxonomy as Taxonomy | undefined,
-    });
-    return formatClassify(result);
+    const result = await wrapApi(
+      client.classifyDocument({
+        ...assetRef(args),
+        taxonomy: args?.taxonomy as Taxonomy | undefined,
+      }),
+    );
+    return ok(formatClassify(result));
   },
 
   document_gaps: async (args, client) => {
     const category = requireString(args, 'category');
     const docs = (Array.isArray(args?.docs) ? args?.docs : []) as GapDoc[];
-    const result = await client.documentGaps({
-      category,
-      docs,
-      taxonomy: args?.taxonomy as Taxonomy | undefined,
-      stage: args?.stage as 'early' | 'growth' | undefined,
-    });
-    return formatGaps(category, result);
+    const result = await wrapApi(
+      client.documentGaps({
+        category,
+        docs,
+        taxonomy: args?.taxonomy as Taxonomy | undefined,
+        stage: args?.stage as 'early' | 'growth' | undefined,
+      }),
+    );
+    return ok(formatGaps(category, result));
   },
 
   extract_document: async (args, client) => {
-    const result = await client.extractDocument(assetRef(args));
-    return formatExtractedDoc(result);
+    const result = await wrapApi(client.extractDocument(assetRef(args)));
+    return ok(formatExtractedDoc(result));
   },
 
   extract_figures: async (args, client) => {
-    const result = await client.extractFigures(assetRef(args));
-    return formatFigures(result.figures ?? []);
+    const result = await wrapApi(client.extractFigures(assetRef(args)));
+    return ok(formatFigures(result.figures ?? []));
   },
 
   accuracy_report: async (_args, client) => {
-    const result = await client.accuracyReport();
-    return formatAccuracyReport(result);
+    const result = await wrapApi(client.accuracyReport());
+    return ok(formatAccuracyReport(result));
+  },
+
+  get_answer: async (args, client) => {
+    const revisionId = requireString(args, 'revision_id');
+    const raw = await wrapApi(client.getAnswer(revisionId));
+    const validated = validateResolvedAnswer(raw);
+    return ok(formatResolvedAnswer(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  get_evidence_packet: async (args, client) => {
+    const packetId = requireString(args, 'packet_id');
+    const raw = await wrapApi(client.getEvidencePacket(packetId));
+    const validated = validateResolvedPacket(raw);
+    return ok(formatResolvedPacket(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  query_context: async (args, client) => {
+    const text = requireString(args, 'text');
+    const maxHops = args?.max_hops;
+    if (maxHops !== undefined && maxHops !== 0 && maxHops !== 1 && maxHops !== 2) {
+      throw new ToolFailure('invalid_argument', 'max_hops must be 0, 1, or 2', {
+        actionable: 'Use 0, 1, or 2 for authorized expansion hops.',
+      });
+    }
+    const raw = await wrapApi(
+      client.queryContext({
+        text,
+        source_texts: Array.isArray(args?.source_texts)
+          ? (args?.source_texts as string[])
+          : undefined,
+        source_version_ids: Array.isArray(args?.source_version_ids)
+          ? (args?.source_version_ids as string[])
+          : undefined,
+        filters:
+          args?.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
+            ? (args.filters as Partial<ClaimScope>)
+            : undefined,
+        max_hops: maxHops as 0 | 1 | 2 | undefined,
+        limit: clamp(args?.limit, 10, 1, 50),
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateContextQuery(raw);
+    return ok(formatContextQuery(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  compare_assertions: async (args, client) => {
+    const left = asScope(args?.left, 'left');
+    const right = asScope(args?.right, 'right');
+    const raw = await wrapApi(
+      client.compareAssertions({
+        left,
+        right,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateCompareAssertions(raw);
+    return ok(formatCompareAssertions(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  get_change_impact: async (args, client) => {
+    const answerRevisionId = requireString(args, 'answer_revision_id');
+    const raw = await wrapApi(
+      client.getChangeImpact({
+        answer_revision_id: answerRevisionId,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateChangeImpact(raw);
+    return ok(formatChangeImpact(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  create_evidence_packet: async (args, client) => {
+    const claimText = requireString(args, 'claim_text');
+    const bindings = args?.bindings;
+    if (!Array.isArray(bindings) || bindings.length === 0) {
+      throw new ToolFailure('invalid_argument', 'bindings must be a non-empty array', {
+        actionable:
+          'Provide at least one source_version_id / source_unit_id / representation_id binding.',
+      });
+    }
+    for (const [i, binding] of bindings.entries()) {
+      if (!binding || typeof binding !== 'object' || Array.isArray(binding)) {
+        throw new ToolFailure('invalid_argument', `bindings[${i}] must be an object`);
+      }
+      const row = binding as Record<string, unknown>;
+      for (const key of ['source_version_id', 'source_unit_id', 'representation_id'] as const) {
+        if (typeof row[key] !== 'string' || !(row[key] as string).trim()) {
+          throw new ToolFailure('invalid_argument', `bindings[${i}].${key} is required`);
+        }
+      }
+    }
+    const raw = await wrapApi(
+      client.createEvidencePacket({
+        claim_text: claimText,
+        operator_class:
+          typeof args?.operator_class === 'string' ? args.operator_class : undefined,
+        bindings: bindings as Array<{
+          source_version_id: string;
+          source_unit_id: string;
+          representation_id: string;
+          snippet?: string;
+          seed?: string;
+        }>,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateCreatePacket(raw);
+    return ok(formatCreatePacket(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  eval_catalog: async (_args, client) => {
+    const raw = await wrapApi(client.evalCatalog());
+    const validated = validateEvalCatalog(raw);
+    return ok(formatEvalCatalog(validated), validated as unknown as Record<string, unknown>);
   },
 };

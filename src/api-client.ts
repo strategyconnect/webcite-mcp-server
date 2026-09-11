@@ -9,10 +9,18 @@ import type {
   AnalyzeResult,
   BatchItem,
   BatchResultItem,
+  ChangeImpactOptions,
+  ChangeImpactResponse,
   Citation,
   ClassifyOptions,
   ClassifyResult,
+  CompareAssertionsOptions,
+  CompareAssertionsResponse,
+  ContextQueryResponse,
+  CreateEvidencePacketOptions,
+  CreateEvidencePacketResponse,
   DocumentAnalysisResponse,
+  EvalCatalogResponse,
   ExtractedDoc,
   ExtractedFigure,
   AssetRefOptions,
@@ -22,6 +30,9 @@ import type {
   GapsResponse,
   ListCitationsOptions,
   ListCitationsResponse,
+  QueryContextOptions,
+  ResolvedAnswerResponse,
+  ResolvedPacketResponse,
   SearchSourcesOptions,
   SourcePreviewOptions,
   SourcePreviewResponse,
@@ -30,8 +41,10 @@ import type {
   VerifyClaimOptions,
   VerifyClaimResponse,
 } from './types.js';
+import { ApiClientError } from './errors.js';
 
 export * from './types.js';
+export { ApiClientError, ToolFailure } from './errors.js';
 
 export class WebCiteApiClient {
   private baseUrl: string;
@@ -42,20 +55,29 @@ export class WebCiteApiClient {
     this.baseUrl = baseUrl.replace(/\/$/, '');
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    extras: { idempotencyKey?: string } = {},
+  ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-api-key': this.apiKey,
+      ...(options.headers as Record<string, string> | undefined),
+    };
+    if (extras.idempotencyKey) {
+      headers['Idempotency-Key'] = extras.idempotencyKey;
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        ...options.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`WebCite API error (${response.status}): ${errorBody}`);
+      throw new ApiClientError(response.status, errorBody);
     }
 
     return response.json() as Promise<T>;
@@ -92,7 +114,7 @@ export class WebCiteApiClient {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`WebCite API error (${response.status}): ${errorBody}`);
+      throw new ApiClientError(response.status, errorBody);
     }
 
     if (!response.body) {
@@ -276,9 +298,67 @@ export class WebCiteApiClient {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`WebCite API error (${response.status}): ${errorBody}`);
+      throw new ApiClientError(response.status, errorBody);
     }
 
     return response.json() as Promise<UploadResponse>;
+  }
+
+  /* ---------------------------------------------------------- context graph (v2) */
+
+  async getAnswer(revisionId: string): Promise<ResolvedAnswerResponse> {
+    return this.request(`/api/v2/answers/${encodeURIComponent(revisionId)}`, {
+      method: 'GET',
+    });
+  }
+
+  async getEvidencePacket(packetId: string): Promise<ResolvedPacketResponse> {
+    return this.request(`/api/v2/evidence-packets/${encodeURIComponent(packetId)}`, {
+      method: 'GET',
+    });
+  }
+
+  async queryContext(options: QueryContextOptions): Promise<ContextQueryResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/query',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async compareAssertions(
+    options: CompareAssertionsOptions,
+  ): Promise<CompareAssertionsResponse> {
+    const { idempotency_key, left, right } = options;
+    return this.request(
+      '/api/v2/context/compare-assertions',
+      { method: 'POST', body: JSON.stringify({ left, right }) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async getChangeImpact(options: ChangeImpactOptions): Promise<ChangeImpactResponse> {
+    const { idempotency_key, answer_revision_id } = options;
+    return this.request(
+      '/api/v2/context/change-impact',
+      { method: 'POST', body: JSON.stringify({ answer_revision_id }) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async createEvidencePacket(
+    options: CreateEvidencePacketOptions,
+  ): Promise<CreateEvidencePacketResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/evidence-packets',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async evalCatalog(): Promise<EvalCatalogResponse> {
+    return this.request('/api/v2/context/eval/catalog', { method: 'GET' });
   }
 }

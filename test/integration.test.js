@@ -104,6 +104,96 @@ const ROUTES = {
     deep_link: 'https://example.com/report#:~:text=revenue%20grew%2040%25',
     binding: { grounded: true, method: 'exact' },
   },
+  '/api/v2/answers/answer-v1': {
+    answer: {
+      id: 'answer',
+      revisionId: 'answer-v1',
+      contentHash: 'ans-hash',
+      text: 'Revenue grew 18%.',
+      textHash: 'text-hash',
+      inputPacketId: 'input',
+      inputPacketContentHash: 'input-hash',
+      outputPacketId: 'packet',
+      schemaVersion: 1,
+    },
+    evidence: {
+      packet: {
+        id: 'packet',
+        contentHash: 'packet-hash',
+        engineVersion: 'v1',
+        refs: [
+          { sourceVersionId: 'sv1', sourceUnitId: 'u1', anchorId: 'a1' },
+        ],
+        gaps: [],
+        assertions: [],
+      },
+    },
+    presentation: {
+      numbered_refs: [
+        { n: 1, ref: { sourceVersionId: 'sv1', sourceUnitId: 'u1', anchorId: 'a1' } },
+      ],
+    },
+  },
+  '/api/v2/evidence-packets/packet-1': {
+    packet: {
+      id: 'packet-1',
+      contentHash: 'packet-hash',
+      engineVersion: 'v1',
+      refs: [{ sourceVersionId: 'sv1', sourceUnitId: 'u1', anchorId: 'a1' }],
+      gaps: [],
+    },
+    presentation: {
+      numbered_refs: [
+        { n: 1, ref: { sourceVersionId: 'sv1', sourceUnitId: 'u1', anchorId: 'a1' } },
+      ],
+    },
+  },
+  '/api/v2/context/query': {
+    operatorClass: 'lookup_number',
+    status: 'ok',
+    queryPlan: {
+      operatorClass: 'lookup_number',
+      seeds: ['sv1'],
+      truncated: false,
+      traversedRelationIds: [],
+    },
+    refs: [
+      {
+        sourceVersionId: 'sv1',
+        kind: 'number',
+        nodeId: 'n1',
+        snippet: 'Revenue 12.5',
+      },
+    ],
+    gaps: [],
+    engine: 'context_graph',
+  },
+  '/api/v2/context/compare-assertions': {
+    result: 'same',
+    left: { metric: 'revenue', period: 'FY24' },
+    right: { metric: 'revenue', period: 'FY24' },
+  },
+  '/api/v2/context/change-impact': {
+    answer_revision_id: 'answer-v1',
+    freshness: {
+      claimRevisionIds: [],
+      coverage: 'complete',
+      unresolvedSourceVersionIds: [],
+      reasons: [],
+      observation: 'no_newer_known_version',
+    },
+    engine: 'context_graph',
+  },
+  '/api/v2/context/evidence-packets': {
+    packet_id: 'packet-new',
+    content_hash: 'new-hash',
+    input_packet_id: 'input-new',
+    engine: 'context_graph',
+  },
+  '/api/v2/context/eval/catalog': {
+    suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
+    private_gold_denied: true,
+  },
 };
 
 function startStub() {
@@ -288,11 +378,73 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /✓ grounded \(exact\)/);
   });
 
+  await t.test('get_answer resolves a sealed revision without regenerating evidence', async () => {
+    const text = await call('get_answer', { revision_id: 'answer-v1' });
+    assert.equal(seen.at(-1).method, 'GET');
+    assert.equal(seen.at(-1).path, '/api/v2/answers/answer-v1');
+    assert.match(text, /Answer Revision/);
+    assert.match(text, /Revenue grew 18%/);
+    assert.match(text, /sv1 \/ u1 \/ a1/);
+  });
+
+  await t.test('query_context posts text and renders refs', async () => {
+    const text = await call('query_context', {
+      text: 'What was revenue in FY24?',
+      source_texts: ['Revenue 12.5 in FY24'],
+      idempotency_key: 'q-1',
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/query');
+    assert.equal(req.body.text, 'What was revenue in FY24?');
+    assert.match(text, /Context Query/);
+    assert.match(text, /Revenue 12\.5/);
+  });
+
+  await t.test('compare_assertions returns same/different/unknown', async () => {
+    const text = await call('compare_assertions', {
+      left: { metric: 'revenue', period: 'FY24' },
+      right: { metric: 'revenue', period: 'FY24' },
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/compare-assertions');
+    assert.match(text, /\*\*Result:\*\* same/);
+  });
+
+  await t.test('create_evidence_packet seals bindings server-side', async () => {
+    const text = await call('create_evidence_packet', {
+      claim_text: 'Revenue grew 18%.',
+      bindings: [
+        {
+          source_version_id: 'sv1',
+          source_unit_id: 'u1',
+          representation_id: 'rep1',
+          snippet: 'Revenue grew 18%.',
+        },
+      ],
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/evidence-packets');
+    assert.equal(req.body.claim_text, 'Revenue grew 18%.');
+    assert.equal(req.body.bindings[0].source_version_id, 'sv1');
+    assert.match(text, /packet-new/);
+  });
+
+  await t.test('eval_catalog denies private gold on the wire', async () => {
+    const text = await call('eval_catalog', {});
+    assert.equal(seen.at(-1).path, '/api/v2/context/eval/catalog');
+    assert.match(text, /Private gold denied:\*\* yes/);
+  });
+
+  await t.test('Q_MCP_FAILURES: invalid argument is isError without crashing', async () => {
+    const bad = await rpc('tools/call', { name: 'query_context', arguments: {} });
+    assert.equal(bad.result.isError, true);
+    assert.match(bad.result.content[0].text, /invalid_argument|text is required/i);
+  });
+
   await t.test('an API failure surfaces as a tool error, not a crash', async () => {
     // /api/v1/citations/:id is not stubbed, so the stub answers 404.
     const bad = await rpc('tools/call', { name: 'get_citation', arguments: { citation_id: 'nope' } });
     assert.equal(bad.result.isError, true);
-    assert.match(bad.result.content[0].text, /WebCite API error \(404\)/);
+    assert.match(bad.result.content[0].text, /404|not_found|WebCite API error/i);
   });
 });
 

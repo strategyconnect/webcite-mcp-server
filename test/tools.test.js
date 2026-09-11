@@ -1,16 +1,20 @@
 /**
- * Coverage guard: the MCP tool list must stay in step with the WebCite public API.
+ * Coverage guard: MCP tools must stay in step with WebCite public HTTP routes.
  *
- * The failure this prevents: a route is added to the v1 API and no tool is added
- * here, so agents silently cannot reach it (which is how the server drifted three
- * releases behind the API).
+ * v1 tools stay 1:1 with ENDPOINT_TOOLS. Context (v2) tools live in a separate
+ * map so adding them cannot break the existing v1 guard.
  */
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { handlers } = require('../dist/handlers.js');
-const { TOOLS } = require('../dist/tools.js');
+const {
+  TOOLS,
+  CONTEXT_TOOLS,
+  ALL_TOOLS,
+  CONTEXT_ENDPOINT_TOOLS,
+} = require('../dist/tools.js');
 const { SERVER_VERSION } = require('../dist/version.js');
 
 /** Every public API v1 endpoint, and the tool that exposes it. */
@@ -47,14 +51,37 @@ test('every tool maps to a documented endpoint', () => {
   }
 });
 
+test('v1 TOOLS count stays exactly ENDPOINT_TOOLS (1:1 guard)', () => {
+  assert.equal(TOOLS.length, Object.keys(ENDPOINT_TOOLS).length);
+  assert.equal(TOOLS.length, 16);
+});
+
+test('context tools map 1:1 to v2 CONTEXT_ENDPOINT_TOOLS', () => {
+  const names = new Set(CONTEXT_TOOLS.map((t) => t.name));
+  for (const [endpoint, tool] of Object.entries(CONTEXT_ENDPOINT_TOOLS)) {
+    assert.ok(names.has(tool), `${endpoint} has no context tool named "${tool}"`);
+  }
+  const exposed = new Set(Object.values(CONTEXT_ENDPOINT_TOOLS));
+  for (const tool of CONTEXT_TOOLS) {
+    assert.ok(exposed.has(tool.name), `context tool "${tool.name}" is not mapped`);
+  }
+  assert.equal(CONTEXT_TOOLS.length, Object.keys(CONTEXT_ENDPOINT_TOOLS).length);
+});
+
+test('ALL_TOOLS is TOOLS + CONTEXT_TOOLS without duplicates', () => {
+  assert.equal(ALL_TOOLS.length, TOOLS.length + CONTEXT_TOOLS.length);
+  const names = ALL_TOOLS.map((t) => t.name);
+  assert.equal(new Set(names).size, names.length);
+});
+
 test('every tool has a handler and every handler has a tool', () => {
-  const toolNames = TOOLS.map((t) => t.name).sort();
+  const toolNames = ALL_TOOLS.map((t) => t.name).sort();
   const handlerNames = Object.keys(handlers).sort();
   assert.deepEqual(handlerNames, toolNames);
 });
 
 test('every tool schema is well formed', () => {
-  for (const tool of TOOLS) {
+  for (const tool of ALL_TOOLS) {
     assert.equal(tool.inputSchema.type, 'object', `${tool.name}: schema is not an object`);
     assert.ok(tool.description.length > 40, `${tool.name}: description is too thin`);
     assert.ok(tool.inputSchema.properties, `${tool.name}: schema has no properties`);
@@ -68,11 +95,27 @@ test('every tool schema is well formed', () => {
 });
 
 test('tool names are unique', () => {
-  const names = TOOLS.map((t) => t.name);
+  const names = ALL_TOOLS.map((t) => t.name);
   assert.equal(new Set(names).size, names.length);
 });
 
 test('server version matches package.json', () => {
   const pkg = require(path.join(__dirname, '..', 'package.json'));
   assert.equal(SERVER_VERSION, pkg.version);
+});
+
+test('context tools do not advertise scope/tenant annotations as authority', () => {
+  for (const tool of CONTEXT_TOOLS) {
+    const blob = JSON.stringify(tool);
+    assert.equal(
+      /annotations/i.test(blob) && /readOnlyHint|idempotentHint/.test(blob),
+      false,
+      `${tool.name} must not rely on MCP annotations for scope`,
+    );
+    assert.match(
+      tool.description,
+      /API key|authenticated|authorized|HTTP:/i,
+      `${tool.name} should document auth/HTTP authority`,
+    );
+  }
 });
