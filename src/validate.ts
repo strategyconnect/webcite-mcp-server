@@ -13,6 +13,7 @@ import type {
   AssessMeaningResponse,
   FindContradictionsResponse,
   FormalEligibilityResponse,
+  FormalCheckResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -260,6 +261,19 @@ export function validateFormalEligibility(raw: unknown): FormalEligibilityRespon
     eligible: root.eligible === true,
     scaling_ok: root.scaling_ok === true,
     scaling_error: typeof root.scaling_error === 'string' ? root.scaling_error : null,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateFormalCheck(raw: unknown): FormalCheckResponse {
+  const root = requireObject(raw, 'FormalCheck');
+  return {
+    status: requireString(root, 'status', 'FormalCheck'),
+    toolchainVersion: requireString(root, 'toolchainVersion', 'FormalCheck'),
+    checkerDigest: requireString(root, 'checkerDigest', 'FormalCheck'),
+    checkerPolicyRevision: requireString(root, 'checkerPolicyRevision', 'FormalCheck'),
+    reason: typeof root.reason === 'string' ? root.reason : undefined,
+    mode: typeof root.mode === 'string' ? root.mode : undefined,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

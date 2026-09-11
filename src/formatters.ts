@@ -18,6 +18,7 @@ import type {
   AssessMeaningResponse,
   FindContradictionsResponse,
   FormalEligibilityResponse,
+  FormalCheckResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -611,6 +612,19 @@ export function formatFindContradictions(result: FindContradictionsResponse): st
 
 export function formatFormalEligibility(result: FormalEligibilityResponse): string {
   return `# Formal Eligibility\n\n**Eligible:** ${result.eligible ? 'yes' : 'no'}\n**Scaling ok:** ${result.scaling_ok ? 'yes' : 'no'}`;
+}
+
+export function formatFormalCheck(result: FormalCheckResponse): string {
+  const parts = [
+    `# Formal Check\n`,
+    `**Status:** ${result.status}`,
+    `**Toolchain:** ${result.toolchainVersion}`,
+    `**Checker digest:** ${result.checkerDigest}`,
+    `**Policy revision:** ${result.checkerPolicyRevision}`,
+  ];
+  if (result.mode) parts.push(`**Mode:** ${result.mode}`);
+  if (result.reason) parts.push(`**Reason:** ${result.reason}`);
+  return parts.join('\n');
 }
 
 export function formatEvalCatalog(result: EvalCatalogResponse): string {

@@ -19,6 +19,7 @@ import {
   formatAssessMeaning,
   formatFindContradictions,
   formatFormalEligibility,
+  formatFormalCheck,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -51,6 +52,7 @@ import {
   validateAssessMeaning,
   validateFindContradictions,
   validateFormalEligibility,
+  validateFormalCheck,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -567,6 +569,27 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateFormalEligibility(raw);
     return ok(formatFormalEligibility(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  formal_check: async (args, client) => {
+    if (typeof args?.source !== 'string' || !args.source.trim()) {
+      throw new ToolFailure('invalid_argument', 'source is required');
+    }
+    const raw = await wrapApi(
+      client.formalCheck({
+        source: args.source,
+        toolchain_version:
+          typeof args?.toolchain_version === 'string' ? args.toolchain_version : undefined,
+        checker_digest:
+          typeof args?.checker_digest === 'string' ? args.checker_digest : undefined,
+        require_lean: typeof args?.require_lean === 'boolean' ? args.require_lean : undefined,
+        timeout_ms: typeof args?.timeout_ms === 'number' ? args.timeout_ms : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateFormalCheck(raw);
+    return ok(formatFormalCheck(validated), validated as unknown as Record<string, unknown>);
   },
 
   eval_catalog: async (_args, client) => {

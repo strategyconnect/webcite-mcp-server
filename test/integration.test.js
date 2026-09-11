@@ -228,6 +228,13 @@ const ROUTES = {
     scaling_error: null,
     engine: 'context_graph',
   },
+  '/api/v2/context/formal/check': {
+    status: 'rejected_false',
+    toolchainVersion: 'v4.33.1',
+    checkerDigest: 'sha256:test',
+    checkerPolicyRevision: 'abc123',
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -560,6 +567,14 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/formal/eligibility');
     assert.match(text, /Eligible:\*\* no/);
+  });
+
+  await t.test('formal_check posts Lean source and returns status', async () => {
+    const text = await call('formal_check', {
+      source: 'example : remaining 10 4 = 7 := by decide\n',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/formal/check');
+    assert.match(text, /Status:\*\* rejected_false/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {
