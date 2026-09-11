@@ -21,6 +21,8 @@ import type {
   CreateEvidencePacketResponse,
   AssessSupportOptions,
   AssessSupportResponse,
+  AssessMeaningOptions,
+  AssessMeaningResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -369,6 +371,15 @@ export class WebCiteApiClient {
     const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/assess-support',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async assessMeaning(options: AssessMeaningOptions): Promise<AssessMeaningResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/assess-meaning',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );

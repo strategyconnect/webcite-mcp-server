@@ -15,6 +15,7 @@ import type {
   ContextQueryResponse,
   CreateEvidencePacketResponse,
   AssessSupportResponse,
+  AssessMeaningResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -590,6 +591,15 @@ export function formatAssessSupport(result: AssessSupportResponse): string {
   parts.push(`**Support:** ${support}`);
   parts.push(`**Binding:** ${binding}`);
   if (result.explanation) parts.push(`\n${result.explanation}`);
+  return parts.join('\n');
+}
+
+export function formatAssessMeaning(result: AssessMeaningResponse): string {
+  const parts: string[] = [];
+  parts.push(`# Meaning Assessment\n`);
+  parts.push(`**Meaning:** ${result.meaning}`);
+  parts.push(`**Authority:** ${result.authority}`);
+  parts.push(`**False-claim support:** ${result.falseClaimSupport}`);
   return parts.join('\n');
 }
 

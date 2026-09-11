@@ -487,6 +487,19 @@ export interface AssessSupportResponse {
   engine?: string;
 }
 
+export interface AssessMeaningOptions {
+  assessment: Record<string, unknown>;
+  known_false_claim?: boolean;
+  idempotency_key?: string;
+}
+
+export interface AssessMeaningResponse {
+  meaning: string;
+  authority: string;
+  falseClaimSupport: string;
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;

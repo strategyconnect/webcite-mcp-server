@@ -10,6 +10,7 @@ import type {
   ContextQueryResponse,
   CreateEvidencePacketResponse,
   AssessSupportResponse,
+  AssessMeaningResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -225,6 +226,16 @@ export function validateAssessSupport(raw: unknown): AssessSupportResponse {
     judgment: judgment as Record<string, unknown>,
     bindings: Array.isArray(root.bindings) ? root.bindings : undefined,
     explanation: typeof root.explanation === 'string' ? root.explanation : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateAssessMeaning(raw: unknown): AssessMeaningResponse {
+  const root = requireObject(raw, 'AssessMeaning');
+  return {
+    meaning: requireString(root, 'meaning', 'AssessMeaning'),
+    authority: requireString(root, 'authority', 'AssessMeaning'),
+    falseClaimSupport: requireString(root, 'falseClaimSupport', 'AssessMeaning'),
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
