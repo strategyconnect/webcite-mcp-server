@@ -457,6 +457,34 @@ export interface CreateEvidencePacketResponse {
   gaps?: string[];
   engine?: string;
   presentation?: { numbered_refs: NumberedRef[] };
+  support?: {
+    assessment_id?: string;
+    judgment?: Record<string, unknown>;
+    explanation?: string;
+    tier?: number;
+  };
+}
+
+export interface AssessSupportOptions {
+  claim_revision_id: string;
+  claim_hash: string;
+  evidence_group_revision_id: string;
+  alternative_fragment_id?: string | null;
+  tier?: 1 | 2 | 3;
+  proposed?: string;
+  binding?: string;
+  idempotency_key?: string;
+}
+
+export interface AssessSupportResponse {
+  assessmentId: string;
+  target: Record<string, unknown>;
+  evidenceGroupRevisionId: string;
+  alternativeFragmentId?: string | null;
+  judgment: Record<string, unknown>;
+  bindings?: unknown[];
+  explanation?: string;
+  engine?: string;
 }
 
 export interface AnswerArtifactSummary {

@@ -706,6 +706,53 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
     },
   },
   {
+    name: 'assess_support',
+    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3).
+
+Scope comes from the authenticated API.
+
+Credits: 1. HTTP: POST /api/v2/context/assess-support`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        claim_revision_id: {
+          type: 'string',
+          description: 'Claim revision under assessment.',
+        },
+        claim_hash: {
+          type: 'string',
+          description: 'Hash of the claim text checked against the evidence group.',
+        },
+        evidence_group_revision_id: {
+          type: 'string',
+          description: 'Evidence group revision providing candidate support.',
+        },
+        alternative_fragment_id: {
+          type: 'string',
+          description: 'Optional competing fragment id when comparing alternatives.',
+        },
+        tier: {
+          type: 'integer',
+          enum: [1, 2, 3],
+          description: 'Claim structure tier ceiling (default 3).',
+        },
+        proposed: {
+          type: 'string',
+          description: 'Optional proposed machine support before the tier ceiling.',
+        },
+        binding: {
+          type: 'string',
+          description: 'Optional binding state (exact/normalized/fuzzy/ambiguous/unresolved).',
+        },
+        idempotency_key: {
+          type: 'string',
+          description: 'Logical idempotency key. Not a scope field.',
+        },
+      },
+      required: ['claim_revision_id', 'claim_hash', 'evidence_group_revision_id'],
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -830,6 +877,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/compare-assertions': 'compare_assertions',
   'POST /api/v2/context/change-impact': 'get_change_impact',
   'POST /api/v2/context/evidence-packets': 'create_evidence_packet',
+  'POST /api/v2/context/assess-support': 'assess_support',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

@@ -14,6 +14,7 @@ import type {
   Conflict,
   ContextQueryResponse,
   CreateEvidencePacketResponse,
+  AssessSupportResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -570,6 +571,25 @@ export function formatCreatePacket(result: CreateEvidencePacketResponse): string
     parts.push(`\n## Gaps\n`);
     result.gaps.forEach((g) => parts.push(`- ${g}`));
   }
+  return parts.join('\n');
+}
+
+export function formatAssessSupport(result: AssessSupportResponse): string {
+  const parts: string[] = [];
+  parts.push(`# Support Assessment\n`);
+  parts.push(`**Assessment ID:** ${result.assessmentId}`);
+  parts.push(`**Evidence group:** ${result.evidenceGroupRevisionId}`);
+  const support =
+    typeof result.judgment?.support === 'string'
+      ? result.judgment.support
+      : 'unknown';
+  const binding =
+    typeof result.judgment?.binding === 'string'
+      ? result.judgment.binding
+      : 'unknown';
+  parts.push(`**Support:** ${support}`);
+  parts.push(`**Binding:** ${binding}`);
+  if (result.explanation) parts.push(`\n${result.explanation}`);
   return parts.join('\n');
 }
 
