@@ -23,6 +23,10 @@ import type {
   AssessSupportResponse,
   AssessMeaningOptions,
   AssessMeaningResponse,
+  FindContradictionsOptions,
+  FindContradictionsResponse,
+  FormalEligibilityOptions,
+  FormalEligibilityResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -380,6 +384,28 @@ export class WebCiteApiClient {
     const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/assess-meaning',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async findContradictions(
+    options: FindContradictionsOptions,
+  ): Promise<FindContradictionsResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/contradictions',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async formalEligibility(
+    options: FormalEligibilityOptions,
+  ): Promise<FormalEligibilityResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/formal/eligibility',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );
