@@ -29,6 +29,14 @@ import type {
   FormalEligibilityResponse,
   FormalCheckOptions,
   FormalCheckResponse,
+  CreateClaimRelationOptions,
+  CreateClaimRelationResponse,
+  ListClaimRelationsOptions,
+  ListClaimRelationsResponse,
+  CreateMetricDefinitionOptions,
+  CreateMetricDefinitionResponse,
+  ListMetricDefinitionsOptions,
+  ListMetricDefinitionsResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -419,6 +427,53 @@ export class WebCiteApiClient {
       '/api/v2/context/formal/check',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async createClaimRelation(
+    options: CreateClaimRelationOptions,
+  ): Promise<CreateClaimRelationResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/claim-relations',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async listClaimRelations(
+    options: ListClaimRelationsOptions = {},
+  ): Promise<ListClaimRelationsResponse> {
+    const params = new URLSearchParams();
+    if (options.predicate) params.set('predicate', options.predicate);
+    if (options.claim_revision_id) params.set('claim_revision_id', options.claim_revision_id);
+    const q = params.toString();
+    return this.request(
+      `/api/v2/context/claim-relations${q ? `?${q}` : ''}`,
+      { method: 'GET' },
+    );
+  }
+
+  async createMetricDefinition(
+    options: CreateMetricDefinitionOptions,
+  ): Promise<CreateMetricDefinitionResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/metric-definitions',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async listMetricDefinitions(
+    options: ListMetricDefinitionsOptions = {},
+  ): Promise<ListMetricDefinitionsResponse> {
+    const params = new URLSearchParams();
+    if (options.metric) params.set('metric', options.metric);
+    const q = params.toString();
+    return this.request(
+      `/api/v2/context/metric-definitions${q ? `?${q}` : ''}`,
+      { method: 'GET' },
     );
   }
 

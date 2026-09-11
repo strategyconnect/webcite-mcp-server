@@ -552,6 +552,57 @@ export interface FormalCheckResponse {
   engine?: string;
 }
 
+export interface CreateClaimRelationOptions {
+  predicate: string;
+  argument_ids: string[];
+  arguments_resolved: boolean;
+  claim_revision_id?: string | null;
+  idempotency_key?: string;
+}
+
+export interface CreateClaimRelationResponse {
+  relation: {
+    id: string;
+    predicate: string;
+    argumentIds: string[];
+    argumentsResolved: boolean;
+    claimRevisionId: string | null;
+    contentHash: string;
+  };
+  engine?: string;
+}
+
+export interface ListClaimRelationsOptions {
+  predicate?: string;
+  claim_revision_id?: string;
+}
+
+export interface ListClaimRelationsResponse {
+  relations: CreateClaimRelationResponse['relation'][];
+  recognised: string[];
+  engine?: string;
+}
+
+export interface CreateMetricDefinitionOptions {
+  definition: Record<string, unknown>;
+  idempotency_key?: string;
+}
+
+export interface CreateMetricDefinitionResponse {
+  revisionId: string;
+  contentHash: string;
+  engine?: string;
+}
+
+export interface ListMetricDefinitionsOptions {
+  metric?: string;
+}
+
+export interface ListMetricDefinitionsResponse {
+  definitions: Record<string, unknown>[];
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;

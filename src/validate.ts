@@ -14,6 +14,10 @@ import type {
   FindContradictionsResponse,
   FormalEligibilityResponse,
   FormalCheckResponse,
+  CreateClaimRelationResponse,
+  ListClaimRelationsResponse,
+  CreateMetricDefinitionResponse,
+  ListMetricDefinitionsResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -274,6 +278,64 @@ export function validateFormalCheck(raw: unknown): FormalCheckResponse {
     checkerPolicyRevision: requireString(root, 'checkerPolicyRevision', 'FormalCheck'),
     reason: typeof root.reason === 'string' ? root.reason : undefined,
     mode: typeof root.mode === 'string' ? root.mode : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateCreateClaimRelation(raw: unknown): CreateClaimRelationResponse {
+  const root = requireObject(raw, 'CreateClaimRelation');
+  const relation = requireObject(root.relation, 'CreateClaimRelation.relation');
+  return {
+    relation: {
+      id: requireString(relation, 'id', 'relation'),
+      predicate: requireString(relation, 'predicate', 'relation'),
+      argumentIds: Array.isArray(relation.argumentIds)
+        ? (relation.argumentIds as string[])
+        : [],
+      argumentsResolved: relation.argumentsResolved === true,
+      claimRevisionId:
+        typeof relation.claimRevisionId === 'string' ? relation.claimRevisionId : null,
+      contentHash: requireString(relation, 'contentHash', 'relation'),
+    },
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateListClaimRelations(raw: unknown): ListClaimRelationsResponse {
+  const root = requireObject(raw, 'ListClaimRelations');
+  if (!Array.isArray(root.relations)) {
+    throw new ToolFailure('invalid_api_output', 'ListClaimRelations.relations must be an array');
+  }
+  return {
+    relations: root.relations as ListClaimRelationsResponse['relations'],
+    recognised: Array.isArray(root.recognised) ? (root.recognised as string[]) : [],
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateCreateMetricDefinition(
+  raw: unknown,
+): CreateMetricDefinitionResponse {
+  const root = requireObject(raw, 'CreateMetricDefinition');
+  return {
+    revisionId: requireString(root, 'revisionId', 'CreateMetricDefinition'),
+    contentHash: requireString(root, 'contentHash', 'CreateMetricDefinition'),
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateListMetricDefinitions(
+  raw: unknown,
+): ListMetricDefinitionsResponse {
+  const root = requireObject(raw, 'ListMetricDefinitions');
+  if (!Array.isArray(root.definitions)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'ListMetricDefinitions.definitions must be an array',
+    );
+  }
+  return {
+    definitions: root.definitions as Record<string, unknown>[],
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

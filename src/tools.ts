@@ -845,6 +845,62 @@ Credits: 1. HTTP: POST /api/v2/context/formal/check`,
     },
   },
   {
+    name: 'create_claim_relation',
+    description: `Persist a formalized claim relation (C1). Unrecognised predicates are refused.
+
+Credits: 1. HTTP: POST /api/v2/context/claim-relations`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        predicate: { type: 'string' },
+        argument_ids: { type: 'array', items: { type: 'string' }, minItems: 1 },
+        arguments_resolved: { type: 'boolean' },
+        claim_revision_id: { type: ['string', 'null'] },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['predicate', 'argument_ids', 'arguments_resolved'],
+    },
+  },
+  {
+    name: 'list_claim_relations',
+    description: `List persisted claim relations for the authenticated tenant (C1).
+
+Credits: 1. HTTP: GET /api/v2/context/claim-relations`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        predicate: { type: 'string' },
+        claim_revision_id: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'create_metric_definition',
+    description: `Persist an immutable metric definition revision (C1c).
+
+Credits: 1. HTTP: POST /api/v2/context/metric-definitions`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        definition: { type: 'object', description: 'MetricDefinition payload' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['definition'],
+    },
+  },
+  {
+    name: 'list_metric_definitions',
+    description: `List persisted metric definition revisions (C1c).
+
+Credits: 1. HTTP: GET /api/v2/context/metric-definitions`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        metric: { type: 'string' },
+      },
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -974,6 +1030,10 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/contradictions': 'find_contradictions',
   'POST /api/v2/context/formal/eligibility': 'formal_eligibility',
   'POST /api/v2/context/formal/check': 'formal_check',
+  'POST /api/v2/context/claim-relations': 'create_claim_relation',
+  'GET /api/v2/context/claim-relations': 'list_claim_relations',
+  'POST /api/v2/context/metric-definitions': 'create_metric_definition',
+  'GET /api/v2/context/metric-definitions': 'list_metric_definitions',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',
