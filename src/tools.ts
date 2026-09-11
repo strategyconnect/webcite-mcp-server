@@ -824,6 +824,27 @@ Credits: 1. HTTP: POST /api/v2/context/formal/eligibility`,
     },
   },
   {
+    name: 'formal_check',
+    description: `Check a bounded Lean certificate (P2). Static gates always run; Lean exec is optional.
+
+Credits: 1. HTTP: POST /api/v2/context/formal/check`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        source: {
+          type: 'string',
+          description: 'Lean source text to check (template subset only).',
+        },
+        toolchain_version: { type: 'string', description: 'Approved pin, e.g. v4.33.1' },
+        checker_digest: { type: 'string' },
+        require_lean: { type: 'boolean' },
+        timeout_ms: { type: 'number' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['source'],
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -952,6 +973,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/assess-meaning': 'assess_meaning',
   'POST /api/v2/context/contradictions': 'find_contradictions',
   'POST /api/v2/context/formal/eligibility': 'formal_eligibility',
+  'POST /api/v2/context/formal/check': 'formal_check',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

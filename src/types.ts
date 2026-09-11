@@ -533,6 +533,25 @@ export interface FormalEligibilityResponse {
   engine?: string;
 }
 
+export interface FormalCheckOptions {
+  source: string;
+  toolchain_version?: string;
+  checker_digest?: string;
+  require_lean?: boolean;
+  timeout_ms?: number;
+  idempotency_key?: string;
+}
+
+export interface FormalCheckResponse {
+  status: string;
+  toolchainVersion: string;
+  checkerDigest: string;
+  checkerPolicyRevision: string;
+  reason?: string;
+  mode?: string;
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;

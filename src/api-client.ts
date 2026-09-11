@@ -27,6 +27,8 @@ import type {
   FindContradictionsResponse,
   FormalEligibilityOptions,
   FormalEligibilityResponse,
+  FormalCheckOptions,
+  FormalCheckResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -406,6 +408,15 @@ export class WebCiteApiClient {
     const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/formal/eligibility',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async formalCheck(options: FormalCheckOptions): Promise<FormalCheckResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/formal/check',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );
