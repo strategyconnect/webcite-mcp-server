@@ -753,6 +753,27 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
     },
   },
   {
+    name: 'assess_meaning',
+    description: `Assess meaning / authority / false-claim facets independently (C5). Never collapses into one badge.
+
+Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        assessment: {
+          type: 'object',
+          description: 'MeaningAssessment payload (ids, semanticReview, operationId, …).',
+        },
+        known_false_claim: {
+          type: 'boolean',
+          description: 'When true, evaluate false-claim support facet.',
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['assessment'],
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -878,6 +899,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/change-impact': 'get_change_impact',
   'POST /api/v2/context/evidence-packets': 'create_evidence_packet',
   'POST /api/v2/context/assess-support': 'assess_support',
+  'POST /api/v2/context/assess-meaning': 'assess_meaning',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

@@ -16,6 +16,7 @@ import {
   formatContextQuery,
   formatCreatePacket,
   formatAssessSupport,
+  formatAssessMeaning,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -44,6 +45,7 @@ import {
   validateContextQuery,
   validateCreatePacket,
   validateAssessSupport,
+  validateAssessMeaning,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -505,6 +507,23 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateAssessSupport(raw);
     return ok(formatAssessSupport(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  assess_meaning: async (args, client) => {
+    if (!args?.assessment || typeof args.assessment !== 'object' || Array.isArray(args.assessment)) {
+      throw new ToolFailure('invalid_argument', 'assessment object is required');
+    }
+    const raw = await wrapApi(
+      client.assessMeaning({
+        assessment: args.assessment as Record<string, unknown>,
+        known_false_claim:
+          typeof args?.known_false_claim === 'boolean' ? args.known_false_claim : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateAssessMeaning(raw);
+    return ok(formatAssessMeaning(validated), validated as unknown as Record<string, unknown>);
   },
 
   eval_catalog: async (_args, client) => {

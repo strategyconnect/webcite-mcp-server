@@ -206,6 +206,12 @@ const ROUTES = {
     explanation: 'Support not checked; exact binding alone is insufficient',
     engine: 'context_graph',
   },
+  '/api/v2/context/assess-meaning': {
+    meaning: 'faithful',
+    authority: 'not_checked',
+    falseClaimSupport: 'not_checked',
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -500,6 +506,21 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(req.idempotencyKey, 'assess-1');
     assert.match(text, /not_checked/);
     assert.match(text, /assess:hash-1:eg-r1/);
+  });
+
+  await t.test('assess_meaning returns independent facets', async () => {
+    const text = await call('assess_meaning', {
+      assessment: {
+        id: 'm1',
+        originalRevisionId: 'o1',
+        decompositionRevisionId: 'd1',
+        semanticReview: 'pass',
+        operationId: 'op1',
+      },
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/assess-meaning');
+    assert.match(text, /Meaning:\*\* faithful/);
+    assert.match(text, /Authority:\*\* not_checked/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {
