@@ -592,7 +592,9 @@ function startStub(options = {}) {
               unresolved.push('missing_occurrence_identity');
               continue;
             }
-            if (!String(rawText).trim()) {
+            // Backend #287: blank/whitespace or surrounding-padded raw is not a
+            // certified glyph (" 12 " must not certify as 12 after trim).
+            if (!identityComplete(rawText)) {
               unresolved.push('missing_occurrence_raw');
             }
             if (!METHODS.has(method)) {
@@ -2416,6 +2418,46 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.structuredContent.code, 'api_error');
     assert.match(res.result.content[0].text, /missing_occurrence_raw/);
   });
+
+  await t.test(
+    'number_inventory surrounding-padded raw → missing_occurrence_raw',
+    async () => {
+      // " 12 " trim-equals a real glyph but must not certify workbench magnitude (#287).
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'pad',
+              raw: ' 12 ',
+              fragment_id: 'frag-pad',
+              method: 'ocr',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+            },
+            {
+              id: 'tab',
+              raw: '\t9\t',
+              fragment_id: 'frag-tab',
+              method: 'native',
+              interpretation: 'unknown',
+              recognition_state: 'uncertain',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /missing_occurrence_raw/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      // Forward padded glyphs as-is — never strip into certified raw.
+      assert.equal(req.body.occurrences[0].raw, ' 12 ');
+      assert.equal(req.body.occurrences[1].raw, '\t9\t');
+    },
+  );
 
   await t.test(
     'number_inventory whitespace-only identity → missing_occurrence_identity',

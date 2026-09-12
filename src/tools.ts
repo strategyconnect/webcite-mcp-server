@@ -894,7 +894,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank raw/non-null blank or surrounding-padded normalized_decimal/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank or surrounding-padded raw/non-null blank or surrounding-padded normalized_decimal/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -903,7 +903,7 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
         occurrences: {
           type: 'array',
           description:
-            'NumericOccurrence rows. recognition_state + non-blank raw + valid method required for complete coverage (method is never defaulted to native). Non-blank unpadded id + fragment_id required (whitespace/padded → missing_occurrence_identity).',
+            'NumericOccurrence rows. recognition_state + non-blank unpadded raw + valid method required for complete coverage (method is never defaulted to native). Non-blank unpadded id + fragment_id required (whitespace/padded → missing_occurrence_identity). Blank/padded raw → missing_occurrence_raw.',
           items: {
             type: 'object',
             properties: {
@@ -914,7 +914,8 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
               },
               raw: {
                 type: 'string',
-                description: 'Non-blank glyph text; blank/whitespace → missing_occurrence_raw.',
+                description:
+                  'Non-blank unpadded glyph text; blank/whitespace or surrounding-padded (raw !== trim) → missing_occurrence_raw.',
               },
               fragment_id: {
                 type: 'string',
