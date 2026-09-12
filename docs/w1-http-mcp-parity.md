@@ -40,6 +40,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `claim_structure_resolve_definition` | `POST /api/v2/context/claim-structure/resolve-definition` | metric, knowledge_as_of, effective_at, catalog | kind + result | auth / missing fields | 0 | definition revision / ambiguity |
 | `formalize_claim_relation` | `POST /api/v2/context/claim-relations/formalize` | predicate, argument_ids, arguments_resolved | relation + formalized | unrecognised → formalized:false | 0 | — |
 | `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget (+ optional root) | run (+ opened_root when auto) | auth; `CONTEXT_GRAPH_RESEARCH` off → refuse | 0 | research scope |
+| `list_research_runs` | `GET /api/v2/context/research-runs` | — (tenant from API key) | runs[] | flag off → refuse; empty when none | 0 | tenant catalog; `CONTEXT_GRAPH_RESEARCH` |
 | `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404; flag off → refuse | 0 | run id; `CONTEXT_GRAPH_RESEARCH` |
 | `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale; flag off → refuse | 0 | checkpoint CAS; `CONTEXT_GRAPH_RESEARCH` |
 | `resolve_seeds` | `POST /api/v2/context/resolve-seeds` | text, filters?, index? (omit → SQL catalog) | candidates + leading_resolver + index_source | auth | 0 | ClaimScope seeds |
@@ -74,4 +75,4 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 - Unknown MCP tool / malformed envelope → protocol error; API/business failures → `isError: true`.
 - `private_gold_denied: true` is intentional for A_EVAL_CATALOG transport; gold stays off the wire.
 - Engine rollback: turn off `CONTEXT_GRAPH_RETRIEVE`; sealed revisions remain readable via v2 resolve routes.
-- C3 research HTTP/MCP stays dark until `CONTEXT_GRAPH_RESEARCH=1|true` (default off); create/get/checkpoint/reserve refuse fail-closed.
+- C3 research HTTP/MCP stays dark until `CONTEXT_GRAPH_RESEARCH=1|true` (default off); create/list/get/checkpoint/reserve refuse fail-closed.

@@ -45,6 +45,8 @@ import type {
   CreateResearchRunResponse,
   GetResearchRunOptions,
   GetResearchRunResponse,
+  ListResearchRunsOptions,
+  ListResearchRunsResponse,
   CheckpointResearchRunOptions,
   CheckpointResearchRunResponse,
   ResolveSeedsOptions,
@@ -608,6 +610,12 @@ export class WebCiteApiClient {
       `/api/v2/context/research-runs/${encodeURIComponent(options.run_id)}`,
       { method: 'GET' },
     );
+  }
+
+  async listResearchRuns(
+    _options: ListResearchRunsOptions = {},
+  ): Promise<ListResearchRunsResponse> {
+    return this.request('/api/v2/context/research-runs', { method: 'GET' });
   }
 
   async checkpointResearchRun(

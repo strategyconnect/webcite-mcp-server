@@ -781,6 +781,14 @@ export interface GetResearchRunResponse {
   engine?: string;
 }
 
+/** Tenant-scoped list; scope comes from the API key (no client tenant override). */
+export interface ListResearchRunsOptions {}
+
+export interface ListResearchRunsResponse {
+  runs: ResearchRunPayload[];
+  engine?: string;
+}
+
 export interface CheckpointResearchRunOptions {
   run_id: string;
   expected_revision: number;

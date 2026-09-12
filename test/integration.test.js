@@ -413,6 +413,7 @@ const ROUTES = {
 
 function startStub(options = {}) {
   const seen = [];
+  const flags = { researchListRefuse: false };
   const routes = { ...ROUTES, ...(options.routes || {}) };
   const server = http.createServer((req, res) => {
     let body = '';
@@ -808,6 +809,37 @@ function startStub(options = {}) {
         }
       }
 
+      // list_research_runs: tenant-scoped GET; flag-off refuse fail-closed (backend #263)
+      if (url.pathname === '/api/v2/context/research-runs' && req.method === 'GET') {
+        if (flags.researchListRefuse) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              statusCode: 400,
+              message: 'CONTEXT_GRAPH_RESEARCH is disabled',
+              error: 'Bad Request',
+            }),
+          );
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            runs: [
+              {
+                id: '11111111-1111-1111-1111-111111111111',
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'running',
+                scope: { tenantId: 't1' },
+              },
+            ],
+            engine: 'context_graph',
+          }),
+        );
+        return;
+      }
+
       if (url.pathname === '/api/v2/context/operations/open-root') {
         let parsed = {};
         try {
@@ -1031,7 +1063,9 @@ function startStub(options = {}) {
     });
   });
   return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => resolve({ server, seen, port: server.address().port }));
+    server.listen(0, '127.0.0.1', () =>
+      resolve({ server, seen, port: server.address().port, flags }),
+    );
   });
 }
 
@@ -1069,7 +1103,7 @@ function startServer(port) {
 }
 
 test('every tool round-trips through the real server against the API', async (t) => {
-  const { server, seen, port } = await startStub();
+  const { server, seen, port, flags } = await startStub();
   const { child, rpc, notify } = startServer(port);
   t.after(() => {
     child.kill();
@@ -1489,15 +1523,21 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(formalized, /Predicate:\*\* equals/);
   });
 
-  await t.test('research run create/get/checkpoint hit C3 routes', async () => {
+  await t.test('research run create/list/get/checkpoint hit C3 routes', async () => {
     const created = await call('create_research_run', {
       objective: 'trace ARR',
       snapshot_id: 'snap-1',
       workflow_version: 'wf-1',
       budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
     });
+    assert.equal(seen.at(-1).method, 'POST');
     assert.equal(seen.at(-1).path, '/api/v2/context/research-runs');
     assert.match(created, /Phase:\*\* running/);
+
+    const listed = await call('list_research_runs', {});
+    assert.equal(seen.at(-1).method, 'GET');
+    assert.equal(seen.at(-1).path, '/api/v2/context/research-runs');
+    assert.match(listed, /Count:\*\* 1/);
 
     const got = await call('get_research_run', {
       run_id: '11111111-1111-1111-1111-111111111111',
@@ -1525,7 +1565,7 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(checkpointed, /Revision:\*\* 1/);
   });
 
-  await t.test('research create/get/checkpoint/reserve refuse when CONTEXT_GRAPH_RESEARCH off', async () => {
+  await t.test('research create/list/get/checkpoint/reserve refuse when CONTEXT_GRAPH_RESEARCH off', async () => {
     const created = await rpc('tools/call', {
       name: 'create_research_run',
       arguments: {
@@ -1541,6 +1581,18 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(created.result.content[0].text, /default-off|Do not invent/);
     assert.equal(created.result.structuredContent.details.flag, 'CONTEXT_GRAPH_RESEARCH');
     assert.equal(created.result.structuredContent.details.default_off, true);
+
+    flags.researchListRefuse = true;
+    const listed = await rpc('tools/call', {
+      name: 'list_research_runs',
+      arguments: {},
+    });
+    flags.researchListRefuse = false;
+    assert.equal(listed.result.isError, true);
+    assert.equal(listed.result.structuredContent.code, 'api_error');
+    assert.match(listed.result.content[0].text, /CONTEXT_GRAPH_RESEARCH is disabled/);
+    assert.equal(listed.result.structuredContent.details.flag, 'CONTEXT_GRAPH_RESEARCH');
+    assert.equal(listed.result.structuredContent.details.default_off, true);
 
     const got = await rpc('tools/call', {
       name: 'get_research_run',

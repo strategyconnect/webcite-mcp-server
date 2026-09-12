@@ -32,6 +32,7 @@ import type {
   ListMetricDefinitionsResponse,
   CreateResearchRunResponse,
   GetResearchRunResponse,
+  ListResearchRunsResponse,
   CheckpointResearchRunResponse,
   ResolveSeedsResponse,
   ExpandSeedsResponse,
@@ -702,6 +703,19 @@ export function validateGetResearchRun(raw: unknown): GetResearchRunResponse {
   const root = requireObject(raw, 'GetResearchRun');
   return {
     run: requireResearchRun(root.run, 'GetResearchRun.run'),
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateListResearchRuns(raw: unknown): ListResearchRunsResponse {
+  const root = requireObject(raw, 'ListResearchRuns');
+  if (!Array.isArray(root.runs)) {
+    throw new ToolFailure('invalid_api_output', 'ListResearchRuns.runs must be an array');
+  }
+  return {
+    runs: root.runs.map((run, index) =>
+      requireResearchRun(run, `ListResearchRuns.runs[${index}]`),
+    ),
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

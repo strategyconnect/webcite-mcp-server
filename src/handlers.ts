@@ -28,6 +28,7 @@ import {
   formatListMetricDefinitions,
   formatCreateResearchRun,
   formatGetResearchRun,
+  formatListResearchRuns,
   formatCheckpointResearchRun,
   formatResolveSeeds,
   formatExpandSeeds,
@@ -100,6 +101,7 @@ import {
   validateListMetricDefinitions,
   validateCreateResearchRun,
   validateGetResearchRun,
+  validateListResearchRuns,
   validateCheckpointResearchRun,
   validateResolveSeeds,
   validateExpandSeeds,
@@ -1040,6 +1042,15 @@ export const handlers: Record<string, ToolHandler> = {
     const raw = await wrapApi(client.getResearchRun({ run_id: args.run_id }));
     const validated = validateGetResearchRun(raw);
     return ok(formatGetResearchRun(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  list_research_runs: async (_args, client) => {
+    const raw = await wrapApi(client.listResearchRuns());
+    const validated = validateListResearchRuns(raw);
+    return ok(
+      formatListResearchRuns(validated),
+      validated as unknown as Record<string, unknown>,
+    );
   },
 
   checkpoint_research_run: async (args, client) => {
