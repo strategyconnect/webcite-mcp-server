@@ -531,7 +531,7 @@ export function validateFindContradictions(raw: unknown): FindContradictionsResp
       'FindContradictions.coverage unknown must not be accepted as success',
       {
         actionable:
-          'HTTP should have refused with contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value); do not invent certified no-contradiction.',
+          'HTTP should have refused with contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value); do not invent certified no-contradiction from blank/padded bounds or padded decimals (#289).',
       },
     );
   }

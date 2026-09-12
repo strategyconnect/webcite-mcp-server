@@ -575,9 +575,16 @@ export interface AssessMeaningResponse {
   engine?: string;
 }
 
+/**
+ * W3 contradiction scan. Blank/whitespace/surrounding-padded interval endpoints
+ * or decimals fail closed as contradiction_scan_incomplete (#256/#289) — never
+ * trim-launder pads into certified known bounds or magnitudes.
+ */
 export interface FindContradictionsOptions {
   claims: Array<{
+    /** Blank/whitespace/surrounding-padded from/to → unknown_interval_bounds (#289). */
     interval: { from: string | null; to: string | null };
+    /** Null/blank/surrounding-padded on conflicting/unknown pairs → missing_decimal_value (#289). */
     decimal_value: string | null;
   }>;
   idempotency_key?: string;

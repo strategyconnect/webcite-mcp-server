@@ -693,21 +693,22 @@ function startStub(options = {}) {
         }
       }
 
-      // Dynamic contradiction scan: blank bounds / missing decimals fail closed (400).
-      // Mirror backend #256: never certify empty pairs when coverage is unknown.
+      // Dynamic contradiction scan: blank/padded bounds / missing/padded decimals fail closed (400).
+      // Mirror backend #256/#289: never certify empty pairs when coverage is unknown;
+      // surrounding pads must not trim-launder into known bounds or magnitudes.
       if (url.pathname === '/api/v2/context/contradictions' && body) {
         try {
           const parsed = JSON.parse(body);
           const claims = Array.isArray(parsed?.claims) ? parsed.claims : [];
           if (claims.length >= 2) {
             const CONFLICTING = new Set(['overlaps', 'equal', 'starts', 'during', 'finishes']);
-            const known = (iv) =>
-              iv &&
-              typeof iv.from === 'string' &&
-              iv.from.trim().length > 0 &&
-              typeof iv.to === 'string' &&
-              iv.to.trim().length > 0;
-            const decimalPresent = (v) => typeof v === 'string' && v.trim().length > 0;
+            // Backend #289: non-blank AND unpadded (value === trim) to certify known bounds.
+            const endpointComplete = (v) =>
+              typeof v === 'string' && v.trim().length > 0 && v === v.trim();
+            const known = (iv) => iv && endpointComplete(iv.from) && endpointComplete(iv.to);
+            // Backend #289: surrounding-padded decimals (" 10 ") never certify a magnitude.
+            const decimalPresent = (v) =>
+              typeof v === 'string' && v.trim().length > 0 && v === v.trim();
             const relation = (a, b) => {
               if (!known(a) || !known(b)) return 'unknown';
               if (!(a.from < a.to) || !(b.from < b.to)) return 'unknown';
@@ -2759,6 +2760,63 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.isError, true);
     assert.equal(res.result.structuredContent.code, 'api_error');
     assert.match(res.result.content[0].text, /missing_decimal_value/);
+  });
+
+  await t.test('find_contradictions surrounding-padded interval endpoint → unknown_interval_bounds (#289)', async () => {
+    const before = seen.length;
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [
+          { interval: { from: ' 2024-01-01 ', to: '2024-07-01' }, decimal_value: '10' },
+          { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /contradiction_scan_incomplete/);
+    assert.match(res.result.content[0].text, /unknown_interval_bounds/);
+    const req = seen.slice(before).find((r) => r.path === '/api/v2/context/contradictions');
+    assert.ok(req);
+    // MCP must forward pads as-is — never trim-launder into certified known bounds.
+    assert.equal(req.body.claims[0].interval.from, ' 2024-01-01 ');
+  });
+
+  await t.test('find_contradictions trailing-padded interval to → unknown_interval_bounds (#289)', async () => {
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [
+          { interval: { from: '2024-01-01', to: '2024-07-01 ' }, decimal_value: '10' },
+          { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '12' },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /unknown_interval_bounds/);
+  });
+
+  await t.test('find_contradictions surrounding-padded decimal → missing_decimal_value (#289)', async () => {
+    const before = seen.length;
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [
+          { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: ' 10 ' },
+          { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /contradiction_scan_incomplete/);
+    assert.match(res.result.content[0].text, /missing_decimal_value/);
+    const req = seen.slice(before).find((r) => r.path === '/api/v2/context/contradictions');
+    assert.ok(req);
+    // MCP must forward padded decimals as-is — never trim-launder into magnitudes.
+    assert.equal(req.body.claims[0].decimal_value, ' 10 ');
   });
 
   await t.test('find_contradictions <2 claims → invalid_argument', async () => {

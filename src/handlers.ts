@@ -1091,7 +1091,9 @@ export const handlers: Record<string, ToolHandler> = {
     if (!Array.isArray(args?.claims) || args.claims.length < 2) {
       throw new ToolFailure('invalid_argument', 'claims must contain at least two rows');
     }
-    // Pass claims through unchanged — do not invent bounds or decimal_value.
+    // Backend #256/#289: pass claims through unchanged — do not invent bounds or
+    // decimal_value, and never trim-launder surrounding pads into certified known
+    // intervals or magnitudes (HTTP refuses contradiction_scan_incomplete).
     const raw = await wrapApi(
       client.findContradictions({
         claims: args.claims as FindContradictionsOptions['claims'],
