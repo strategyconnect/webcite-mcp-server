@@ -761,10 +761,11 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
 
 /**
  * C3/I4 optional operation idempotency_key: when present as string,
- * blank/whitespace/surrounding-padded never certifies a settle/link/replay pin —
- * refuse before HTTP (same identityComplete honesty as required
+ * blank/whitespace/surrounding-padded never certifies a settle/link/attempt
+ * replay pin — refuse before HTTP (same identityComplete honesty as required
  * open_operation_root / reserve_operation idempotency_key after #83/#88).
- * Shared by settle_operation (#92) and link_operation_consumer. Omit when not a string.
+ * Shared by settle_operation (#92), link_operation_consumer (#94),
+ * record_operation_attempt, and resolve_operation_attempt. Omit when not a string.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -778,7 +779,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies an operation settle/link/replay; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies an operation settle/link/attempt replay; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -2819,6 +2820,9 @@ export const handlers: Record<string, ToolHandler> = {
     // C3/I4: padded provider / model / provider_idempotency_key never certify
     // attempt attribution or a provider replay pin (sibling of kind #83/#87).
     assertRecordOperationAttemptProviderComplete(args);
+    // C3/I4 after #92/#94: optional padded idempotency_key never certifies an
+    // attempt-record replay pin (same helper as settle/link).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.recordOperationAttempt({
         operation_id: args.operation_id,
@@ -2860,6 +2864,9 @@ export const handlers: Record<string, ToolHandler> = {
     // C3/I4 after #89: padded failure_class / price fields never certify an
     // outcome class or settlement pin (null failure_class / null|omit price ok).
     assertResolveOperationAttemptOutcomeComplete(args);
+    // C3/I4 after #92/#94: optional padded idempotency_key never certifies an
+    // attempt-resolve replay pin (same helper as settle/link).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.resolveOperationAttempt({
         attempt_id: args.attempt_id,
