@@ -263,6 +263,25 @@ const ROUTES = {
     definitions: [{ revisionId: 'def-1-r1', metric: 'total_revenue' }],
     engine: 'context_graph',
   },
+  '/api/v2/context/claim-structure/tier': {
+    tier: 2,
+    engine: 'context_graph',
+  },
+  '/api/v2/context/claim-structure/resolve-definition': {
+    kind: 'definition',
+    result: { revisionId: 'def-1-r1', metric: 'total_revenue' },
+    engine: 'context_graph',
+  },
+  '/api/v2/context/claim-relations/formalize': {
+    relation: {
+      predicate: 'equals',
+      argumentIds: ['a', 'b'],
+      argumentsResolved: true,
+    },
+    formalized: true,
+    recognised: ['equals', 'changed_by'],
+    engine: 'context_graph',
+  },
   '/api/v2/context/research-runs': {
     run: {
       id: '11111111-1111-1111-1111-111111111111',
@@ -711,6 +730,32 @@ test('every tool round-trips through the real server against the API', async (t)
     const listed = await call('list_metric_definitions', { metric: 'total_revenue' });
     assert.equal(seen.at(-1).path, '/api/v2/context/metric-definitions');
     assert.match(listed, /Count:\*\* 1/);
+  });
+
+  await t.test('claim_structure and formalize tools hit C1 routes', async () => {
+    const tier = await call('claim_structure_tier', {
+      assertion: { text: 'ARR is $10m', scope: { metric: 'ARR' } },
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/claim-structure/tier');
+    assert.match(tier, /Tier:\*\* 2/);
+
+    const resolved = await call('claim_structure_resolve_definition', {
+      metric: 'total_revenue',
+      knowledge_as_of: '2024-01-01',
+      effective_at: '2024-01-01',
+      catalog: [{ revisionId: 'def-1-r1', metric: 'total_revenue' }],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/claim-structure/resolve-definition');
+    assert.match(resolved, /Kind:\*\* definition/);
+
+    const formalized = await call('formalize_claim_relation', {
+      predicate: 'equals',
+      argument_ids: ['a', 'b'],
+      arguments_resolved: true,
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/claim-relations/formalize');
+    assert.match(formalized, /Formalized:\*\* yes/);
+    assert.match(formalized, /Predicate:\*\* equals/);
   });
 
   await t.test('research run create/get/checkpoint hit C3 routes', async () => {

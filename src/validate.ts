@@ -29,6 +29,9 @@ import type {
   ReserveResearchBudgetResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
+  ClaimStructureTierResponse,
+  ClaimStructureResolveDefinitionResponse,
+  FormalizeClaimRelationResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -494,6 +497,64 @@ export function validateFormalRevenueBridge(
     status,
     sum: typeof root.sum === 'string' ? root.sum : undefined,
     reason: typeof root.reason === 'string' ? root.reason : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateClaimStructureTier(
+  raw: unknown,
+): ClaimStructureTierResponse {
+  const root = requireObject(raw, 'ClaimStructureTier');
+  const tier = root.tier;
+  if (tier !== 1 && tier !== 2 && tier !== 3) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `ClaimStructureTier.tier invalid: ${String(tier)}`,
+    );
+  }
+  return {
+    tier,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateClaimStructureResolveDefinition(
+  raw: unknown,
+): ClaimStructureResolveDefinitionResponse {
+  const root = requireObject(raw, 'ClaimStructureResolveDefinition');
+  const kind = requireString(root, 'kind', 'ClaimStructureResolveDefinition');
+  if (kind !== 'definition' && kind !== 'ambiguity') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `ClaimStructureResolveDefinition.kind invalid: ${kind}`,
+    );
+  }
+  return {
+    kind,
+    result: root.result,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateFormalizeClaimRelation(
+  raw: unknown,
+): FormalizeClaimRelationResponse {
+  const root = requireObject(raw, 'FormalizeClaimRelation');
+  let relation: FormalizeClaimRelationResponse['relation'] = null;
+  if (root.relation !== null && root.relation !== undefined) {
+    const rel = requireObject(root.relation, 'FormalizeClaimRelation.relation');
+    relation = {
+      predicate: requireString(rel, 'predicate', 'relation'),
+      argumentIds: Array.isArray(rel.argumentIds)
+        ? (rel.argumentIds as string[])
+        : [],
+      argumentsResolved: rel.argumentsResolved === true,
+    };
+  }
+  return {
+    relation,
+    formalized: root.formalized === true,
+    recognised: Array.isArray(root.recognised) ? (root.recognised as string[]) : [],
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

@@ -35,6 +35,9 @@ import {
   formatReserveResearchBudget,
   formatFormalResolutionState,
   formatFormalRevenueBridge,
+  formatClaimStructureTier,
+  formatClaimStructureResolveDefinition,
+  formatFormalizeClaimRelation,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -86,6 +89,9 @@ import {
   validateReserveResearchBudget,
   validateFormalResolutionState,
   validateFormalRevenueBridge,
+  validateClaimStructureTier,
+  validateClaimStructureResolveDefinition,
+  validateFormalizeClaimRelation,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -694,6 +700,94 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateListMetricDefinitions(raw);
     return ok(
       formatListMetricDefinitions(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  claim_structure_tier: async (args, client) => {
+    if (!args?.assertion || typeof args.assertion !== 'object' || Array.isArray(args.assertion)) {
+      throw new ToolFailure('invalid_argument', 'assertion object is required');
+    }
+    const raw = await wrapApi(
+      client.claimStructureTier({
+        assertion: args.assertion as Record<string, unknown>,
+        definition:
+          args?.definition === null
+            ? null
+            : args?.definition && typeof args.definition === 'object' && !Array.isArray(args.definition)
+              ? (args.definition as Record<string, unknown>)
+              : undefined,
+        ambiguity:
+          args?.ambiguity === null
+            ? null
+            : args?.ambiguity && typeof args.ambiguity === 'object' && !Array.isArray(args.ambiguity)
+              ? (args.ambiguity as Record<string, unknown>)
+              : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateClaimStructureTier(raw);
+    return ok(
+      formatClaimStructureTier(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  claim_structure_resolve_definition: async (args, client) => {
+    if (
+      typeof args?.metric !== 'string' ||
+      typeof args?.knowledge_as_of !== 'string' ||
+      typeof args?.effective_at !== 'string' ||
+      !Array.isArray(args?.catalog)
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'metric, knowledge_as_of, effective_at, and catalog are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.claimStructureResolveDefinition({
+        metric: args.metric,
+        knowledge_as_of: args.knowledge_as_of,
+        effective_at: args.effective_at,
+        catalog: args.catalog as Record<string, unknown>[],
+        decision:
+          args?.decision === null
+            ? null
+            : args?.decision && typeof args.decision === 'object' && !Array.isArray(args.decision)
+              ? (args.decision as Record<string, unknown>)
+              : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateClaimStructureResolveDefinition(raw);
+    return ok(
+      formatClaimStructureResolveDefinition(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  formalize_claim_relation: async (args, client) => {
+    if (typeof args?.predicate !== 'string' || !Array.isArray(args?.argument_ids)) {
+      throw new ToolFailure('invalid_argument', 'predicate and argument_ids are required');
+    }
+    if (typeof args?.arguments_resolved !== 'boolean') {
+      throw new ToolFailure('invalid_argument', 'arguments_resolved is required');
+    }
+    const raw = await wrapApi(
+      client.formalizeClaimRelation({
+        predicate: args.predicate,
+        argument_ids: args.argument_ids as string[],
+        arguments_resolved: args.arguments_resolved,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateFormalizeClaimRelation(raw);
+    return ok(
+      formatFormalizeClaimRelation(validated),
       validated as unknown as Record<string, unknown>,
     );
   },

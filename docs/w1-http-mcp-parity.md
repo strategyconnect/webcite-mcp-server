@@ -34,6 +34,9 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `list_claim_relations` | `GET /api/v2/context/claim-relations` | predicate?, claim_revision_id? | relations + recognised | auth | 0 | tenant catalog |
 | `create_metric_definition` | `POST /api/v2/context/metric-definitions` | definition | revisionId + contentHash | duplicate revision conflict | 0 | definition revision |
 | `list_metric_definitions` | `GET /api/v2/context/metric-definitions` | metric? | definitions[] | auth | 0 | tenant catalog |
+| `claim_structure_tier` | `POST /api/v2/context/claim-structure/tier` | assertion (+ definition/ambiguity) | tier 1\|2\|3 | auth / missing assertion | 0 | — |
+| `claim_structure_resolve_definition` | `POST /api/v2/context/claim-structure/resolve-definition` | metric, knowledge_as_of, effective_at, catalog | kind + result | auth / missing fields | 0 | definition revision / ambiguity |
+| `formalize_claim_relation` | `POST /api/v2/context/claim-relations/formalize` | predicate, argument_ids, arguments_resolved | relation + formalized | unrecognised → formalized:false | 0 | — |
 | `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget | run | auth | 0 | research scope |
 | `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404 | 0 | run id |
 | `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale | 0 | checkpoint CAS |
