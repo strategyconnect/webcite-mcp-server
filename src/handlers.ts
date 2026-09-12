@@ -912,7 +912,7 @@ export const handlers: Record<string, ToolHandler> = {
     if (!Array.isArray(args?.occurrences)) {
       throw new ToolFailure('invalid_argument', 'occurrences must be an array', {
         actionable:
-          'Provide occurrences[] with recognition_state, non-blank unpadded raw, and an explicit method (never invent method=native).',
+          'Provide occurrences[] with recognition_state, non-blank unpadded raw, and an explicit unpadded method (never invent method=native; never trim-launder padded labels).',
       });
     }
     // Pass rows through unchanged — do not default omitted method to native.

@@ -894,7 +894,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank or surrounding-padded raw/non-null blank or surrounding-padded normalized_decimal/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank or surrounding-padded raw/non-null blank or surrounding-padded normalized_decimal/invalid missing or surrounding-padded method/interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native; never trim-launder padded labels). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -903,7 +903,7 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
         occurrences: {
           type: 'array',
           description:
-            'NumericOccurrence rows. recognition_state + non-blank unpadded raw + valid method required for complete coverage (method is never defaulted to native). Non-blank unpadded id + fragment_id required (whitespace/padded → missing_occurrence_identity). Blank/padded raw → missing_occurrence_raw.',
+            'NumericOccurrence rows. recognition_state + non-blank unpadded raw + valid unpadded method required for complete coverage (method is never defaulted to native). Non-blank unpadded id + fragment_id required (whitespace/padded → missing_occurrence_identity). Blank/padded raw → missing_occurrence_raw. Padded method/interpretation/recognition → invalid_occurrence_method|interpretation|recognition_state.',
           items: {
             type: 'object',
             properties: {
@@ -948,20 +948,26 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
                   'formula',
                   'unknown',
                 ],
+                description:
+                  'Label; surrounding-padded (value !== trim) → invalid_occurrence_interpretation (#300).',
               },
               method: {
                 type: 'string',
                 enum: ['native', 'ocr', 'asr', 'human', 'chart_estimate'],
                 description:
-                  'Capture method. Omit/blank/invalid → invalid_occurrence_method (HTTP never invents native).',
+                  'Capture method. Omit/blank/invalid/padded → invalid_occurrence_method (HTTP never invents native; never trim-launder).',
               },
               recognition_state: {
                 type: 'string',
                 enum: ['read', 'uncertain', 'unreadable'],
+                description:
+                  'Recognition; surrounding-padded → invalid_recognition_state (#300).',
               },
               recognitionState: {
                 type: 'string',
                 enum: ['read', 'uncertain', 'unreadable'],
+                description:
+                  'Alias of recognition_state; surrounding-padded → invalid_recognition_state.',
               },
             },
           },

@@ -635,9 +635,11 @@ export interface NumberInventoryOccurrenceInput {
   normalized_decimal?: string | null;
   /** Alias of normalized_decimal; non-null blank/padded → blank_normalized_decimal. */
   normalizedDecimal?: string | null;
+  /** Surrounding-padded → invalid_occurrence_interpretation (#300); never trim-launder. */
   interpretation?: NumberOccurrenceInterpretation | string;
-  /** Required for complete coverage; omit/blank/invalid → number_inventory_incomplete (never defaulted to native). */
+  /** Required for complete coverage; omit/blank/invalid/padded → number_inventory_incomplete (never defaulted to native; #300 pad honesty). */
   method?: NumberOccurrenceMethod | string;
+  /** Surrounding-padded → invalid_recognition_state (#300); never trim-launder. */
   recognition_state?: NumberRecognitionState;
   recognitionState?: NumberRecognitionState;
 }
