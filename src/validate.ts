@@ -33,6 +33,10 @@ import type {
   GetOperationAvailabilityResponse,
   SettleOperationResponse,
   ReleaseOperationResponse,
+  RecordOperationAttemptResponse,
+  ResolveOperationAttemptResponse,
+  LinkOperationConsumerResponse,
+  GetConsumerUsageResponse,
   ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
@@ -561,6 +565,62 @@ export function validateReleaseOperation(raw: unknown): ReleaseOperationResponse
   const operation = requireObject(root.operation, 'ReleaseOperation.operation');
   return {
     operation,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateRecordOperationAttempt(
+  raw: unknown,
+): RecordOperationAttemptResponse {
+  const root = requireObject(raw, 'RecordOperationAttempt');
+  const attempt = requireObject(root.attempt, 'RecordOperationAttempt.attempt');
+  return {
+    attempt,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateResolveOperationAttempt(
+  raw: unknown,
+): ResolveOperationAttemptResponse {
+  const root = requireObject(raw, 'ResolveOperationAttempt');
+  const attempt = requireObject(root.attempt, 'ResolveOperationAttempt.attempt');
+  return {
+    attempt,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateLinkOperationConsumer(
+  raw: unknown,
+): LinkOperationConsumerResponse {
+  const root = requireObject(raw, 'LinkOperationConsumer');
+  const consumer = requireObject(root.consumer, 'LinkOperationConsumer.consumer');
+  return {
+    consumer,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateGetConsumerUsage(raw: unknown): GetConsumerUsageResponse {
+  const root = requireObject(raw, 'GetConsumerUsage');
+  const usage = requireObject(root.usage, 'GetConsumerUsage.usage');
+  if (!Array.isArray(usage.operationIds)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'GetConsumerUsage.usage.operationIds must be an array',
+    );
+  }
+  return {
+    usage: {
+      operationIds: usage.operationIds as string[],
+      knownCredits:
+        typeof usage.knownCredits === 'number' || usage.knownCredits === null
+          ? (usage.knownCredits as number | null)
+          : null,
+      completeness:
+        typeof usage.completeness === 'string' ? usage.completeness : 'unknown',
+    },
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

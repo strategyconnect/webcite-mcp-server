@@ -52,6 +52,10 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `get_operation_availability` | `GET /api/v2/context/operations/:operationId/availability` | operation_id | root budget availability | 404 | 0 | root operation |
 | `settle_operation` | `POST /api/v2/context/operations/:operationId/settle` | operation_id, settled_credits (number\|null) | operation | already settled → conflict | 0 | evidence operation |
 | `release_operation` | `POST /api/v2/context/operations/:operationId/release` | operation_id | operation | dispatched → conflict | 0 | evidence operation |
+| `record_operation_attempt` | `POST /api/v2/context/operations/:operationId/attempts` | operation_id, provider, model? | attempt | auth | 0 | evidence attempt |
+| `resolve_operation_attempt` | `POST /api/v2/context/attempts/:attemptId/resolve` | attempt_id, state, price? | attempt | already resolved → conflict | 0 | evidence attempt |
+| `link_operation_consumer` | `POST /api/v2/context/operations/:operationId/consumers` | operation_id, consumer_kind, consumer_id | consumer | auth | 0 | evidence consumer |
+| `get_consumer_usage` | `GET /api/v2/context/usage/consumer` | consumer_kind, consumer_id | usage | auth | 0 | settled operations |
 | `formal_resolution_state` | `POST /api/v2/context/formal/resolution-state` | proof/search flags | state | auth | 0 | — |
 | `formal_revenue_bridge` | `POST /api/v2/context/formal/revenue-bridge` | total + components | discharged/refused | scope mismatch refuses | 0 | exact decimals |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |

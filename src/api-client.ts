@@ -67,6 +67,14 @@ import type {
   SettleOperationResponse,
   ReleaseOperationOptions,
   ReleaseOperationResponse,
+  RecordOperationAttemptOptions,
+  RecordOperationAttemptResponse,
+  ResolveOperationAttemptOptions,
+  ResolveOperationAttemptResponse,
+  LinkOperationConsumerOptions,
+  LinkOperationConsumerResponse,
+  GetConsumerUsageOptions,
+  GetConsumerUsageResponse,
   ProofsAppliesOptions,
   ProofsAppliesResponse,
   FormalResolutionStateOptions,
@@ -705,6 +713,72 @@ export class WebCiteApiClient {
     return this.request(
       `/api/v2/context/operations/${encodeURIComponent(options.operation_id)}/release`,
       { method: 'POST', body: JSON.stringify({}) },
+    );
+  }
+
+  async recordOperationAttempt(
+    options: RecordOperationAttemptOptions,
+  ): Promise<RecordOperationAttemptResponse> {
+    const { operation_id, idempotency_key, ...body } = options;
+    return this.request(
+      `/api/v2/context/operations/${encodeURIComponent(operation_id)}/attempts`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          provider: body.provider,
+          model: body.model,
+          provider_idempotency_key: body.provider_idempotency_key,
+        }),
+      },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async resolveOperationAttempt(
+    options: ResolveOperationAttemptOptions,
+  ): Promise<ResolveOperationAttemptResponse> {
+    const { attempt_id, idempotency_key, ...body } = options;
+    return this.request(
+      `/api/v2/context/attempts/${encodeURIComponent(attempt_id)}/resolve`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          state: body.state,
+          failure_class: body.failure_class,
+          measurements: body.measurements,
+          price: body.price,
+        }),
+      },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async linkOperationConsumer(
+    options: LinkOperationConsumerOptions,
+  ): Promise<LinkOperationConsumerResponse> {
+    const { operation_id, idempotency_key, ...body } = options;
+    return this.request(
+      `/api/v2/context/operations/${encodeURIComponent(operation_id)}/consumers`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          consumer_kind: body.consumer_kind,
+          consumer_id: body.consumer_id,
+        }),
+      },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async getConsumerUsage(
+    options: GetConsumerUsageOptions,
+  ): Promise<GetConsumerUsageResponse> {
+    const params = new URLSearchParams();
+    params.set('consumer_kind', options.consumer_kind);
+    params.set('consumer_id', options.consumer_id);
+    return this.request(
+      `/api/v2/context/usage/consumer?${params.toString()}`,
+      { method: 'GET' },
     );
   }
 

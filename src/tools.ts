@@ -1245,6 +1245,81 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/release`,
     },
   },
   {
+    name: 'record_operation_attempt',
+    description: `Persist an EvidenceAttempt BEFORE dispatch so a lost outcome stays attributable (I4).
+
+Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        operation_id: { type: 'string' },
+        provider: { type: 'string' },
+        model: { type: ['string', 'null'] },
+        provider_idempotency_key: { type: ['string', 'null'] },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['operation_id', 'provider'],
+    },
+  },
+  {
+    name: 'resolve_operation_attempt',
+    description: `Resolve one attempt outcome (I4). Missing price stays unknown, never zero.
+
+Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        attempt_id: { type: 'string' },
+        state: {
+          type: 'string',
+          enum: ['succeeded', 'failed', 'outcome_unknown'],
+        },
+        failure_class: { type: ['string', 'null'] },
+        measurements: { type: 'object' },
+        price: {
+          type: ['object', 'null'],
+          properties: {
+            amount: { type: 'string' },
+            currency: { type: 'string' },
+            priceRevision: { type: 'string' },
+          },
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['attempt_id', 'state'],
+    },
+  },
+  {
+    name: 'link_operation_consumer',
+    description: `Link a consumer to an operation without re-charging the provider (I4).
+
+Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/consumers`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        operation_id: { type: 'string' },
+        consumer_kind: { type: 'string' },
+        consumer_id: { type: 'string' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['operation_id', 'consumer_kind', 'consumer_id'],
+    },
+  },
+  {
+    name: 'get_consumer_usage',
+    description: `Customer-credit usage for everything one consumer consumed (I4).
+
+Credits: 1. HTTP: GET /api/v2/context/usage/consumer`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        consumer_kind: { type: 'string' },
+        consumer_id: { type: 'string' },
+      },
+      required: ['consumer_kind', 'consumer_id'],
+    },
+  },
+  {
     name: 'formal_resolution_state',
     description: `Classify negative formal/search states without collapsing them (P4).
 
@@ -1458,6 +1533,10 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
     'get_operation_availability',
   'POST /api/v2/context/operations/:operationId/settle': 'settle_operation',
   'POST /api/v2/context/operations/:operationId/release': 'release_operation',
+  'POST /api/v2/context/operations/:operationId/attempts': 'record_operation_attempt',
+  'POST /api/v2/context/attempts/:attemptId/resolve': 'resolve_operation_attempt',
+  'POST /api/v2/context/operations/:operationId/consumers': 'link_operation_consumer',
+  'GET /api/v2/context/usage/consumer': 'get_consumer_usage',
   'POST /api/v2/context/formal/resolution-state': 'formal_resolution_state',
   'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',

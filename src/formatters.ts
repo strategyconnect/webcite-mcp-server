@@ -38,6 +38,10 @@ import type {
   GetOperationAvailabilityResponse,
   SettleOperationResponse,
   ReleaseOperationResponse,
+  RecordOperationAttemptResponse,
+  ResolveOperationAttemptResponse,
+  LinkOperationConsumerResponse,
+  GetConsumerUsageResponse,
   ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
@@ -773,6 +777,44 @@ export function formatReleaseOperation(result: ReleaseOperationResponse): string
   const state =
     typeof result.operation.state === 'string' ? result.operation.state : '(unknown)';
   return `# Release Operation\n\n**Id:** ${id}\n**State:** ${state}`;
+}
+
+export function formatRecordOperationAttempt(
+  result: RecordOperationAttemptResponse,
+): string {
+  const id =
+    typeof result.attempt.id === 'string' ? result.attempt.id : '(unknown)';
+  const provider =
+    typeof result.attempt.provider === 'string'
+      ? result.attempt.provider
+      : '(unknown)';
+  return `# Record Operation Attempt\n\n**Id:** ${id}\n**Provider:** ${provider}`;
+}
+
+export function formatResolveOperationAttempt(
+  result: ResolveOperationAttemptResponse,
+): string {
+  const id =
+    typeof result.attempt.id === 'string' ? result.attempt.id : '(unknown)';
+  const state =
+    typeof result.attempt.state === 'string' ? result.attempt.state : '(unknown)';
+  return `# Resolve Operation Attempt\n\n**Id:** ${id}\n**State:** ${state}`;
+}
+
+export function formatLinkOperationConsumer(
+  result: LinkOperationConsumerResponse,
+): string {
+  const id =
+    typeof result.consumer.id === 'string' ? result.consumer.id : '(unknown)';
+  const kind =
+    typeof result.consumer.consumerKind === 'string'
+      ? result.consumer.consumerKind
+      : '(unknown)';
+  return `# Link Operation Consumer\n\n**Id:** ${id}\n**Kind:** ${kind}`;
+}
+
+export function formatGetConsumerUsage(result: GetConsumerUsageResponse): string {
+  return `# Consumer Usage\n\n**Operations:** ${result.usage.operationIds.length}\n**Known credits:** ${result.usage.knownCredits ?? 'unknown'}\n**Completeness:** ${result.usage.completeness}`;
 }
 
 export function formatProofsApplies(result: ProofsAppliesResponse): string {

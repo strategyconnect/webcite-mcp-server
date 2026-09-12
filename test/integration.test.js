@@ -456,7 +456,7 @@ function startStub(options = {}) {
       }
 
       const operationMatch = url.pathname.match(
-        /^\/api\/v2\/context\/operations\/([^/]+)(?:\/(availability|settle|release))?$/,
+        /^\/api\/v2\/context\/operations\/([^/]+)(?:\/(availability|settle|release|attempts|consumers))?$/,
       );
       if (operationMatch) {
         const operationId = operationMatch[1];
@@ -507,6 +507,37 @@ function startStub(options = {}) {
           );
           return;
         }
+        if (action === 'attempts') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              attempt: {
+                id: 'att-1',
+                operationId,
+                provider: 'openai',
+                sequence: 1,
+                state: 'dispatched',
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        if (action === 'consumers') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              consumer: {
+                id: 'cons-1',
+                operationId,
+                consumerKind: 'research_run',
+                consumerId: 'run-1',
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
           JSON.stringify({
@@ -515,6 +546,39 @@ function startStub(options = {}) {
               kind: 'research_run',
               rootOperationId: null,
               maxCredits: 100,
+            },
+            engine: 'context_graph',
+          }),
+        );
+        return;
+      }
+
+      const attemptResolveMatch = url.pathname.match(
+        /^\/api\/v2\/context\/attempts\/([^/]+)\/resolve$/,
+      );
+      if (attemptResolveMatch) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            attempt: {
+              id: attemptResolveMatch[1],
+              state: 'succeeded',
+              provider: 'openai',
+            },
+            engine: 'context_graph',
+          }),
+        );
+        return;
+      }
+
+      if (url.pathname === '/api/v2/context/usage/consumer') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            usage: {
+              operationIds: ['op-1'],
+              knownCredits: 2,
+              completeness: 'complete',
             },
             engine: 'context_graph',
           }),
@@ -1047,6 +1111,35 @@ test('every tool round-trips through the real server against the API', async (t)
     const released = await call('release_operation', { operation_id: 'op-child-2' });
     assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-child-2/release');
     assert.match(released, /State:\*\* released/);
+
+    const recorded = await call('record_operation_attempt', {
+      operation_id: 'op-child-1',
+      provider: 'openai',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-child-1/attempts');
+    assert.match(recorded, /Provider:\*\* openai/);
+
+    const resolved = await call('resolve_operation_attempt', {
+      attempt_id: 'att-1',
+      state: 'succeeded',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/attempts/att-1/resolve');
+    assert.match(resolved, /State:\*\* succeeded/);
+
+    const linked = await call('link_operation_consumer', {
+      operation_id: 'op-child-1',
+      consumer_kind: 'research_run',
+      consumer_id: 'run-1',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-child-1/consumers');
+    assert.match(linked, /Kind:\*\* research_run/);
+
+    const usage = await call('get_consumer_usage', {
+      consumer_kind: 'research_run',
+      consumer_id: 'run-1',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/usage/consumer');
+    assert.match(usage, /Known credits:\*\* 2/);
 
     const proof = await call('proofs_applies', {
       status: 'proved',
