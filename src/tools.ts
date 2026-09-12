@@ -537,7 +537,7 @@ export const CONTEXT_TOOLS: ToolDefinition[] = [
     name: 'get_answer',
     description: `Resolve an immutable answer revision by ID. Returns the sealed answer text, packet identities, justifications, spans and presentation numbers.
 
-Does not regenerate evidence or call a model — retrieval only. Unknown or unauthorized IDs fail explicitly.
+Does not regenerate evidence or call a model — retrieval only. Unknown or unauthorized IDs fail explicitly. Blank/whitespace/surrounding-padded revision_id → incomplete_answer_revision_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed answer).
 
 Credits: 1. HTTP: GET /api/v2/answers/:revisionId`,
     inputSchema: {
@@ -545,7 +545,8 @@ Credits: 1. HTTP: GET /api/v2/answers/:revisionId`,
       properties: {
         revision_id: {
           type: 'string',
-          description: 'Immutable answer revision ID (not the logical history id alone).',
+          description:
+            'Non-blank unpadded immutable answer revision ID. Blank/whitespace/surrounding-padded → incomplete_answer_revision_identity (never trim-launder).',
         },
       },
       required: ['revision_id'],
@@ -553,7 +554,7 @@ Credits: 1. HTTP: GET /api/v2/answers/:revisionId`,
   },
   {
     name: 'get_evidence_packet',
-    description: `Resolve a sealed evidence packet by ID. Returns the frozen packet, refs and presentation numbers without re-running extraction or support checks.
+    description: `Resolve a sealed evidence packet by ID. Returns the frozen packet, refs and presentation numbers without re-running extraction or support checks. Blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet).
 
 Credits: 1. HTTP: GET /api/v2/evidence-packets/:id`,
     inputSchema: {
@@ -561,7 +562,8 @@ Credits: 1. HTTP: GET /api/v2/evidence-packets/:id`,
       properties: {
         packet_id: {
           type: 'string',
-          description: 'Sealed evidence packet ID.',
+          description:
+            'Non-blank unpadded sealed evidence packet ID. Blank/whitespace/surrounding-padded → incomplete_packet_identity (never trim-launder).',
         },
       },
       required: ['packet_id'],
