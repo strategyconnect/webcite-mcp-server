@@ -1944,6 +1944,91 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /Index source:\*\* catalog/);
   });
 
+  await t.test(
+    'resolve_seeds surrounding-padded metric filter → padded_resolve_filter',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          filters: { metric: ' revenue ', period: 'FY24' },
+          index: [
+            {
+              id: 'n1',
+              scope: { metric: 'revenue', period: 'FY24' },
+              terms: ['revenue'],
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_filter');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a scope_tuple',
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_seeds equal-pad filters → padded_resolve_filter (never pin)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          filters: {
+            entityId: ' acme ',
+            metric: ' revenue ',
+            period: ' FY24 ',
+          },
+          index: [
+            {
+              id: 'padded-full',
+              scope: {
+                entityId: ' acme ',
+                metric: ' revenue ',
+                period: ' FY24 ',
+              },
+              terms: ['revenue'],
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_filter');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_seeds whitespace-only filter → padded_resolve_filter',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          filters: { metric: '  ', period: 'FY24' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_filter');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('expand_seeds posts authorized graph and returns expanded ids', async () => {
     const text = await call('expand_seeds', {
       seeds: ['a'],
