@@ -1310,6 +1310,11 @@ export interface FormalResolutionStateOptions {
   proof_timed_out?: boolean;
   counterexample_found?: boolean;
   checked_negation?: boolean;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle /
+   * formal_eligibility). Does not touch formal_check Lean source trailing newlines.
+   */
   idempotency_key?: string;
 }
 

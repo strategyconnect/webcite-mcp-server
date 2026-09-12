@@ -765,17 +765,17 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * workflow publish-or-run / provider-cost / research create-or-checkpoint /
  * evaluation-compare / assess_support / compare_assertions /
  * find_contradictions / assess_meaning / formal_eligibility / query_context /
- * change-impact / formal_check replay pin — refuse before HTTP (same
- * identityComplete honesty as required open_operation_root /
+ * change-impact / formal_check / formal_resolution_state replay pin — refuse
+ * before HTTP (same identityComplete honesty as required open_operation_root /
  * reserve_operation idempotency_key after #83/#88). Shared by settle_operation
  * (#92), link_operation_consumer (#94), record/resolve_operation_attempt (#95),
  * publish_context_workflow / run_saved_workflow (#97), create_evidence_packet
  * (#98), get_provider_cost (#99), create/checkpoint_research_run (#100),
  * compare_evaluations (#101), assess_support (#102), find_contradictions (#104),
  * compare_assertions (#105), assess_meaning (#103), get_change_impact (#106),
- * formal_eligibility (#107), query_context (#108), and formal_check (W3/P2).
- * Omit when not a string. Does not trim or rewrite formal_check Lean source
- * trailing newlines.
+ * formal_eligibility (#107), query_context (#108), formal_check (#110), and
+ * formal_resolution_state. Omit when not a string. Does not trim or rewrite
+ * formal_check Lean source trailing newlines.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -789,7 +789,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check/formal_resolution_state replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -3041,6 +3041,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   formal_resolution_state: async (args, client) => {
+    // W3/P4 after #92/#107: optional padded idempotency_key never certifies a
+    // formal-resolution-state replay pin (same helper as formal_eligibility).
+    // formal_check Lean source trailing newlines remain untouched.
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.formalResolutionState({
         missing_operands:

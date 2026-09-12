@@ -1884,7 +1884,7 @@ Credits: 1. HTTP: POST /api/v2/context/usage/provider-cost`,
   },
   {
     name: 'formal_resolution_state',
-    description: `Classify negative formal/search states without collapsing them (P4).
+    description: `Classify negative formal/search states without collapsing them (P4). Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified formal-resolution-state replay pin; same honesty as settle/formal_eligibility #92/#107). Lean formal_check source trailing newlines are out of scope for this tool.
 
 Credits: 1. HTTP: POST /api/v2/context/formal/resolution-state`,
     inputSchema: {
@@ -1896,7 +1896,11 @@ Credits: 1. HTTP: POST /api/v2/context/formal/resolution-state`,
         proof_timed_out: { type: 'boolean' },
         counterexample_found: { type: 'boolean' },
         checked_negation: { type: 'boolean' },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a formal-resolution-state replay pin).',
+        },
       },
     },
   },
