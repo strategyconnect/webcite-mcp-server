@@ -576,10 +576,10 @@ export const handlers: Record<string, ToolHandler> = {
       typeof args?.answer_revision_id === 'string' && args.answer_revision_id.trim()
         ? args.answer_revision_id.trim()
         : undefined;
+    // Backend #264: forward blank/whitespace changed_ids as-is — never strip into
+    // a silent empty list that looks like certified no-impact.
     const changedIds = Array.isArray(args?.changed_ids)
-      ? (args.changed_ids as unknown[]).filter(
-          (id): id is string => typeof id === 'string' && id.trim().length > 0,
-        )
+      ? (args.changed_ids as unknown[]).filter((id): id is string => typeof id === 'string')
       : undefined;
     if (!answerRevisionId && (!changedIds || changedIds.length === 0)) {
       throw new ToolFailure(
@@ -587,7 +587,7 @@ export const handlers: Record<string, ToolHandler> = {
         'answer_revision_id or changed_ids is required',
         {
           actionable:
-            'Pass answer_revision_id for freshness, or non-empty changed_ids for packet impact.',
+            'Pass answer_revision_id for freshness, or changed_ids for packet impact (blank/whitespace ids fail closed as incomplete_changed_ids).',
         },
       );
     }

@@ -344,7 +344,7 @@ export function validateChangeImpact(raw: unknown): ChangeImpactResponse {
         'ChangeImpact.packet_impact.coverage must be complete|unknown',
         {
           actionable:
-            'Incomplete packet impact must fail closed (change_impact_incomplete), not ship unknown coverage as certified empty.',
+            'Incomplete packet impact (incomplete_changed_ids / incomplete graph / missing sealed packet) must fail closed as change_impact_incomplete, not ship unknown coverage as certified empty.',
         },
       );
     }
@@ -360,13 +360,35 @@ export function validateChangeImpact(raw: unknown): ChangeImpactResponse {
         'ChangeImpact.packet_impact.unresolved must be an array',
       );
     }
+    const unresolvedReasons = p.unresolved.filter((u): u is string => typeof u === 'string');
+    // Backend #264: blank/whitespace changed ids must never certify as complete.
+    if (unresolvedReasons.includes('incomplete_changed_ids')) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.unresolved includes incomplete_changed_ids',
+        {
+          actionable:
+            'HTTP should have refused with change_impact_incomplete:incomplete_changed_ids; do not invent certified no-impact from blank roots.',
+        },
+      );
+    }
     if (coverage === 'unknown') {
       throw new ToolFailure(
         'invalid_api_output',
         'ChangeImpact.packet_impact.coverage unknown must not be accepted as success',
         {
           actionable:
-            'HTTP should have refused with change_impact_incomplete; do not invent certified no-impact.',
+            'HTTP should have refused with change_impact_incomplete (e.g. incomplete_changed_ids); do not invent certified no-impact.',
+        },
+      );
+    }
+    if (unresolvedReasons.length > 0) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.unresolved must be empty when coverage is complete',
+        {
+          actionable:
+            'Incomplete packet impact must fail closed as change_impact_incomplete; do not certify residual unresolved reasons.',
         },
       );
     }
@@ -377,7 +399,7 @@ export function validateChangeImpact(raw: unknown): ChangeImpactResponse {
         (id): id is string => typeof id === 'string',
       ),
       inWindow,
-      unresolved: p.unresolved.filter((u): u is string => typeof u === 'string'),
+      unresolved: unresolvedReasons,
       coverage,
     };
   }
