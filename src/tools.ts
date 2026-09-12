@@ -1346,13 +1346,19 @@ Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
   },
   {
     name: 'expand_seeds',
-    description: `Bounded authorized seed expansion (C2). Unauthorized intermediates cannot be traversed; hops are capped at 2.
+    description: `Bounded authorized seed expansion (C2). Unauthorized intermediates cannot be traversed; hops are capped at 2. Blank/whitespace/surrounding-padded seeds, edge from/to, or allowed ids fail closed (incomplete_expand_seed_identity — equal pads never trim-launder into a certified authorized expansion; same honesty as resolve_seeds #311 / W3 #264/#279).
 
 Credits: 1. HTTP: POST /api/v2/context/expand-seeds`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        seeds: { type: 'array', items: { type: 'string' }, minItems: 1 },
+        seeds: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          description:
+            'Seed node ids. Blank/whitespace/surrounding-padded → incomplete_expand_seed_identity (never trim-launder).',
+        },
         edges: {
           type: 'array',
           items: {
@@ -1363,8 +1369,15 @@ Credits: 1. HTTP: POST /api/v2/context/expand-seeds`,
             },
             required: ['from', 'to'],
           },
+          description:
+            'Authorized edges. Blank/whitespace/surrounding-padded from/to → incomplete_expand_seed_identity (never trim-launder).',
         },
-        allowed: { type: 'array', items: { type: 'string' } },
+        allowed: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Allowed node ids. Blank/whitespace/surrounding-padded → incomplete_expand_seed_identity (never trim-launder).',
+        },
         hops: { type: 'number', description: 'Requested hops; kernel caps at 2' },
         idempotency_key: { type: 'string' },
       },

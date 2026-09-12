@@ -919,8 +919,11 @@ export interface ResolveSeedsResponse {
 }
 
 export interface ExpandSeedsOptions {
+  /** Seed node ids. Blank/whitespace/surrounding-padded → incomplete_expand_seed_identity. */
   seeds: string[];
+  /** Authorized edges. Padded from/to → incomplete_expand_seed_identity. */
   edges: Array<{ from: string; to: string }>;
+  /** Allowed node ids. Blank/whitespace/surrounding-padded → incomplete_expand_seed_identity. */
   allowed: string[];
   hops?: number;
   idempotency_key?: string;
