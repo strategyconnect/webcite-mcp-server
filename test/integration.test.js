@@ -460,6 +460,81 @@ function startStub(options = {}) {
         }
       }
 
+      // Dynamic change-impact: incomplete packet dependency fails closed (400)
+      if (url.pathname === '/api/v2/context/change-impact' && body) {
+        try {
+          const parsed = JSON.parse(body);
+          const changedIds = Array.isArray(parsed?.changed_ids) ? parsed.changed_ids : [];
+          if (changedIds.length > 0) {
+            const links = parsed?.links;
+            const packetId =
+              typeof parsed?.packet_id === 'string' ? parsed.packet_id.trim() : '';
+            const unresolved = [];
+            if (!Array.isArray(links)) {
+              unresolved.push('missing_dependency_graph');
+            } else if (
+              links.some(
+                (link) =>
+                  !link ||
+                  typeof link.source_id !== 'string' ||
+                  !link.source_id.trim() ||
+                  typeof link.consumer_id !== 'string' ||
+                  !link.consumer_id.trim(),
+              )
+            ) {
+              unresolved.push('incomplete_dependency_graph');
+            }
+            if (packetId === 'missing-packet') {
+              unresolved.push('missing_sealed_packet');
+            }
+            if (parsed?.window && parsed.observed_at_ms === undefined) {
+              unresolved.push('missing_observation_time');
+            }
+            if (unresolved.length) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  message: `change_impact_incomplete: ${unresolved.join(',')}`,
+                  statusCode: 400,
+                }),
+              );
+              return;
+            }
+            const consumers = [];
+            for (const id of changedIds) {
+              for (const link of links) {
+                if (link.source_id === id) consumers.push(link.consumer_id);
+              }
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                ...(typeof parsed.answer_revision_id === 'string'
+                  ? {
+                      answer_revision_id: parsed.answer_revision_id,
+                      freshness: ROUTES['/api/v2/context/change-impact'].freshness,
+                    }
+                  : {}),
+                ...(packetId ? { packet_id: packetId } : {}),
+                packet_impact: {
+                  affectedConsumerIds: [...new Set(consumers)],
+                  inWindow: parsed.window
+                    ? parsed.observed_at_ms >= parsed.window.start_ms &&
+                      parsed.observed_at_ms < parsed.window.end_ms
+                    : null,
+                  unresolved: [],
+                  coverage: 'complete',
+                },
+                engine: 'context_graph',
+              }),
+            );
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
+      }
+
       // Dynamic number inventory: incomplete rows fail closed (400)
       if (url.pathname === '/api/v2/context/numbers/inventory' && body) {
         try {
@@ -1488,6 +1563,24 @@ test('every tool round-trips through the real server against the API', async (t)
     const impact = await call('get_change_impact', { answer_revision_id: 'answer-v1' });
     assert.equal(seen.at(-1).path, '/api/v2/context/change-impact');
     assert.match(impact, /Change Impact/);
+    assert.match(impact, /Freshness coverage:\*\* complete/);
+  });
+
+  await t.test('get_change_impact packet path posts changed_ids and returns packet_impact', async () => {
+    const text = await call('get_change_impact', {
+      changed_ids: ['src-a'],
+      packet_id: 'packet-1',
+      links: [{ source_id: 'src-a', consumer_id: 'claim-1' }],
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/change-impact');
+    assert.equal(req.method, 'POST');
+    assert.deepEqual(req.body.changed_ids, ['src-a']);
+    assert.equal(req.body.packet_id, 'packet-1');
+    assert.equal(req.body.links[0].consumer_id, 'claim-1');
+    assert.match(text, /Packet impact coverage:\*\* complete/);
+    assert.match(text, /Affected consumers:\*\* 1/);
+    assert.match(text, /claim-1/);
   });
 
   await t.test('eval_catalog denies private gold on the wire', async () => {
@@ -1761,6 +1854,30 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.isError, true);
     assert.equal(res.result.structuredContent.code, 'api_error');
     assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+  });
+
+  await t.test('get_change_impact missing both paths → invalid_argument', async () => {
+    const res = await rpc('tools/call', {
+      name: 'get_change_impact',
+      arguments: {},
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'invalid_argument');
+    assert.match(res.result.content[0].text, /answer_revision_id or changed_ids/);
+  });
+
+  await t.test('get_change_impact incomplete packet → api_error fail-closed', async () => {
+    const res = await rpc('tools/call', {
+      name: 'get_change_impact',
+      arguments: {
+        changed_ids: ['src-a'],
+        packet_id: 'missing-packet',
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /change_impact_incomplete/);
+    assert.match(res.result.content[0].text, /missing_dependency_graph|missing_sealed_packet/);
   });
 
   await t.test('invalid API output → isError invalid_api_output', async () => {

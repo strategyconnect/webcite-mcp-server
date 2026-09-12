@@ -572,10 +572,82 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_change_impact: async (args, client) => {
-    const answerRevisionId = requireString(args, 'answer_revision_id');
+    const answerRevisionId =
+      typeof args?.answer_revision_id === 'string' && args.answer_revision_id.trim()
+        ? args.answer_revision_id.trim()
+        : undefined;
+    const changedIds = Array.isArray(args?.changed_ids)
+      ? (args.changed_ids as unknown[]).filter(
+          (id): id is string => typeof id === 'string' && id.trim().length > 0,
+        )
+      : undefined;
+    if (!answerRevisionId && (!changedIds || changedIds.length === 0)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'answer_revision_id or changed_ids is required',
+        {
+          actionable:
+            'Pass answer_revision_id for freshness, or non-empty changed_ids for packet impact.',
+        },
+      );
+    }
+
+    let links: Array<{ source_id: string; consumer_id: string }> | undefined;
+    if (args?.links !== undefined) {
+      if (!Array.isArray(args.links)) {
+        throw new ToolFailure('invalid_argument', 'links must be an array');
+      }
+      links = [];
+      for (const [i, link] of args.links.entries()) {
+        if (!link || typeof link !== 'object' || Array.isArray(link)) {
+          throw new ToolFailure('invalid_argument', `links[${i}] must be an object`);
+        }
+        const row = link as Record<string, unknown>;
+        const sourceId = typeof row.source_id === 'string' ? row.source_id.trim() : '';
+        const consumerId = typeof row.consumer_id === 'string' ? row.consumer_id.trim() : '';
+        if (!sourceId || !consumerId) {
+          throw new ToolFailure(
+            'invalid_argument',
+            `links[${i}] requires non-empty source_id and consumer_id`,
+            {
+              actionable:
+                'Blank link endpoints fail closed on HTTP as change_impact_incomplete; supply complete endpoints.',
+            },
+          );
+        }
+        links.push({ source_id: sourceId, consumer_id: consumerId });
+      }
+    }
+
+    let window: { start_ms: number; end_ms: number } | undefined;
+    if (args?.window !== undefined) {
+      if (!args.window || typeof args.window !== 'object' || Array.isArray(args.window)) {
+        throw new ToolFailure('invalid_argument', 'window must be an object');
+      }
+      const w = args.window as Record<string, unknown>;
+      if (typeof w.start_ms !== 'number' || typeof w.end_ms !== 'number') {
+        throw new ToolFailure('invalid_argument', 'window requires start_ms and end_ms numbers');
+      }
+      window = { start_ms: w.start_ms, end_ms: w.end_ms };
+    }
+
+    const observedAtMs =
+      args?.observed_at_ms === null
+        ? null
+        : typeof args?.observed_at_ms === 'number'
+          ? args.observed_at_ms
+          : undefined;
+
     const raw = await wrapApi(
       client.getChangeImpact({
-        answer_revision_id: answerRevisionId,
+        ...(answerRevisionId ? { answer_revision_id: answerRevisionId } : {}),
+        ...(typeof args?.packet_id === 'string' && args.packet_id.trim()
+          ? { packet_id: args.packet_id.trim() }
+          : {}),
+        ...(changedIds && changedIds.length > 0 ? { changed_ids: changedIds } : {}),
+        ...(links ? { links } : {}),
+        ...(observedAtMs !== undefined ? { observed_at_ms: observedAtMs } : {}),
+        ...(window ? { window } : {}),
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),

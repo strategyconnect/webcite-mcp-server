@@ -456,7 +456,15 @@ export interface ResolveFragmentUsesResponse {
 }
 
 export interface ChangeImpactOptions {
-  answer_revision_id: string;
+  /** Answer freshness path — mutually optional with changed_ids (at least one required). */
+  answer_revision_id?: string;
+  /** When set, sealed packet must resolve or HTTP fails closed as change_impact_incomplete. */
+  packet_id?: string;
+  /** Packet dependency path — W3 incomplete sealed-packet / graph surfaces. */
+  changed_ids?: string[];
+  links?: Array<{ source_id: string; consumer_id: string }>;
+  observed_at_ms?: number | null;
+  window?: { start_ms: number; end_ms: number };
   idempotency_key?: string;
 }
 
@@ -469,9 +477,19 @@ export interface FreshnessObservation {
   observation?: 'newer_known_version' | 'no_newer_known_version' | 'undetermined';
 }
 
+/** Packet-bound W3 impact (camelCase as returned by context-ops). */
+export interface PacketImpactObservation {
+  affectedConsumerIds: string[];
+  inWindow: boolean | null;
+  unresolved: string[];
+  coverage: 'complete' | 'unknown';
+}
+
 export interface ChangeImpactResponse {
-  answer_revision_id: string;
-  freshness: FreshnessObservation;
+  answer_revision_id?: string;
+  freshness?: FreshnessObservation;
+  packet_id?: string;
+  packet_impact?: PacketImpactObservation;
   engine: 'context_graph';
 }
 

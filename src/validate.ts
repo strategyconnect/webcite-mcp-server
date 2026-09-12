@@ -283,32 +283,103 @@ export function validateResolveFragmentUses(raw: unknown): ResolveFragmentUsesRe
 
 export function validateChangeImpact(raw: unknown): ChangeImpactResponse {
   const root = requireObject(raw, 'ChangeImpact');
-  const freshness = requireObject(root.freshness, 'ChangeImpact.freshness');
-  const coverage = freshness.coverage;
-  if (coverage !== 'complete' && coverage !== 'unknown') {
-    throw new ToolFailure('invalid_api_output', 'ChangeImpact.freshness.coverage must be complete|unknown', {
-      actionable: 'Do not report silent "no changes" when coverage is missing.',
-    });
+  const hasFreshness = root.freshness !== undefined && root.freshness !== null;
+  const hasPacketImpact = root.packet_impact !== undefined && root.packet_impact !== null;
+  if (!hasFreshness && !hasPacketImpact) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'ChangeImpact requires freshness and/or packet_impact',
+      {
+        actionable:
+          'Do not treat a bare engine envelope as certified no-impact or no-freshness.',
+      },
+    );
   }
-  return {
-    answer_revision_id: requireString(root, 'answer_revision_id', 'ChangeImpact'),
-    freshness: {
-      claimRevisionIds: Array.isArray(freshness.claimRevisionIds)
-        ? (freshness.claimRevisionIds as string[])
-        : [],
+
+  let freshness: ChangeImpactResponse['freshness'];
+  if (hasFreshness) {
+    const f = requireObject(root.freshness, 'ChangeImpact.freshness');
+    const coverage = f.coverage;
+    if (coverage !== 'complete' && coverage !== 'unknown') {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.freshness.coverage must be complete|unknown',
+        {
+          actionable: 'Do not report silent "no changes" when coverage is missing.',
+        },
+      );
+    }
+    freshness = {
+      claimRevisionIds: Array.isArray(f.claimRevisionIds) ? (f.claimRevisionIds as string[]) : [],
       coverage,
-      unresolvedSourceVersionIds: Array.isArray(freshness.unresolvedSourceVersionIds)
-        ? (freshness.unresolvedSourceVersionIds as string[])
+      unresolvedSourceVersionIds: Array.isArray(f.unresolvedSourceVersionIds)
+        ? (f.unresolvedSourceVersionIds as string[])
         : [],
-      reasons: Array.isArray(freshness.reasons) ? (freshness.reasons as string[]) : [],
-      selectionState: freshness.selectionState === 'unknown' ? 'unknown' : undefined,
+      reasons: Array.isArray(f.reasons) ? (f.reasons as string[]) : [],
+      selectionState: f.selectionState === 'unknown' ? 'unknown' : undefined,
       observation:
-        freshness.observation === 'newer_known_version' ||
-        freshness.observation === 'no_newer_known_version' ||
-        freshness.observation === 'undetermined'
-          ? freshness.observation
+        f.observation === 'newer_known_version' ||
+        f.observation === 'no_newer_known_version' ||
+        f.observation === 'undetermined'
+          ? f.observation
           : undefined,
-    },
+    };
+  }
+
+  let packet_impact: ChangeImpactResponse['packet_impact'];
+  if (hasPacketImpact) {
+    const p = requireObject(root.packet_impact, 'ChangeImpact.packet_impact');
+    const coverage = p.coverage;
+    if (coverage !== 'complete' && coverage !== 'unknown') {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.coverage must be complete|unknown',
+        {
+          actionable:
+            'Incomplete packet impact must fail closed (change_impact_incomplete), not ship unknown coverage as certified empty.',
+        },
+      );
+    }
+    if (!Array.isArray(p.affectedConsumerIds)) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.affectedConsumerIds must be an array',
+      );
+    }
+    if (!Array.isArray(p.unresolved)) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.unresolved must be an array',
+      );
+    }
+    if (coverage === 'unknown') {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.coverage unknown must not be accepted as success',
+        {
+          actionable:
+            'HTTP should have refused with change_impact_incomplete; do not invent certified no-impact.',
+        },
+      );
+    }
+    const inWindow =
+      p.inWindow === true || p.inWindow === false || p.inWindow === null ? p.inWindow : null;
+    packet_impact = {
+      affectedConsumerIds: p.affectedConsumerIds.filter(
+        (id): id is string => typeof id === 'string',
+      ),
+      inWindow,
+      unresolved: p.unresolved.filter((u): u is string => typeof u === 'string'),
+      coverage,
+    };
+  }
+
+  return {
+    answer_revision_id:
+      typeof root.answer_revision_id === 'string' ? root.answer_revision_id : undefined,
+    freshness,
+    packet_id: typeof root.packet_id === 'string' ? root.packet_id : undefined,
+    packet_impact,
     engine: 'context_graph',
   };
 }
