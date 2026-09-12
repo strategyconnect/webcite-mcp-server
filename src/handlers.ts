@@ -1464,9 +1464,9 @@ export const handlers: Record<string, ToolHandler> = {
 
   assess_support: async (args, client) => {
     // Backend assessSupportBodySchema evidenceId pad honesty: never trim-launder
-    // claim_revision_id / evidence_group_revision_id / alternative_fragment_id
-    // into a certified support assessment (same identityComplete rule as W3
-    // sealed ids / C3 create identities).
+    // claim_revision_id / claim_hash / evidence_group_revision_id /
+    // alternative_fragment_id into a certified support assessment (same
+    // identityComplete rule as W3 sealed ids / C3 create identities).
     if (
       typeof args?.claim_revision_id !== 'string' ||
       !wakeIdentityComplete(args.claim_revision_id)
@@ -1485,7 +1485,21 @@ export const handlers: Record<string, ToolHandler> = {
       );
     }
     const claimRevisionId = args.claim_revision_id;
-    const claimHash = requireString(args, 'claim_hash');
+    if (typeof args?.claim_hash !== 'string' || !wakeIdentityComplete(args.claim_hash)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'claim_hash is incomplete (blank/whitespace/padded)',
+        {
+          details: {
+            reason: 'incomplete_claim_hash_identity',
+            field: 'claim_hash',
+          },
+          actionable:
+            'Blank/whitespace/padded claim_hash never certifies support; do not invent or trim-launder a claim hash hit.',
+        },
+      );
+    }
+    const claimHash = args.claim_hash;
     if (
       typeof args?.evidence_group_revision_id !== 'string' ||
       !wakeIdentityComplete(args.evidence_group_revision_id)
