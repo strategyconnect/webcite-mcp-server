@@ -5569,6 +5569,62 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+
+  await t.test(
+    'create_research_run surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_research_run',
+        arguments: {
+          objective: 'trace ARR',
+          snapshot_id: 'snap-1',
+          workflow_version: 'wf-1',
+          budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+          idempotency_key: ' create-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_research_run whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_research_run',
+        arguments: {
+          objective: 'trace ARR',
+          snapshot_id: 'snap-1',
+          workflow_version: 'wf-1',
+          budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
   await t.test(
     'get_research_run surrounding-padded run_id → incomplete_research_run_identity',
     async () => {
@@ -5648,6 +5704,102 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       );
     },
   );
+
+
+  await t.test(
+    'checkpoint_research_run surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: 'run-1',
+          expected_revision: 0,
+          run: {
+            id: 'run-1',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+          },
+          idempotency_key: ' ckpt-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/checkpoints')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: 'run-1',
+          expected_revision: 0,
+          run: {
+            id: 'run-1',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+          },
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/checkpoints')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #95 record_operation_attempt optional idempotency pad must stay fail-closed.
+  await t.test(
+    'record_operation_attempt surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#95 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: {
+          operation_id: 'op-1',
+          provider: 'openai',
+          idempotency_key: ' record-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
 
   await t.test(
     'reserve_research_budget surrounding-padded run_id → incomplete_research_run_identity',

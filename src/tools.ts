@@ -1256,7 +1256,7 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
   },
   {
     name: 'create_research_run',
-    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget. Blank/whitespace/surrounding-padded objective → padded_research_objective (never trim-launder into a certified run purpose). Blank/whitespace/surrounding-padded snapshot_id / workflow_version / deal_id / session_id / root_operation_id fail closed (incomplete_create_research_identity; evidenceId / ResearchScope id-pad honesty #281/#297 — never trim-launder). Blank/whitespace/padded open_requirement_ids fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
+    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget. Blank/whitespace/surrounding-padded objective → padded_research_objective (never trim-launder into a certified run purpose). Blank/whitespace/surrounding-padded snapshot_id / workflow_version / deal_id / session_id / root_operation_id fail closed (incomplete_create_research_identity; evidenceId / ResearchScope id-pad honesty #281/#297 — never trim-launder). Blank/whitespace/padded open_requirement_ids fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified create/replay). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs`,
     inputSchema: {
@@ -1308,7 +1308,11 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs`,
             'Non-blank unpadded requirement ids (backend #304). Blank/whitespace/padded → incomplete_loop_requirement_identity; never trim-launder into a certified loop stop.',
         },
         max_steps: { type: 'number' },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded create-once replay key. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
       },
       required: ['objective', 'snapshot_id', 'workflow_version', 'budget'],
     },
@@ -1342,7 +1346,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Blank/whitespace/surrounding-padded run_id → incomplete_research_run_identity (never trim-launder into a certified checkpoint target). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). When run.notes is non-empty, each note id and ResearchScope (tenantId/userId/dealId/sessionId) on the note and run.scope must be non-blank/unpadded (whitespace/pad → incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). When run.progress is set, openRequirementIds/failedRequirementIds must be non-blank/unpadded (whitespace/pad → incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
+    description: `Compare-and-swap a research-run checkpoint (C3). Blank/whitespace/surrounding-padded run_id → incomplete_research_run_identity (never trim-launder into a certified checkpoint target). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). When run.notes is non-empty, each note id and ResearchScope (tenantId/userId/dealId/sessionId) on the note and run.scope must be non-blank/unpadded (whitespace/pad → incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). When run.progress is set, openRequirementIds/failedRequirementIds must be non-blank/unpadded (whitespace/pad → incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified checkpoint/replay). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
@@ -1359,7 +1363,11 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
           description:
             'Full ResearchRun payload. Optional wait requires non-blank unpadded subjectId + subjectRevisionId (blank/whitespace/padded → incomplete_wake_subject_identity) and non-blank unpadded scope.tenantId (blank/whitespace/padded → incomplete_wake_tenant_identity). Non-empty notes require non-blank unpadded note id + ResearchScope fields on note and run.scope (blank/whitespace/padded → incomplete_eligible_note_identity; #297). Optional progress requires non-blank unpadded openRequirementIds/failedRequirementIds (blank/whitespace/padded → incomplete_loop_requirement_identity; #304).',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded checkpoint-once replay key. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
       },
       required: ['run_id', 'expected_revision', 'run'],
     },

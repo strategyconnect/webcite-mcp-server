@@ -762,12 +762,13 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
 /**
  * C3/I4 + W3 optional idempotency_key: when present as string,
  * blank/whitespace/surrounding-padded never certifies a settle/link/attempt/
- * workflow publish-or-run / provider-cost replay pin — refuse before HTTP (same
- * identityComplete honesty as required open_operation_root / reserve_operation
- * idempotency_key after #83/#88). Shared by settle_operation (#92),
- * link_operation_consumer (#94), record_operation_attempt /
- * resolve_operation_attempt (#95), publish_context_workflow /
- * run_saved_workflow (#97), and get_provider_cost. Omit when not a string.
+ * workflow publish-or-run / provider-cost / research create-or-checkpoint
+ * replay pin — refuse before HTTP (same identityComplete honesty as required
+ * open_operation_root / reserve_operation idempotency_key after #83/#88).
+ * Shared by settle_operation (#92), link_operation_consumer (#94),
+ * record/resolve_operation_attempt (#95), publish_context_workflow /
+ * run_saved_workflow (#97), get_provider_cost (#99), create_research_run, and
+ * checkpoint_research_run. Omit when not a string.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -781,7 +782,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research create-or-checkpoint replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -2367,6 +2368,9 @@ export const handlers: Record<string, ToolHandler> = {
       'create_research_run.open_requirement_ids',
       'open_requirement_ids',
     );
+    // C3 after #92/#95: optional padded idempotency_key never certifies a
+    // create-once research-run replay pin (sibling of settle/attempt pads).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const budget = args.budget as Record<string, unknown>;
     const raw = await wrapApi(
       client.createResearchRun({
@@ -2446,6 +2450,9 @@ export const handlers: Record<string, ToolHandler> = {
     assertEligibleNotesComplete(run, 'checkpoint_research_run.run');
     // Backend #304: padded loopStop requirement ids never certify a stop.
     assertLoopProgressComplete(run, 'checkpoint_research_run.run');
+    // C3 after #92/#95: optional padded idempotency_key never certifies a
+    // checkpoint-once replay pin (sibling of create_research_run / settle).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.checkpointResearchRun({
         run_id: args.run_id,

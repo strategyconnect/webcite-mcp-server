@@ -835,6 +835,7 @@ export interface CreateResearchRunOptions {
   /** Non-blank/unpadded; blank/pad → incomplete_loop_requirement_identity (#304). */
   open_requirement_ids?: string[];
   max_steps?: number;
+  /** When set: non-blank unpadded; blank/padded → incomplete_operation_idempotency_identity (#92/#95). */
   idempotency_key?: string;
 }
 
@@ -925,6 +926,7 @@ export interface CheckpointResearchRunOptions {
   run_id: string;
   expected_revision: number;
   run: ResearchRunPayload;
+  /** When set: non-blank unpadded; blank/padded → incomplete_operation_idempotency_identity (#92/#95). */
   idempotency_key?: string;
 }
 
