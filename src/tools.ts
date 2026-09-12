@@ -717,7 +717,7 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
   },
   {
     name: 'get_change_impact',
-    description: `Inspect freshness and/or packet change impact (W3). Pass answer_revision_id for sealed-answer freshness, and/or changed_ids (+ optional links/packet_id/window) for packet dependency impact. Blank/whitespace/padded changed_ids → incomplete_changed_ids; blank/whitespace/padded link endpoints → incomplete_dependency_graph; incomplete sealed-packet or dependency graphs fail closed as change_impact_incomplete — never silent empty "no impact". Historical answer content stays sealed.
+    description: `Inspect freshness and/or packet change impact (W3). Pass answer_revision_id for sealed-answer freshness, and/or changed_ids (+ optional links/packet_id/window) for packet dependency impact. Blank/whitespace/padded changed_ids → incomplete_changed_ids; blank/whitespace/padded link endpoints → incomplete_dependency_graph; source_id === consumer_id → self_loop_dependency; incomplete sealed-packet or dependency graphs fail closed as change_impact_incomplete — never silent empty "no impact". Historical answer content stays sealed.
 
 Credits: 1. HTTP: POST /api/v2/context/change-impact`,
     inputSchema: {
@@ -744,19 +744,19 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
         links: {
           type: 'array',
           description:
-            'Dependency links (source_id → consumer_id). Blank/whitespace/padded endpoints → incomplete_dependency_graph (never trimmed into certified match / empty impact). Omit → missing_dependency_graph.',
+            'Dependency links (source_id → consumer_id). Blank/whitespace/padded endpoints → incomplete_dependency_graph; source_id === consumer_id → self_loop_dependency (never certified empty no-downstream). Omit → missing_dependency_graph.',
           items: {
             type: 'object',
             properties: {
               source_id: {
                 type: 'string',
                 description:
-                  'Non-blank unpadded source id; blank/whitespace/padded → incomplete_dependency_graph.',
+                  'Non-blank unpadded source id distinct from consumer_id; blank/whitespace/padded → incomplete_dependency_graph; equal to consumer_id → self_loop_dependency.',
               },
               consumer_id: {
                 type: 'string',
                 description:
-                  'Non-blank unpadded consumer id; blank/whitespace/padded → incomplete_dependency_graph.',
+                  'Non-blank unpadded consumer id distinct from source_id; blank/whitespace/padded → incomplete_dependency_graph; equal to source_id → self_loop_dependency.',
               },
             },
             required: ['source_id', 'consumer_id'],

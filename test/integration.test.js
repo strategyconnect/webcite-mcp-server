@@ -504,6 +504,17 @@ function startStub(options = {}) {
               })
             ) {
               unresolved.push('incomplete_dependency_graph');
+            } else if (
+              // Backend #294: sourceId === consumerId → self_loop_dependency (after blank/pad).
+              links.some(
+                (link) =>
+                  link &&
+                  typeof link.source_id === 'string' &&
+                  typeof link.consumer_id === 'string' &&
+                  link.source_id === link.consumer_id,
+              )
+            ) {
+              unresolved.push('self_loop_dependency');
             }
             if (packetId === 'missing-packet') {
               unresolved.push('missing_sealed_packet');
@@ -3144,6 +3155,55 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
       assert.ok(req);
       assert.deepEqual(req.body.links, [{ source_id: 'cell', consumer_id: '  ' }]);
+    },
+  );
+
+  await t.test(
+    'get_change_impact self-loop link (source_id === consumer_id) → self_loop_dependency',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['cell'],
+          links: [{ source_id: 'cell', consumer_id: 'cell' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /self_loop_dependency/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      // Forward as-is — never drop self-loops into certified empty no-downstream.
+      assert.deepEqual(req.body.links, [{ source_id: 'cell', consumer_id: 'cell' }]);
+    },
+  );
+
+  await t.test(
+    'get_change_impact mixed graph with self-loop → self_loop_dependency',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['cell'],
+          links: [
+            { source_id: 'cell', consumer_id: 'claim' },
+            { source_id: 'claim', consumer_id: 'claim' },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /self_loop_dependency/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      assert.deepEqual(req.body.links, [
+        { source_id: 'cell', consumer_id: 'claim' },
+        { source_id: 'claim', consumer_id: 'claim' },
+      ]);
     },
   );
 

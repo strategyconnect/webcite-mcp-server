@@ -345,7 +345,7 @@ export function validateChangeImpact(raw: unknown): ChangeImpactResponse {
         'ChangeImpact.packet_impact.coverage must be complete|unknown',
         {
           actionable:
-            'Incomplete packet impact (incomplete_changed_ids / incomplete graph / missing sealed packet) must fail closed as change_impact_incomplete, not ship unknown coverage as certified empty.',
+            'Incomplete packet impact (incomplete_changed_ids / incomplete graph / self_loop_dependency / missing sealed packet) must fail closed as change_impact_incomplete, not ship unknown coverage as certified empty.',
         },
       );
     }
@@ -384,13 +384,24 @@ export function validateChangeImpact(raw: unknown): ChangeImpactResponse {
         },
       );
     }
+    // Backend #294: self-loop links (sourceId === consumerId) must never certify as complete.
+    if (unresolvedReasons.includes('self_loop_dependency')) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.unresolved includes self_loop_dependency',
+        {
+          actionable:
+            'HTTP should have refused with change_impact_incomplete:self_loop_dependency; do not invent certified no-downstream from self-loop links.',
+        },
+      );
+    }
     if (coverage === 'unknown') {
       throw new ToolFailure(
         'invalid_api_output',
         'ChangeImpact.packet_impact.coverage unknown must not be accepted as success',
         {
           actionable:
-            'HTTP should have refused with change_impact_incomplete (e.g. incomplete_changed_ids / incomplete_dependency_graph); do not invent certified no-impact.',
+            'HTTP should have refused with change_impact_incomplete (e.g. incomplete_changed_ids / incomplete_dependency_graph / self_loop_dependency); do not invent certified no-impact.',
         },
       );
     }

@@ -468,6 +468,7 @@ export interface ChangeImpactOptions {
   /**
    * Dependency edges. Blank/whitespace/padded source_id/consumer_id →
    * incomplete_dependency_graph (#285; never trim into certified match).
+   * source_id === consumer_id → self_loop_dependency (#294; never empty no-downstream).
    */
   links?: Array<{ source_id: string; consumer_id: string }>;
   observed_at_ms?: number | null;
