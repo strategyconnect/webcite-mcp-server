@@ -1222,7 +1222,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
   },
   {
     name: 'list_research_runs',
-    description: `List durable research runs for the authenticated tenant only (C3). Never invents foreign-tenant rows; empty when none. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a list.
+    description: `List durable research runs for the authenticated tenant only (C3). Tenant comes from the API key — never supply tenant/tenant_id/tenantId (blank or surrounding-padded overrides → incomplete_list_tenant_identity; pads must not trim-launder into a certified list). Never invents foreign-tenant rows; empty when none. Listed rows with blank/padded scope.tenantId fail closed. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a list.
 
 Credits: 1. HTTP: GET /api/v2/context/research-runs`,
     inputSchema: {

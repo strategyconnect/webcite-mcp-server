@@ -413,7 +413,11 @@ const ROUTES = {
 
 function startStub(options = {}) {
   const seen = [];
-  const flags = { researchListRefuse: false };
+  const flags = {
+    researchListRefuse: false,
+    /** Backend #288: return a listed run with padded scope.tenantId. */
+    researchListPaddedTenant: false,
+  };
   const routes = { ...ROUTES, ...(options.routes || {}) };
   const server = http.createServer((req, res) => {
     let body = '';
@@ -945,6 +949,7 @@ function startStub(options = {}) {
       }
 
       // list_research_runs: tenant-scoped GET; flag-off refuse fail-closed (backend #263)
+      // Backend #288: padded listed scope.tenantId must fail closed on validate.
       if (url.pathname === '/api/v2/context/research-runs' && req.method === 'GET') {
         if (flags.researchListRefuse) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -957,6 +962,7 @@ function startStub(options = {}) {
           );
           return;
         }
+        const tenantId = flags.researchListPaddedTenant ? ' t1 ' : 't1';
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(
           JSON.stringify({
@@ -966,7 +972,7 @@ function startStub(options = {}) {
                 checkpointRevision: 0,
                 objective: 'trace ARR',
                 phase: 'running',
-                scope: { tenantId: 't1' },
+                scope: { tenantId },
               },
             ],
             engine: 'context_graph',
@@ -2199,7 +2205,7 @@ test('A_MCP: context tools round-trip against fake HTTP boundary', async (t) => 
 });
 
 test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad API shape', async (t) => {
-  const { server, seen, port } = await startStub();
+  const { server, seen, port, flags } = await startStub();
   const { child, rpc, notify } = startServer(port);
   t.after(() => {
     child.kill();
@@ -3054,6 +3060,69 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
       assert.ok(req);
       assert.deepEqual(req.body.links, [{ source_id: 'cell', consumer_id: ' claim' }]);
+    },
+  );
+
+  await t.test(
+    'list_research_runs padded tenant_id arg → incomplete_list_tenant_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'list_research_runs',
+        arguments: { tenant_id: ' t1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(
+        res.result.content[0].text,
+        /incomplete_list_tenant_identity|blank\/whitespace\/padded/,
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a list',
+      );
+    },
+  );
+
+  await t.test(
+    'list_research_runs blank tenantId arg → incomplete_list_tenant_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'list_research_runs',
+        arguments: { tenantId: '  ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_list_tenant_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'list_research_runs padded listed scope.tenantId → incomplete_list_tenant_identity',
+    async () => {
+      flags.researchListPaddedTenant = true;
+      const res = await rpc('tools/call', {
+        name: 'list_research_runs',
+        arguments: {},
+      });
+      flags.researchListPaddedTenant = false;
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_list_tenant_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
     },
   );
 

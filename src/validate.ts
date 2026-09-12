@@ -830,15 +830,47 @@ export function validateGetResearchRun(raw: unknown): GetResearchRunResponse {
   };
 }
 
+/**
+ * Backend #288: listed catalog rows certify tenant membership — blank or
+ * surrounding-padded scope.tenantId must never look like a certified list hit.
+ */
+function assertListRunTenantComplete(
+  run: Record<string, unknown>,
+  label: string,
+): void {
+  const scope = run.scope;
+  const tenantId =
+    scope && typeof scope === 'object' && !Array.isArray(scope)
+      ? (scope as Record<string, unknown>).tenantId
+      : undefined;
+  if (typeof tenantId !== 'string' || !wakeIdentityComplete(tenantId)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label}.scope.tenantId is incomplete (blank/whitespace/padded)`,
+      {
+        details: { reason: 'incomplete_list_tenant_identity', field: 'tenantId' },
+        actionable:
+          'Blank/whitespace/padded list tenant identity never certifies a tenant catalog row; do not invent or trim-launder.',
+      },
+    );
+  }
+}
+
 export function validateListResearchRuns(raw: unknown): ListResearchRunsResponse {
   const root = requireObject(raw, 'ListResearchRuns');
   if (!Array.isArray(root.runs)) {
     throw new ToolFailure('invalid_api_output', 'ListResearchRuns.runs must be an array');
   }
   return {
-    runs: root.runs.map((run, index) =>
-      requireResearchRun(run, `ListResearchRuns.runs[${index}]`),
-    ),
+    runs: root.runs.map((run, index) => {
+      const label = `ListResearchRuns.runs[${index}]`;
+      const validated = requireResearchRun(run, label);
+      assertListRunTenantComplete(
+        requireObject(run, label),
+        label,
+      );
+      return validated;
+    }),
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

@@ -221,6 +221,30 @@ function assertWakeTenantComplete(run: ResearchRunPayload, label: string): void 
   }
 }
 
+/**
+ * Backend #288: list_research_runs is key-scoped only (no tenant arg). If a
+ * client still passes tenant/tenant_id/tenantId, blank or surrounding-padded
+ * values must not trim-launder into a certified list — refuse fail-closed.
+ */
+function assertListTenantArgHonesty(args: Args | undefined): void {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return;
+  for (const key of ['tenantId', 'tenant_id', 'tenant'] as const) {
+    if (!Object.prototype.hasOwnProperty.call(args, key)) continue;
+    const value = (args as Record<string, unknown>)[key];
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `list_research_runs.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_list_tenant_identity', field: key },
+          actionable:
+            'Tenant comes from the API key only; blank/padded tenant overrides never certify a list. Omit tenant args.',
+        },
+      );
+    }
+  }
+}
+
 function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
@@ -1107,7 +1131,9 @@ export const handlers: Record<string, ToolHandler> = {
     return ok(formatGetResearchRun(validated), validated as unknown as Record<string, unknown>);
   },
 
-  list_research_runs: async (_args, client) => {
+  list_research_runs: async (args, client) => {
+    // Backend #288: refuse blank/padded client tenant overrides before HTTP.
+    assertListTenantArgHonesty(args);
     const raw = await wrapApi(client.listResearchRuns());
     const validated = validateListResearchRuns(raw);
     return ok(
