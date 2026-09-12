@@ -28,6 +28,10 @@ import {
   formatGetResearchRun,
   formatCheckpointResearchRun,
   formatResolveSeeds,
+  formatLearningJudge,
+  formatLearningApply,
+  formatLearningPlaceholder,
+  formatFormatCertify,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -71,6 +75,10 @@ import {
   validateGetResearchRun,
   validateCheckpointResearchRun,
   validateResolveSeeds,
+  validateLearningJudge,
+  validateLearningApply,
+  validateLearningPlaceholder,
+  validateFormatCertify,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -783,6 +791,93 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateResolveSeeds(raw);
     return ok(formatResolveSeeds(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  learning_judge: async (args, client) => {
+    if (typeof args?.verdict !== 'string' || typeof args?.attempts !== 'number') {
+      throw new ToolFailure('invalid_argument', 'verdict and attempts are required');
+    }
+    const verdict = args.verdict;
+    if (
+      verdict !== 'pass' &&
+      verdict !== 'fail' &&
+      verdict !== 'uncertain' &&
+      verdict !== 'error'
+    ) {
+      throw new ToolFailure('invalid_argument', 'verdict must be pass|fail|uncertain|error');
+    }
+    const raw = await wrapApi(
+      client.learningJudge({
+        hard_failures: Array.isArray(args?.hard_failures)
+          ? (args.hard_failures as string[])
+          : undefined,
+        verdict,
+        attempts: args.attempts,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateLearningJudge(raw);
+    return ok(formatLearningJudge(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  learning_apply: async (args, client) => {
+    if (!args?.proposal || typeof args.proposal !== 'object' || Array.isArray(args.proposal)) {
+      throw new ToolFailure('invalid_argument', 'proposal object is required');
+    }
+    const gate =
+      args.gate === null
+        ? null
+        : args.gate && typeof args.gate === 'object' && !Array.isArray(args.gate)
+          ? (args.gate as { gateId: string; allowed: boolean; reason: string })
+          : null;
+    const raw = await wrapApi(
+      client.learningApply({
+        proposal: args.proposal as Record<string, unknown>,
+        gate,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateLearningApply(raw);
+    return ok(formatLearningApply(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  learning_placeholder: async (args, client) => {
+    const raw = await wrapApi(
+      client.learningPlaceholder({
+        criterion: typeof args?.criterion === 'string' ? args.criterion : undefined,
+      }),
+    );
+    const validated = validateLearningPlaceholder(raw);
+    return ok(
+      formatLearningPlaceholder(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  format_certify: async (args, client) => {
+    if (
+      typeof args?.kind !== 'string' ||
+      !Array.isArray(args?.expected) ||
+      !Array.isArray(args?.found)
+    ) {
+      throw new ToolFailure('invalid_argument', 'kind, expected, and found are required');
+    }
+    if (args.kind !== 'spreadsheet' && args.kind !== 'office' && args.kind !== 'text') {
+      throw new ToolFailure('invalid_argument', 'kind must be spreadsheet|office|text');
+    }
+    const raw = await wrapApi(
+      client.formatCertify({
+        kind: args.kind,
+        expected: args.expected,
+        found: args.found,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateFormatCertify(raw);
+    return ok(formatFormatCertify(validated), validated as unknown as Record<string, unknown>);
   },
 
   eval_catalog: async (_args, client) => {

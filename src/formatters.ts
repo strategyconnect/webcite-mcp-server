@@ -27,6 +27,10 @@ import type {
   GetResearchRunResponse,
   CheckpointResearchRunResponse,
   ResolveSeedsResponse,
+  LearningJudgeResponse,
+  LearningApplyResponse,
+  LearningPlaceholderResponse,
+  FormatCertifyResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -671,6 +675,24 @@ export function formatCheckpointResearchRun(
 
 export function formatResolveSeeds(result: ResolveSeedsResponse): string {
   return `# Resolve Seeds\n\n**Count:** ${result.candidates.length}\n**Leading resolver:** ${result.leading_resolver ?? 'none'}`;
+}
+
+export function formatLearningJudge(result: LearningJudgeResponse): string {
+  return `# Learning Judge\n\n**Action:** ${result.action}`;
+}
+
+export function formatLearningApply(result: LearningApplyResponse): string {
+  return `# Learning Apply\n\n**Status:** ${result.status}${result.reason ? `\n**Reason:** ${result.reason}` : ''}`;
+}
+
+export function formatLearningPlaceholder(
+  result: LearningPlaceholderResponse,
+): string {
+  return `# Learning Placeholder\n\n**Authoritative:** ${result.authoritative ? 'yes' : 'no'}\n**Status:** ${String((result.checkpoint as { status?: string }).status ?? 'unknown')}`;
+}
+
+export function formatFormatCertify(result: FormatCertifyResponse): string {
+  return `# Format Certify\n\n**Kind:** ${result.kind}\n**Ok:** ${result.ok ? 'yes' : 'no'}${result.reason ? `\n**Reason:** ${result.reason}` : ''}`;
 }
 
 export function formatEvalCatalog(result: EvalCatalogResponse): string {

@@ -45,6 +45,14 @@ import type {
   CheckpointResearchRunResponse,
   ResolveSeedsOptions,
   ResolveSeedsResponse,
+  LearningJudgeOptions,
+  LearningJudgeResponse,
+  LearningApplyOptions,
+  LearningApplyResponse,
+  LearningPlaceholderOptions,
+  LearningPlaceholderResponse,
+  FormatCertifyOptions,
+  FormatCertifyResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -518,6 +526,45 @@ export class WebCiteApiClient {
     const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/resolve-seeds',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async learningJudge(options: LearningJudgeOptions): Promise<LearningJudgeResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/learning/judge',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async learningApply(options: LearningApplyOptions): Promise<LearningApplyResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/learning/apply',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async learningPlaceholder(
+    options: LearningPlaceholderOptions = {},
+  ): Promise<LearningPlaceholderResponse> {
+    const params = new URLSearchParams();
+    if (options.criterion) params.set('criterion', options.criterion);
+    const q = params.toString();
+    return this.request(
+      `/api/v2/context/learning/placeholder${q ? `?${q}` : ''}`,
+      { method: 'GET' },
+    );
+  }
+
+  async formatCertify(options: FormatCertifyOptions): Promise<FormatCertifyResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/format/certify',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );

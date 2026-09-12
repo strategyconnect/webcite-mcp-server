@@ -22,6 +22,10 @@ import type {
   GetResearchRunResponse,
   CheckpointResearchRunResponse,
   ResolveSeedsResponse,
+  LearningJudgeResponse,
+  LearningApplyResponse,
+  LearningPlaceholderResponse,
+  FormatCertifyResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -393,6 +397,60 @@ export function validateResolveSeeds(raw: unknown): ResolveSeedsResponse {
       typeof root.leading_resolver === 'string' || root.leading_resolver === null
         ? (root.leading_resolver as string | null)
         : null,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateLearningJudge(raw: unknown): LearningJudgeResponse {
+  const root = requireObject(raw, 'LearningJudge');
+  const action = requireString(root, 'action', 'LearningJudge');
+  if (
+    action !== 'accept' &&
+    action !== 'reject' &&
+    action !== 'more_evidence' &&
+    action !== 'escalate'
+  ) {
+    throw new ToolFailure('invalid_api_output', `LearningJudge.action invalid: ${action}`);
+  }
+  return {
+    action,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateLearningApply(raw: unknown): LearningApplyResponse {
+  const root = requireObject(raw, 'LearningApply');
+  const status = requireString(root, 'status', 'LearningApply');
+  if (status !== 'applied' && status !== 'refused') {
+    throw new ToolFailure('invalid_api_output', `LearningApply.status invalid: ${status}`);
+  }
+  return {
+    status,
+    proposalId: typeof root.proposalId === 'string' ? root.proposalId : undefined,
+    gateId: typeof root.gateId === 'string' ? root.gateId : undefined,
+    reason: typeof root.reason === 'string' ? root.reason : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateLearningPlaceholder(
+  raw: unknown,
+): LearningPlaceholderResponse {
+  const root = requireObject(raw, 'LearningPlaceholder');
+  return {
+    checkpoint: requireObject(root.checkpoint, 'LearningPlaceholder.checkpoint'),
+    authoritative: root.authoritative === true,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateFormatCertify(raw: unknown): FormatCertifyResponse {
+  const root = requireObject(raw, 'FormatCertify');
+  return {
+    ok: root.ok === true,
+    kind: requireString(root, 'kind', 'FormatCertify'),
+    reason: typeof root.reason === 'string' ? root.reason : undefined,
+    missingCount: typeof root.missingCount === 'number' ? root.missingCount : undefined,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

@@ -38,6 +38,10 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404 | 0 | run id |
 | `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale | 0 | checkpoint CAS |
 | `resolve_seeds` | `POST /api/v2/context/resolve-seeds` | text, filters?, index[] | candidates + leading_resolver | auth | 0 | ClaimScope seeds |
+| `learning_judge` | `POST /api/v2/context/learning/judge` | verdict, attempts, hard_failures? | action | auth | 0 | — |
+| `learning_apply` | `POST /api/v2/context/learning/apply` | proposal, gate | applied/refused | no gate → refused | 0 | proposal id |
+| `learning_placeholder` | `GET /api/v2/context/learning/placeholder` | criterion? | checkpoint + authoritative:false | auth | 0 | — |
+| `format_certify` | `POST /api/v2/context/format/certify` | kind, expected[], found[] | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |
 | `eval_catalog` | `GET /api/v2/context/eval/catalog` | — | suite ids + `private_gold_denied` | auth | 0 | E1 catalog only |
 
