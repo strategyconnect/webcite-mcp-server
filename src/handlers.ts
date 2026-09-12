@@ -256,6 +256,32 @@ function assertLookupFiltersComplete(
 }
 
 /**
+ * W2 A_SCOPE: blank/whitespace or surrounding-padded compare_assertions ClaimScope
+ * fields never certify same/different — equal pads must not look like a certified
+ * scope match (backend compareAssertions uses raw ===; never trim-launder).
+ * Same honesty as resolve_seeds / query_context ClaimScope filter pads (#307/#311).
+ */
+function assertCompareScopeComplete(
+  scope: Partial<ClaimScope>,
+  side: 'left' | 'right',
+): void {
+  for (const [key, value] of Object.entries(scope)) {
+    if (value == null || value === '' || value === 'unknown') continue;
+    if (typeof value !== 'string' || !seedFilterComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `${side}.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'padded_compare_filter', field: `${side}.${key}` },
+          actionable:
+            'Blank/whitespace/padded ClaimScope fields never certify a scope compare; do not invent or trim-launder a same/different hit.',
+        },
+      );
+    }
+  }
+}
+
+/**
  * Backend #268/#281: wait subjectId / subjectRevisionId must be non-blank/unpadded.
  * Equal blanks/pads must never look like a certified wake subject match.
  * null/undefined wait is fine (not waiting).
@@ -962,6 +988,10 @@ export const handlers: Record<string, ToolHandler> = {
   compare_assertions: async (args, client) => {
     const left = asScope(args?.left, 'left');
     const right = asScope(args?.right, 'right');
+    // W2 A_SCOPE pad honesty: refuse padded/blank scope fields before HTTP —
+    // never trim-launder equal pads into a certified same/different.
+    assertCompareScopeComplete(left, 'left');
+    assertCompareScopeComplete(right, 'right');
     const raw = await wrapApi(
       client.compareAssertions({
         left,

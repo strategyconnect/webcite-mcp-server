@@ -413,6 +413,10 @@ export interface ContextQueryResponse {
 }
 
 export interface CompareAssertionsOptions {
+  /**
+   * Claim scopes. Blank/whitespace/surrounding-padded string fields →
+   * padded_compare_filter (#307/#311 honesty; never trim-launder into same/different).
+   */
   left: Partial<ClaimScope>;
   right: Partial<ClaimScope>;
   idempotency_key?: string;

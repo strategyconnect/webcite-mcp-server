@@ -1709,6 +1709,69 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /\*\*Result:\*\* same/);
   });
 
+  await t.test(
+    'compare_assertions surrounding-padded left metric → padded_compare_filter',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_assertions',
+        arguments: {
+          left: { metric: ' revenue ', period: 'FY24' },
+          right: { metric: 'revenue', period: 'FY24' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_compare_filter');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/compare-assertions'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified same/different',
+      );
+    },
+  );
+
+  await t.test(
+    'compare_assertions equal-pad scopes → padded_compare_filter (never same)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_assertions',
+        arguments: {
+          left: { metric: ' revenue ', period: ' FY24 ' },
+          right: { metric: ' revenue ', period: ' FY24 ' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_compare_filter');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/compare-assertions'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'compare_assertions whitespace-only right period → padded_compare_filter',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_assertions',
+        arguments: {
+          left: { metric: 'revenue', period: 'FY24' },
+          right: { metric: 'revenue', period: '  ' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_compare_filter');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/compare-assertions'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('resolve_fragment_uses posts selector catalog and keeps semanticSupport false', async () => {
     const text = await call('resolve_fragment_uses', {
       selector: {
