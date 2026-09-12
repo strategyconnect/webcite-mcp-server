@@ -569,7 +569,7 @@ Credits: 1. HTTP: GET /api/v2/evidence-packets/:id`,
   },
   {
     name: 'query_context',
-    description: `Query persisted context for numbers or passages. A successful no-match (status refuse / empty refs) is not a tool failure — it means nothing matched under current authorization.
+    description: `Query persisted context for numbers or passages. A successful no-match (status refuse / empty refs) is not a tool failure — it means nothing matched under current authorization. Blank/whitespace/surrounding-padded ClaimScope filters fail closed (padded_lookup_filter; backend #307 — equal pads never bind lookup_number).
 
 Never supply tenant/scope fields; the API derives scope from the API key.
 
@@ -593,7 +593,8 @@ Credits: 1. HTTP: POST /api/v2/context/query`,
         },
         filters: {
           type: 'object',
-          description: 'Optional claim-scope filters (metric, period, entityId, …).',
+          description:
+            'Optional claim-scope filters (metric, period, entityId, …). Blank/whitespace/surrounding-padded values → padded_lookup_filter (#307; never trim-launder into a certified bind).',
           properties: claimScopeProperties,
         },
         max_hops: {

@@ -160,6 +160,19 @@ export function validateContextQuery(raw: unknown): ContextQueryResponse {
       actionable: 'Do not invent refs when the API omits them.',
     });
   }
+  const gaps = Array.isArray(root.gaps) ? (root.gaps as string[]) : [];
+  // Backend #307: padded_lookup_filter must not look like a certified no-match refuse.
+  if (gaps.includes('padded_lookup_filter')) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'ContextQuery.gaps includes padded_lookup_filter',
+      {
+        details: { reason: 'padded_lookup_filter' },
+        actionable:
+          'Blank/whitespace/padded ClaimScope filters never bind a lookup_number; do not invent a certified match or silent refuse.',
+      },
+    );
+  }
   return {
     operatorClass: typeof root.operatorClass === 'string' ? root.operatorClass : 'unsupported',
     status,
@@ -183,7 +196,7 @@ export function validateContextQuery(raw: unknown): ContextQueryResponse {
           traversedRelationIds: [],
         },
     refs: root.refs as ContextQueryResponse['refs'],
-    gaps: Array.isArray(root.gaps) ? (root.gaps as string[]) : [],
+    gaps,
     engine: root.engine === 'context_graph' ? 'context_graph' : 'context_graph',
     presentation: isObject(root.presentation)
       ? {

@@ -372,6 +372,11 @@ export interface QueryContextOptions {
   text: string;
   source_texts?: string[];
   source_version_ids?: string[];
+  /**
+   * ClaimScope filters. Blank/whitespace/surrounding-padded string values →
+   * padded_lookup_filter (#307; never certify a lookup_number bind).
+   * null / '' / 'unknown' are honest unknowns.
+   */
   filters?: Partial<ClaimScope>;
   max_hops?: 0 | 1 | 2;
   limit?: number;
