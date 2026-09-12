@@ -767,7 +767,8 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * find_contradictions / assess_meaning / formal_eligibility / query_context /
  * change-impact / formal_check / formal_resolution_state / resolve_fragment_uses /
  * number_inventory / resolve_seeds / create_claim_relation / expand_seeds /
- * create_metric_definition / claim_structure_tier replay pin — refuse before
+ * create_metric_definition / claim_structure_tier /
+ * claim_structure_resolve_definition replay pin — refuse before
  * HTTP (same identityComplete honesty as required open_operation_root /
  * reserve_operation idempotency_key after #83/#88). Shared by settle_operation
  * (#92), link_operation_consumer (#94), record/resolve_operation_attempt (#95),
@@ -778,9 +779,9 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * formal_eligibility (#107), query_context (#108), formal_check (#110),
  * resolve_fragment_uses (#111), number_inventory (#112), formal_resolution_state
  * (#113), resolve_seeds (#114), create_claim_relation (#115), expand_seeds
- * (#116), create_metric_definition (#117), and claim_structure_tier (C1/W3).
- * Omit when not a string. Does not trim or rewrite formal_check Lean source
- * trailing newlines.
+ * (#116), create_metric_definition (#117), claim_structure_tier (#118), and
+ * claim_structure_resolve_definition (C1/W3). Omit when not a string. Does not
+ * trim or rewrite formal_check Lean source trailing newlines.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -794,7 +795,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check/formal_resolution_state/resolve_fragment_uses/number_inventory/resolve_seeds/create_claim_relation/expand_seeds/create_metric_definition/claim_structure_tier replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check/formal_resolution_state/resolve_fragment_uses/number_inventory/resolve_seeds/create_claim_relation/expand_seeds/create_metric_definition/claim_structure_tier/claim_structure_resolve_definition replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -2355,6 +2356,11 @@ export const handlers: Record<string, ToolHandler> = {
         'metric, knowledge_as_of, effective_at, and catalog are required',
       );
     }
+    // C1/W3 after #92/#115/#116: optional padded idempotency_key never certifies
+    // a claim-structure resolve-definition replay pin (same helper as
+    // settle/create_claim_relation). formal_check Lean source trailing newlines
+    // remain untouched.
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.claimStructureResolveDefinition({
         metric: args.metric,

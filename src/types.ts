@@ -1398,6 +1398,10 @@ export interface ClaimStructureResolveDefinitionOptions {
   effective_at: string;
   catalog: Record<string, unknown>[];
   decision?: Record<string, unknown> | null;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 

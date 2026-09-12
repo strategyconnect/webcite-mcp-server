@@ -1241,7 +1241,7 @@ Credits: 1. HTTP: POST /api/v2/context/claim-structure/tier`,
   },
   {
     name: 'claim_structure_resolve_definition',
-    description: `Resolve an attributed metric definition or surface ambiguity (C1c). Does not persist.
+    description: `Resolve an attributed metric definition or surface ambiguity (C1c). Does not persist. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified claim-structure resolve-definition replay pin; same honesty as settle/create_claim_relation #92/#115). Lean formal_check source trailing newlines are out of scope for this tool.
 
 Credits: 1. HTTP: POST /api/v2/context/claim-structure/resolve-definition`,
     inputSchema: {
@@ -1259,7 +1259,11 @@ Credits: 1. HTTP: POST /api/v2/context/claim-structure/resolve-definition`,
           type: ['object', 'null'],
           description: 'Optional InterpretationDecision to disambiguate',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a claim-structure resolve-definition replay pin).',
+        },
       },
       required: ['metric', 'knowledge_as_of', 'effective_at', 'catalog'],
     },
