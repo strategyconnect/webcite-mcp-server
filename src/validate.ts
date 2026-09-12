@@ -484,13 +484,22 @@ function validateNumberInventoryOccurrence(
 ): NumberInventoryOccurrence {
   const label = `NumberInventory.occurrences[${index}]`;
   const row = requireObject(raw, label);
-  const id = requireString(row, 'id', label);
+  const idRaw = row.id;
+  // Backend #259: blank/whitespace identity is incomplete (missing_occurrence_identity).
+  if (typeof idRaw !== 'string' || !idRaw.trim()) {
+    throw new ToolFailure('invalid_api_output', `${label}.id is required`, {
+      actionable:
+        'Blank/whitespace id is incomplete (missing_occurrence_identity); do not invent occurrence identity.',
+    });
+  }
   const fragmentRaw = row.fragment_id ?? row.fragmentId;
   if (typeof fragmentRaw !== 'string' || !fragmentRaw.trim()) {
     throw new ToolFailure('invalid_api_output', `${label}.fragment_id is required`, {
-      actionable: 'Reject the payload; do not invent occurrence identity.',
+      actionable:
+        'Blank/whitespace fragment_id is incomplete (missing_occurrence_identity); do not invent occurrence identity.',
     });
   }
+  const id = idRaw;
   const rawText = row.raw;
   if (typeof rawText !== 'string' || !rawText.trim()) {
     throw new ToolFailure('invalid_api_output', `${label}.raw must be a non-blank string`, {

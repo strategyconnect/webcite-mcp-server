@@ -557,8 +557,11 @@ function startStub(options = {}) {
           const unresolved = [];
           for (const row of rows) {
             const state = row.recognition_state ?? row.recognitionState;
-            const id = row.id ?? '';
-            const fragmentId = row.fragment_id ?? row.fragmentId ?? '';
+            const id = typeof row.id === 'string' ? row.id : '';
+            const fragmentId =
+              typeof (row.fragment_id ?? row.fragmentId) === 'string'
+                ? (row.fragment_id ?? row.fragmentId)
+                : '';
             const decimal =
               row.normalized_decimal !== undefined
                 ? row.normalized_decimal
@@ -567,7 +570,8 @@ function startStub(options = {}) {
             // HTTP: interpretation may default to unknown; never invent method=native.
             const method = row.method ?? '';
             const interpretation = row.interpretation ?? 'unknown';
-            if (!id || !fragmentId) {
+            // Backend #259: blank/whitespace ids are incomplete — never certify counts.
+            if (!String(id).trim() || !String(fragmentId).trim()) {
               unresolved.push('missing_occurrence_identity');
               continue;
             }
@@ -2203,6 +2207,37 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.structuredContent.code, 'api_error');
     assert.match(res.result.content[0].text, /missing_occurrence_raw/);
   });
+
+  await t.test(
+    'number_inventory whitespace-only identity → missing_occurrence_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: '  ',
+              raw: '9',
+              fragment_id: '\t',
+              method: 'ocr',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /missing_occurrence_identity/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      // MCP must forward whitespace identity as-is — never invent ids.
+      assert.equal(req.body.occurrences[0].id, '  ');
+      assert.equal(req.body.occurrences[0].fragment_id, '\t');
+    },
+  );
 
   await t.test('number_inventory invalid interpretation → incomplete', async () => {
     const res = await rpc('tools/call', {

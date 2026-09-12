@@ -882,7 +882,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity/blank raw/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace id or fragment_id)/blank raw/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -891,17 +891,29 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
         occurrences: {
           type: 'array',
           description:
-            'NumericOccurrence rows. recognition_state + non-blank raw + valid method required for complete coverage (method is never defaulted to native). fragment_id + id required.',
+            'NumericOccurrence rows. recognition_state + non-blank raw + valid method required for complete coverage (method is never defaulted to native). Non-blank id + fragment_id required (whitespace → missing_occurrence_identity).',
           items: {
             type: 'object',
             properties: {
-              id: { type: 'string' },
+              id: {
+                type: 'string',
+                description:
+                  'Occurrence identity; blank/whitespace → missing_occurrence_identity.',
+              },
               raw: {
                 type: 'string',
                 description: 'Non-blank glyph text; blank/whitespace → missing_occurrence_raw.',
               },
-              fragment_id: { type: 'string' },
-              fragmentId: { type: 'string' },
+              fragment_id: {
+                type: 'string',
+                description:
+                  'Fragment identity; blank/whitespace → missing_occurrence_identity.',
+              },
+              fragmentId: {
+                type: 'string',
+                description:
+                  'Alias of fragment_id; blank/whitespace → missing_occurrence_identity.',
+              },
               normalized_decimal: { type: ['string', 'null'] },
               normalizedDecimal: { type: ['string', 'null'] },
               interpretation: {
