@@ -1111,6 +1111,7 @@ export interface SettleOperationOptions {
   /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
   settled_credits: number | null;
+  /** When set: non-blank unpadded; blank/padded → incomplete_operation_idempotency_identity (#83/#88). */
   idempotency_key?: string;
 }
 

@@ -5634,6 +5634,87 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'settle_operation surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'settle_operation',
+        arguments: {
+          operation_id: 'op-settle-1',
+          settled_credits: 1,
+          idempotency_key: ' settle-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/settle')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'settle_operation whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'settle_operation',
+        arguments: {
+          operation_id: 'op-settle-2',
+          settled_credits: null,
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/settle')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_operation pad regression still refuses padded idempotency_key',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_operation',
+        arguments: {
+          idempotency_key: ' reserve-key-1 ',
+          kind: 'parse',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/operations/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'release_operation surrounding-padded operation_id → incomplete_operation_identity',
     async () => {
       const before = seen.length;
