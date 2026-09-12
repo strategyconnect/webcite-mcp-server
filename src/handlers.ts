@@ -1589,6 +1589,39 @@ export const handlers: Record<string, ToolHandler> = {
           );
         }
       }
+      // Optional binding snippet/seed: when present as string, blank/whitespace/
+      // surrounding pads never trim-launder into a certified sealed packet
+      // (same honesty as claim_text #76 / binding ids #264/#279).
+      if (typeof row.snippet === 'string' && !selectTextComplete(row.snippet)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          `bindings[${i}].snippet is incomplete (blank/whitespace/padded)`,
+          {
+            details: {
+              reason: 'padded_binding_snippet',
+              field: 'snippet',
+              index: i,
+            },
+            actionable:
+              'Blank/whitespace/padded binding snippet never seals an evidence packet; omit snippet or pass non-blank unpadded text.',
+          },
+        );
+      }
+      if (typeof row.seed === 'string' && !wakeIdentityComplete(row.seed)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          `bindings[${i}].seed is incomplete (blank/whitespace/padded)`,
+          {
+            details: {
+              reason: 'incomplete_binding_seed_identity',
+              field: 'seed',
+              index: i,
+            },
+            actionable:
+              'Blank/whitespace/padded binding seed never seals an evidence packet; omit seed or pass a non-blank unpadded id.',
+          },
+        );
+      }
       normalizedBindings.push({
         source_version_id: row.source_version_id as string,
         source_unit_id: row.source_unit_id as string,

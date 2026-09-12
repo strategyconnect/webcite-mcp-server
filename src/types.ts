@@ -530,7 +530,11 @@ export interface CreateEvidencePacketOptions {
    */
   claim_text: string;
   operator_class?: string;
-  /** Binding ids must be non-blank unpadded; blank/padded → incomplete_binding_identity (#264/#279). */
+  /**
+   * Binding ids must be non-blank unpadded; blank/padded → incomplete_binding_identity (#264/#279).
+   * Optional snippet blank/padded → padded_binding_snippet; optional seed blank/padded →
+   * incomplete_binding_seed_identity (never trim-launder into a sealed packet).
+   */
   bindings: Array<{
     source_version_id: string;
     source_unit_id: string;

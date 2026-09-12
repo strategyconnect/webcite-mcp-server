@@ -797,7 +797,7 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
   },
   {
     name: 'create_evidence_packet',
-    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace or surrounding-padded claim_text → padded_claim_text (same honesty as selectPassage #314 / resolve_seeds text — never trim-launder into a certified sealed claim). Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet).
+    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace or surrounding-padded claim_text → padded_claim_text (same honesty as selectPassage #314 / resolve_seeds text — never trim-launder into a certified sealed claim). Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet). Optional binding snippet blank/padded → padded_binding_snippet; optional binding seed blank/padded → incomplete_binding_seed_identity (never trim-launder into a sealed packet).
 
 Scope comes from the authenticated API. Pass idempotency_key to settle once under retries.
 
@@ -817,7 +817,7 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
         bindings: {
           type: 'array',
           description:
-            'Authorized source unit bindings to seal. Blank/whitespace/surrounding-padded source_version_id / source_unit_id / representation_id → incomplete_binding_identity (never trim-launder).',
+            'Authorized source unit bindings to seal. Blank/whitespace/surrounding-padded source_version_id / source_unit_id / representation_id → incomplete_binding_identity; blank/padded optional snippet → padded_binding_snippet; blank/padded optional seed → incomplete_binding_seed_identity (never trim-launder).',
           items: {
             type: 'object',
             properties: {
@@ -836,8 +836,16 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
                 description:
                   'Non-blank unpadded representation id. Blank/whitespace/surrounding-padded → incomplete_binding_identity.',
               },
-              snippet: { type: 'string' },
-              seed: { type: 'string' },
+              snippet: {
+                type: 'string',
+                description:
+                  'Optional non-blank unpadded quote snippet. Blank/whitespace/surrounding-padded → padded_binding_snippet (never trim-launder).',
+              },
+              seed: {
+                type: 'string',
+                description:
+                  'Optional non-blank unpadded seed id. Blank/whitespace/surrounding-padded → incomplete_binding_seed_identity (never trim-launder).',
+              },
             },
             required: ['source_version_id', 'source_unit_id', 'representation_id'],
           },
