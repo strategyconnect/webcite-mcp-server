@@ -853,6 +853,7 @@ export interface CreateResearchRunResponse {
 }
 
 export interface GetResearchRunOptions {
+  /** Non-blank unpadded; blank/pad → incomplete_research_run_identity (#264/#279). */
   run_id: string;
 }
 
@@ -874,6 +875,7 @@ export interface ListResearchRunsResponse {
 }
 
 export interface CheckpointResearchRunOptions {
+  /** Non-blank unpadded; blank/pad → incomplete_research_run_identity (#264/#279). */
   run_id: string;
   expected_revision: number;
   run: ResearchRunPayload;
@@ -983,6 +985,7 @@ export interface FormatCertifyResponse {
 }
 
 export interface ReserveResearchBudgetOptions {
+  /** Non-blank unpadded; blank/pad → incomplete_research_run_identity (#264/#279). */
   run_id: string;
   idempotency_key: string;
   kind: string;

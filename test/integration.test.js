@@ -2231,6 +2231,97 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(waitReq.body.run.scope.tenantId, 't1');
   });
 
+  await t.test(
+    'get_research_run surrounding-padded run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: ' 11111111-1111-1111-1111-111111111111 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_research_run_identity');
+      assert.equal(res.result.structuredContent.details?.field, 'run_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified run hit.
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path).includes('/research-runs/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_research_run whitespace-only run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: '\t' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_research_run_identity');
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path).includes('/research-runs/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run surrounding-padded run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: ' run-1 ',
+          expected_revision: 0,
+          run: {
+            id: 'run-1',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_research_run_identity');
+      assert.equal(res.result.structuredContent.details?.field, 'run_id');
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path).includes('/checkpoints')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_research_budget surrounding-padded run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_research_budget',
+        arguments: {
+          run_id: ' run-1 ',
+          idempotency_key: 'idem-pad',
+          kind: 'step',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_research_run_identity');
+      assert.equal(res.result.structuredContent.details?.field, 'run_id');
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path).includes('/reserve')),
+        undefined,
+      );
+    },
+  );
+
   await t.test('research create/list/get/checkpoint/reserve refuse when CONTEXT_GRAPH_RESEARCH off', async () => {
     const created = await rpc('tools/call', {
       name: 'create_research_run',

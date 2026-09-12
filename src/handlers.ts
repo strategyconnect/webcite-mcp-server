@@ -534,6 +534,26 @@ function assertCreateResearchIdentityComplete(args: Args | undefined): void {
   }
 }
 
+/**
+ * C3 research run path id pad honesty (same identityComplete rule as W3 #264/#279
+ * sealed ids / create_research identities): blank or surrounding-padded run_id
+ * never certifies a get/checkpoint/reserve hit — refuse before HTTP so equal
+ * pads cannot trim-launder into a certified run match.
+ */
+function assertResearchRunIdComplete(runId: unknown): asserts runId is string {
+  if (typeof runId !== 'string' || !wakeIdentityComplete(runId)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'run_id is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'incomplete_research_run_identity', field: 'run_id' },
+        actionable:
+          'Blank/whitespace/padded run_id never certifies a research-run hit; do not invent or trim-launder a run match.',
+      },
+    );
+  }
+}
+
 function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
@@ -1588,9 +1608,8 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_research_run: async (args, client) => {
-    if (typeof args?.run_id !== 'string' || !args.run_id.trim()) {
-      throw new ToolFailure('invalid_argument', 'run_id is required');
-    }
+    // C3 #264/#279 pad honesty: never trim-launder padded run_id into a certified get.
+    assertResearchRunIdComplete(args?.run_id);
     const raw = await wrapApi(client.getResearchRun({ run_id: args.run_id }));
     const validated = validateGetResearchRun(raw);
     return ok(formatGetResearchRun(validated), validated as unknown as Record<string, unknown>);
@@ -1608,8 +1627,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   checkpoint_research_run: async (args, client) => {
+    // C3 #264/#279 pad honesty: never trim-launder padded run_id into a certified CAS.
+    assertResearchRunIdComplete(args?.run_id);
     if (
-      typeof args?.run_id !== 'string' ||
       typeof args?.expected_revision !== 'number' ||
       !args?.run ||
       typeof args.run !== 'object'
@@ -1819,8 +1839,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   reserve_research_budget: async (args, client) => {
+    // C3 #264/#279 pad honesty: never trim-launder padded run_id into a certified reserve.
+    assertResearchRunIdComplete(args?.run_id);
     if (
-      typeof args?.run_id !== 'string' ||
       typeof args?.idempotency_key !== 'string' ||
       typeof args?.kind !== 'string' ||
       typeof args?.credits !== 'number'

@@ -1261,13 +1261,17 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs`,
   },
   {
     name: 'get_research_run',
-    description: `Load a research run by id (C3). Surfaced notes with blank/padded note id or ResearchScope fields fail closed (incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). Surfaced progress with blank/padded openRequirementIds/failedRequirementIds fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
+    description: `Load a research run by id (C3). Blank/whitespace/surrounding-padded run_id → incomplete_research_run_identity (W3 #264/#279 pad honesty — never trim-launder into a certified run hit). Surfaced notes with blank/padded note id or ResearchScope fields fail closed (incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). Surfaced progress with blank/padded openRequirementIds/failedRequirementIds fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        run_id: { type: 'string' },
+        run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded research run id. Blank/whitespace/surrounding-padded → incomplete_research_run_identity (never trim-launder).',
+        },
       },
       required: ['run_id'],
     },
@@ -1284,13 +1288,17 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). When run.notes is non-empty, each note id and ResearchScope (tenantId/userId/dealId/sessionId) on the note and run.scope must be non-blank/unpadded (whitespace/pad → incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). When run.progress is set, openRequirementIds/failedRequirementIds must be non-blank/unpadded (whitespace/pad → incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
+    description: `Compare-and-swap a research-run checkpoint (C3). Blank/whitespace/surrounding-padded run_id → incomplete_research_run_identity (W3 #264/#279 — never trim-launder into a certified CAS). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). When run.notes is non-empty, each note id and ResearchScope (tenantId/userId/dealId/sessionId) on the note and run.scope must be non-blank/unpadded (whitespace/pad → incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). When run.progress is set, openRequirementIds/failedRequirementIds must be non-blank/unpadded (whitespace/pad → incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        run_id: { type: 'string' },
+        run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded research run id. Blank/whitespace/surrounding-padded → incomplete_research_run_identity (never trim-launder).',
+        },
         expected_revision: { type: 'number' },
         run: {
           type: 'object',
@@ -1435,13 +1443,17 @@ Credits: 1. HTTP: POST /api/v2/context/format/certify`,
   },
   {
     name: 'reserve_research_budget',
-    description: `Reserve credits under a research run's root operation (I4). Missing root refuses. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed.
+    description: `Reserve credits under a research run's root operation (I4). Blank/whitespace/surrounding-padded run_id → incomplete_research_run_identity (W3 #264/#279 — never trim-launder into a certified reserve). Missing root refuses. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        run_id: { type: 'string' },
+        run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded research run id. Blank/whitespace/surrounding-padded → incomplete_research_run_identity (never trim-launder).',
+        },
         idempotency_key: { type: 'string' },
         kind: { type: 'string' },
         credits: { type: 'number' },
