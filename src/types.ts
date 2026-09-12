@@ -619,10 +619,10 @@ export const NUMBER_OCCURRENCE_INTERPRETATIONS: readonly NumberOccurrenceInterpr
 ] as const;
 
 export interface NumberInventoryOccurrenceInput {
-  /** Blank/whitespace → missing_occurrence_identity (never invent). */
+  /** Blank/whitespace/padded → missing_occurrence_identity (never invent). */
   id?: string;
   raw?: string;
-  /** Blank/whitespace → missing_occurrence_identity (never invent). */
+  /** Blank/whitespace/padded → missing_occurrence_identity (never invent). */
   fragment_id?: string;
   fragmentId?: string;
   normalized_decimal?: string | null;
@@ -770,13 +770,21 @@ export interface ResearchWaitCondition {
   expiresAtMs: number;
 }
 
+export interface ResearchRunScope {
+  /** Non-blank when wait is set; whitespace → incomplete_wake_tenant_identity (backend #277). */
+  tenantId: string;
+  [key: string]: unknown;
+}
+
 export interface ResearchRunPayload {
   id: string;
   checkpointRevision: number;
   objective: string;
   phase: string;
-  /** When set, subjectId + subjectRevisionId must be non-blank. */
+  /** When set, subjectId + subjectRevisionId must be non-blank; scope.tenantId must be non-blank. */
   wait?: ResearchWaitCondition | null;
+  /** Required non-blank tenantId when wait is set (backend #277). */
+  scope?: ResearchRunScope;
   [key: string]: unknown;
 }
 

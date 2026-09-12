@@ -501,6 +501,11 @@ const NUMBER_METHOD_SET = new Set<string>(NUMBER_OCCURRENCE_METHODS);
 const NUMBER_INTERPRETATION_SET = new Set<string>(NUMBER_OCCURRENCE_INTERPRETATIONS);
 const NUMBER_RECOGNITION_SET = new Set<string>(['read', 'uncertain', 'unreadable']);
 
+/** Backend #259/#276: blank/whitespace or surrounding-padded ids are incomplete. */
+function occurrenceIdentityComplete(id: string): boolean {
+  return id.trim().length > 0 && id === id.trim();
+}
+
 function validateNumberInventoryOccurrence(
   raw: unknown,
   index: number,
@@ -508,18 +513,18 @@ function validateNumberInventoryOccurrence(
   const label = `NumberInventory.occurrences[${index}]`;
   const row = requireObject(raw, label);
   const idRaw = row.id;
-  // Backend #259: blank/whitespace identity is incomplete (missing_occurrence_identity).
-  if (typeof idRaw !== 'string' || !idRaw.trim()) {
+  // Backend #259/#276: blank/whitespace/padded identity → missing_occurrence_identity.
+  if (typeof idRaw !== 'string' || !occurrenceIdentityComplete(idRaw)) {
     throw new ToolFailure('invalid_api_output', `${label}.id is required`, {
       actionable:
-        'Blank/whitespace id is incomplete (missing_occurrence_identity); do not invent occurrence identity.',
+        'Blank/whitespace/padded id is incomplete (missing_occurrence_identity); do not invent occurrence identity.',
     });
   }
   const fragmentRaw = row.fragment_id ?? row.fragmentId;
-  if (typeof fragmentRaw !== 'string' || !fragmentRaw.trim()) {
+  if (typeof fragmentRaw !== 'string' || !occurrenceIdentityComplete(fragmentRaw)) {
     throw new ToolFailure('invalid_api_output', `${label}.fragment_id is required`, {
       actionable:
-        'Blank/whitespace fragment_id is incomplete (missing_occurrence_identity); do not invent occurrence identity.',
+        'Blank/whitespace/padded fragment_id is incomplete (missing_occurrence_identity); do not invent occurrence identity.',
     });
   }
   const id = idRaw;
@@ -732,10 +737,38 @@ function assertWakeSubjectCompleteOutput(
   }
 }
 
+/**
+ * Backend #277: blank/whitespace scope.tenantId never wakes when wait is set —
+ * equal blanks must not look like a certified tenant match.
+ */
+function assertWakeTenantCompleteOutput(
+  run: Record<string, unknown>,
+  label: string,
+): void {
+  if (run.wait === null || run.wait === undefined) return;
+  const scope = run.scope;
+  const tenantId =
+    scope && typeof scope === 'object' && !Array.isArray(scope)
+      ? (scope as Record<string, unknown>).tenantId
+      : undefined;
+  if (typeof tenantId !== 'string' || !tenantId.trim()) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label}.scope.tenantId is incomplete (blank/whitespace)`,
+      {
+        details: { reason: 'incomplete_wake_tenant_identity', field: 'tenantId' },
+        actionable:
+          'Blank/whitespace wake tenant identity never matches; do not invent a certified tenant match.',
+      },
+    );
+  }
+}
+
 function requireResearchRun(raw: unknown, label: string): CreateResearchRunResponse['run'] {
   const run = requireObject(raw, label);
-  // Preserve wait as-is when present; refuse blank subject identity fail-closed.
+  // Preserve wait as-is when present; refuse blank subject/tenant identity fail-closed.
   assertWakeSubjectCompleteOutput(run.wait, label);
+  assertWakeTenantCompleteOutput(run, label);
   return {
     ...run,
     id: requireString(run, 'id', label),

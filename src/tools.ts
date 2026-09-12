@@ -886,7 +886,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace id or fragment_id)/blank raw/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank raw/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -895,14 +895,14 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
         occurrences: {
           type: 'array',
           description:
-            'NumericOccurrence rows. recognition_state + non-blank raw + valid method required for complete coverage (method is never defaulted to native). Non-blank id + fragment_id required (whitespace → missing_occurrence_identity).',
+            'NumericOccurrence rows. recognition_state + non-blank raw + valid method required for complete coverage (method is never defaulted to native). Non-blank unpadded id + fragment_id required (whitespace/padded → missing_occurrence_identity).',
           items: {
             type: 'object',
             properties: {
               id: {
                 type: 'string',
                 description:
-                  'Occurrence identity; blank/whitespace → missing_occurrence_identity.',
+                  'Occurrence identity; blank/whitespace/padded (id !== trim) → missing_occurrence_identity.',
               },
               raw: {
                 type: 'string',
@@ -911,12 +911,12 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
               fragment_id: {
                 type: 'string',
                 description:
-                  'Fragment identity; blank/whitespace → missing_occurrence_identity.',
+                  'Fragment identity; blank/whitespace/padded → missing_occurrence_identity.',
               },
               fragmentId: {
                 type: 'string',
                 description:
-                  'Alias of fragment_id; blank/whitespace → missing_occurrence_identity.',
+                  'Alias of fragment_id; blank/whitespace/padded → missing_occurrence_identity.',
               },
               normalized_decimal: { type: ['string', 'null'] },
               normalizedDecimal: { type: ['string', 'null'] },
@@ -1215,7 +1215,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank (whitespace → incomplete_wake_subject_identity; equal blanks never wake). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
+    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank (whitespace → incomplete_wake_subject_identity) and scope.tenantId must be non-blank (whitespace → incomplete_wake_tenant_identity; equal blanks never wake). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
@@ -1226,7 +1226,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
         run: {
           type: 'object',
           description:
-            'Full ResearchRun payload. Optional wait requires non-blank subjectId + subjectRevisionId (blank/whitespace → incomplete_wake_subject_identity).',
+            'Full ResearchRun payload. Optional wait requires non-blank subjectId + subjectRevisionId (blank/whitespace → incomplete_wake_subject_identity) and non-blank scope.tenantId (blank/whitespace → incomplete_wake_tenant_identity).',
         },
         idempotency_key: { type: 'string' },
       },

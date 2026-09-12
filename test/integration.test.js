@@ -579,8 +579,10 @@ function startStub(options = {}) {
             // HTTP: interpretation may default to unknown; never invent method=native.
             const method = row.method ?? '';
             const interpretation = row.interpretation ?? 'unknown';
-            // Backend #259: blank/whitespace ids are incomplete — never certify counts.
-            if (!String(id).trim() || !String(fragmentId).trim()) {
+            // Backend #259/#276: blank/whitespace/padded ids are incomplete — never certify counts.
+            const identityComplete = (s) =>
+              String(s).trim().length > 0 && String(s) === String(s).trim();
+            if (!identityComplete(id) || !identityComplete(fragmentId)) {
               unresolved.push('missing_occurrence_identity');
               continue;
             }
@@ -795,9 +797,33 @@ function startStub(options = {}) {
                 checkpointRevision: 0,
                 objective: 'trace ARR',
                 phase: 'waiting',
+                scope: { tenantId: 't1' },
                 wait: {
                   kind: 'source_ready',
                   subjectId: '  ',
+                  subjectRevisionId: 'v2',
+                  expiresAtMs: 9999,
+                },
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        // Backend #277: blank wait tenant identity in API output must fail closed.
+        if (runId === 'blank-tenant-wait' && !action) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              run: {
+                id: runId,
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'waiting',
+                scope: { tenantId: '  ' },
+                wait: {
+                  kind: 'source_ready',
+                  subjectId: 'src',
                   subjectRevisionId: 'v2',
                   expiresAtMs: 9999,
                 },
@@ -822,12 +848,17 @@ function startStub(options = {}) {
           isCheckpoint && incomingRun && typeof incomingRun === 'object'
             ? incomingRun.wait
             : undefined;
+        const incomingScope =
+          isCheckpoint && incomingRun && typeof incomingRun === 'object'
+            ? incomingRun.scope
+            : undefined;
         const run = {
           id: runId,
           checkpointRevision: isCheckpoint ? 1 : 0,
           objective: 'trace ARR',
           phase: incomingWait ? 'waiting' : 'running',
           ...(incomingWait !== undefined ? { wait: incomingWait } : {}),
+          ...(incomingScope !== undefined ? { scope: incomingScope } : {}),
         };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ run, engine: 'context_graph' }));
@@ -1609,7 +1640,7 @@ test('every tool round-trips through the real server against the API', async (t)
     );
     assert.match(checkpointed, /Revision:\*\* 1/);
 
-    // Backend #268: complete wait subject identity forwards as-is (never trimmed).
+    // Backend #268/#277: complete wait subject + tenant identity forwards as-is (never trimmed).
     const waiting = await call('checkpoint_research_run', {
       run_id: '11111111-1111-1111-1111-111111111111',
       expected_revision: 1,
@@ -1618,6 +1649,7 @@ test('every tool round-trips through the real server against the API', async (t)
         checkpointRevision: 1,
         objective: 'trace ARR',
         phase: 'waiting',
+        scope: { tenantId: 't1' },
         wait: {
           kind: 'source_ready',
           subjectId: 'src-1',
@@ -1630,6 +1662,7 @@ test('every tool round-trips through the real server against the API', async (t)
     const waitReq = seen.at(-1);
     assert.equal(waitReq.body.run.wait.subjectId, 'src-1');
     assert.equal(waitReq.body.run.wait.subjectRevisionId, 'rev-2');
+    assert.equal(waitReq.body.run.scope.tenantId, 't1');
   });
 
   await t.test('research create/list/get/checkpoint/reserve refuse when CONTEXT_GRAPH_RESEARCH off', async () => {
@@ -2358,6 +2391,65 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+  await t.test(
+    'number_inventory surrounding-padded identity → missing_occurrence_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: ' occ ',
+              raw: '9',
+              fragment_id: 'frag-1',
+              method: 'ocr',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /missing_occurrence_identity/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      // MCP must forward padded identity as-is — never strip into certified id.
+      assert.equal(req.body.occurrences[0].id, ' occ ');
+      assert.equal(req.body.occurrences[0].fragment_id, 'frag-1');
+    },
+  );
+
+  await t.test(
+    'number_inventory surrounding-padded fragment_id → missing_occurrence_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'occ-1',
+              raw: '9',
+              fragment_id: '\tfrag\t',
+              method: 'native',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /missing_occurrence_identity/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      assert.equal(req.body.occurrences[0].fragment_id, '\tfrag\t');
+    },
+  );
+
   await t.test('number_inventory invalid interpretation → incomplete', async () => {
     const res = await rpc('tools/call', {
       name: 'number_inventory',
@@ -2482,6 +2574,54 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       assert.equal(res.result.isError, true);
       assert.equal(res.result.structuredContent.code, 'invalid_api_output');
       assert.match(res.result.content[0].text, /incomplete_wake_subject_identity|blank\/whitespace/);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run blank scope.tenantId → incomplete_wake_tenant_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          expected_revision: 0,
+          run: {
+            id: '11111111-1111-1111-1111-111111111111',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'waiting',
+            scope: { tenantId: '  ' },
+            wait: {
+              kind: 'source_ready',
+              subjectId: 'src',
+              subjectRevisionId: 'v2',
+              expiresAtMs: 9999,
+            },
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_wake_tenant_identity|blank\/whitespace/);
+      assert.match(res.result.content[0].text, /tenantId/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'get_research_run blank wait tenant identity → incomplete_wake_tenant_identity',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: 'blank-tenant-wait' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.match(res.result.content[0].text, /incomplete_wake_tenant_identity|blank\/whitespace/);
     },
   );
 

@@ -189,6 +189,30 @@ function assertWakeSubjectComplete(wait: unknown, label: string): void {
   }
 }
 
+/**
+ * Backend #277: when wait is set, scope.tenantId must be non-blank.
+ * Equal blank tenants must never look like a certified wake tenant match.
+ */
+function assertWakeTenantComplete(run: ResearchRunPayload, label: string): void {
+  if (run.wait === null || run.wait === undefined) return;
+  const scope = run.scope;
+  const tenantId =
+    scope && typeof scope === 'object' && !Array.isArray(scope)
+      ? (scope as Record<string, unknown>).tenantId
+      : undefined;
+  if (typeof tenantId !== 'string' || !tenantId.trim()) {
+    throw new ToolFailure(
+      'invalid_argument',
+      `${label}.scope.tenantId is incomplete (blank/whitespace)`,
+      {
+        details: { reason: 'incomplete_wake_tenant_identity', field: 'tenantId' },
+        actionable:
+          'Blank/whitespace wake tenant identity never matches; do not invent tenant ids.',
+      },
+    );
+  }
+}
+
 function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
@@ -1097,14 +1121,15 @@ export const handlers: Record<string, ToolHandler> = {
       );
     }
     const run = args.run as ResearchRunPayload;
-    // Backend #268: blank/whitespace wait subject identity never wakes — refuse
-    // before HTTP so equal blanks cannot look like a certified subject match.
+    // Backend #268/#277: blank/whitespace wait subject or scope tenant never wakes —
+    // refuse before HTTP so equal blanks cannot look like a certified match.
     assertWakeSubjectComplete(run.wait, 'checkpoint_research_run.run.wait');
+    assertWakeTenantComplete(run, 'checkpoint_research_run.run');
     const raw = await wrapApi(
       client.checkpointResearchRun({
         run_id: args.run_id,
         expected_revision: args.expected_revision,
-        // Forward wait subject ids as-is — never invent or strip whitespace.
+        // Forward wait/scope ids as-is — never invent or strip whitespace.
         run,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
