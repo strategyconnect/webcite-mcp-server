@@ -1459,7 +1459,11 @@ export interface EvaluationDescribeResponse {
   [key: string]: unknown;
 }
 
-/** Evaluation compare; baseline/candidate run ids must be non-blank unpadded (incomplete_evaluation_run_identity). */
+/**
+ * Evaluation compare; baseline/candidate run ids must be non-blank unpadded
+ * (incomplete_evaluation_run_identity). Optional idempotency_key when set must
+ * be non-blank unpadded (incomplete_operation_idempotency_identity; #92/#95 honesty).
+ */
 export interface EvaluationCompareResponse {
   baseline_run_id: string;
   candidate_run_id: string;
