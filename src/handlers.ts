@@ -632,6 +632,30 @@ function assertWorkflowPathIdComplete(
 }
 
 /**
+ * W3 evaluation path ids: blank/whitespace/surrounding-padded run_id /
+ * baseline_run_id / candidate_run_id / case_id must never trim-launder into a
+ * certified evaluation hit (same identityComplete rule as workflow path ids
+ * #74 / sealed W3 ids #264/#279).
+ */
+function assertEvalPathIdComplete(
+  value: unknown,
+  field: 'run_id' | 'baseline_run_id' | 'candidate_run_id' | 'case_id',
+  reason: 'incomplete_evaluation_run_identity' | 'incomplete_evaluation_case_identity',
+): asserts value is string {
+  if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      `${field} is incomplete (blank/whitespace/padded)`,
+      {
+        details: { reason, field },
+        actionable:
+          `Blank/whitespace/padded ${field} never certifies an evaluation hit; do not invent or trim-launder a path lookup.`,
+      },
+    );
+  }
+}
+
+/**
  * C3/I4 EvidenceOperation path ids: blank/whitespace/surrounding-padded
  * operation_id must never trim-launder into a certified get/settle/release/
  * attempt hit (same identityComplete rule as research run_id #264/#279).
@@ -2774,8 +2798,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_evaluation: async (args, client) => {
-    const runId = requireString(args, 'run_id');
-    const raw = await wrapApi(client.getEvaluation(runId));
+    // W3: padded run_id never certifies an evaluation run artifact.
+    assertEvalPathIdComplete(args?.run_id, 'run_id', 'incomplete_evaluation_run_identity');
+    const raw = await wrapApi(client.getEvaluation(args.run_id));
     return ok(
       `# Evaluation Run\n\n**Run:** ${raw.run_id}\n**Private gold denied:** ${raw.private_gold_denied ? 'yes' : 'no'}`,
       raw as unknown as Record<string, unknown>,
@@ -2783,12 +2808,21 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   compare_evaluations: async (args, client) => {
-    const baseline = requireString(args, 'baseline_run_id');
-    const candidate = requireString(args, 'candidate_run_id');
+    // W3: padded baseline/candidate run ids never certify a compare hit.
+    assertEvalPathIdComplete(
+      args?.baseline_run_id,
+      'baseline_run_id',
+      'incomplete_evaluation_run_identity',
+    );
+    assertEvalPathIdComplete(
+      args?.candidate_run_id,
+      'candidate_run_id',
+      'incomplete_evaluation_run_identity',
+    );
     const raw = await wrapApi(
       client.compareEvaluations({
-        baseline_run_id: baseline,
-        candidate_run_id: candidate,
+        baseline_run_id: args.baseline_run_id,
+        candidate_run_id: args.candidate_run_id,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),
@@ -2800,9 +2834,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_evaluation_case: async (args, client) => {
-    const runId = requireString(args, 'run_id');
-    const caseId = requireString(args, 'case_id');
-    const raw = await wrapApi(client.getEvaluationCase(runId, caseId));
+    // W3: padded run_id / case_id never certify an evaluation case artifact.
+    assertEvalPathIdComplete(args?.run_id, 'run_id', 'incomplete_evaluation_run_identity');
+    assertEvalPathIdComplete(args?.case_id, 'case_id', 'incomplete_evaluation_case_identity');
+    const raw = await wrapApi(client.getEvaluationCase(args.run_id, args.case_id));
     return ok(
       `# Evaluation Case\n\n**Run:** ${raw.run_id}\n**Case:** ${raw.case_id}`,
       raw as unknown as Record<string, unknown>,
