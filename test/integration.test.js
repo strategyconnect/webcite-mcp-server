@@ -3272,6 +3272,96 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'formal_resolution_state surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formal_resolution_state',
+        arguments: {
+          proof_search_failed: true,
+          idempotency_key: ' res-state-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/resolution-state'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formal_resolution_state whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formal_resolution_state',
+        arguments: {
+          missing_operands: true,
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/resolution-state'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formal_resolution_state equal-pad idempotency_key → incomplete_operation_idempotency_identity (never resolve)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formal_resolution_state',
+        arguments: {
+          counterexample_found: true,
+          idempotency_key: ' res-state-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/resolution-state'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #314 padded_select_text must stay fail-closed.
+  await t.test(
+    'query_context surrounding-padded text still → padded_select_text (#314 regression after formal_resolution_state idem)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: { text: ' revenue ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_select_text');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('formal_check posts Lean source and returns status', async () => {
     const text = await call('formal_check', {
       source: 'example : remaining 10 4 = 7 := by decide\n',
