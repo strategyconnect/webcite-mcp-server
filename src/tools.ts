@@ -791,7 +791,7 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
   },
   {
     name: 'create_evidence_packet',
-    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload.
+    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet).
 
 Scope comes from the authenticated API. Pass idempotency_key to settle once under retries.
 
@@ -809,13 +809,26 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
         },
         bindings: {
           type: 'array',
-          description: 'Authorized source unit bindings to seal.',
+          description:
+            'Authorized source unit bindings to seal. Blank/whitespace/surrounding-padded source_version_id / source_unit_id / representation_id → incomplete_binding_identity (never trim-launder).',
           items: {
             type: 'object',
             properties: {
-              source_version_id: { type: 'string' },
-              source_unit_id: { type: 'string' },
-              representation_id: { type: 'string' },
+              source_version_id: {
+                type: 'string',
+                description:
+                  'Non-blank unpadded source version id. Blank/whitespace/surrounding-padded → incomplete_binding_identity.',
+              },
+              source_unit_id: {
+                type: 'string',
+                description:
+                  'Non-blank unpadded source unit id. Blank/whitespace/surrounding-padded → incomplete_binding_identity.',
+              },
+              representation_id: {
+                type: 'string',
+                description:
+                  'Non-blank unpadded representation id. Blank/whitespace/surrounding-padded → incomplete_binding_identity.',
+              },
               snippet: { type: 'string' },
               seed: { type: 'string' },
             },

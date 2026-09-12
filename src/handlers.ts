@@ -1151,29 +1151,52 @@ export const handlers: Record<string, ToolHandler> = {
           'Provide at least one source_version_id / source_unit_id / representation_id binding.',
       });
     }
+    // W3 #264/#279 pad honesty: never trim-launder binding identities into a
+    // certified sealed packet (same identityComplete rule as sealed catalog ids).
+    const normalizedBindings: Array<{
+      source_version_id: string;
+      source_unit_id: string;
+      representation_id: string;
+      snippet?: string;
+      seed?: string;
+    }> = [];
     for (const [i, binding] of bindings.entries()) {
       if (!binding || typeof binding !== 'object' || Array.isArray(binding)) {
         throw new ToolFailure('invalid_argument', `bindings[${i}] must be an object`);
       }
       const row = binding as Record<string, unknown>;
       for (const key of ['source_version_id', 'source_unit_id', 'representation_id'] as const) {
-        if (typeof row[key] !== 'string' || !(row[key] as string).trim()) {
-          throw new ToolFailure('invalid_argument', `bindings[${i}].${key} is required`);
+        const value = row[key];
+        if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+          throw new ToolFailure(
+            'invalid_argument',
+            `bindings[${i}].${key} is incomplete (blank/whitespace/padded)`,
+            {
+              details: {
+                reason: 'incomplete_binding_identity',
+                field: key,
+                index: i,
+              },
+              actionable:
+                'Blank/whitespace/padded binding ids never seal an evidence packet; do not invent or trim-launder a binding hit.',
+            },
+          );
         }
       }
+      normalizedBindings.push({
+        source_version_id: row.source_version_id as string,
+        source_unit_id: row.source_unit_id as string,
+        representation_id: row.representation_id as string,
+        ...(typeof row.snippet === 'string' ? { snippet: row.snippet } : {}),
+        ...(typeof row.seed === 'string' ? { seed: row.seed } : {}),
+      });
     }
     const raw = await wrapApi(
       client.createEvidencePacket({
         claim_text: claimText,
         operator_class:
           typeof args?.operator_class === 'string' ? args.operator_class : undefined,
-        bindings: bindings as Array<{
-          source_version_id: string;
-          source_unit_id: string;
-          representation_id: string;
-          snippet?: string;
-          seed?: string;
-        }>,
+        bindings: normalizedBindings,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),

@@ -1800,6 +1800,120 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /packet-new/);
   });
 
+  await t.test(
+    'create_evidence_packet surrounding-padded source_version_id → incomplete_binding_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: ' sv1 ',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
+      assert.equal(res.result.structuredContent.details?.field, 'source_version_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified sealed packet.
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet surrounding-padded source_unit_id → incomplete_binding_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: ' u1 ',
+              representation_id: 'rep1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
+      assert.equal(res.result.structuredContent.details?.field, 'source_unit_id');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet surrounding-padded representation_id → incomplete_binding_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: ' rep1 ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
+      assert.equal(res.result.structuredContent.details?.field, 'representation_id');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet whitespace-only binding id → incomplete_binding_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: '\t',
+              representation_id: 'rep1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
+      assert.equal(res.result.structuredContent.details?.field, 'source_unit_id');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('assess_support posts claim hashes and returns tier-capped judgment', async () => {
     const text = await call('assess_support', {
       claim_revision_id: 'claim-r1',
