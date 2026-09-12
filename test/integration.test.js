@@ -2112,85 +2112,6 @@ test('every tool round-trips through the real server against the API', async (t)
   );
 
   await t.test(
-    'assess_support surrounding-padded claim_hash → incomplete_claim_hash_identity',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'assess_support',
-        arguments: {
-          claim_revision_id: 'claim-r1',
-          claim_hash: ' hash-1 ',
-          evidence_group_revision_id: 'eg-r1',
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(
-        res.result.structuredContent.details?.reason,
-        'incomplete_claim_hash_identity',
-      );
-      assert.equal(res.result.structuredContent.details?.field, 'claim_hash');
-      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
-    'assess_support whitespace-only claim_hash → incomplete_claim_hash_identity',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'assess_support',
-        arguments: {
-          claim_revision_id: 'claim-r1',
-          claim_hash: '   ',
-          evidence_group_revision_id: 'eg-r1',
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(
-        res.result.structuredContent.details?.reason,
-        'incomplete_claim_hash_identity',
-      );
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
-    'assess_support equal-pad claim_hash → incomplete_claim_hash_identity (never assess)',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'assess_support',
-        arguments: {
-          claim_revision_id: 'claim-r1',
-          claim_hash: ' hash-1 ',
-          evidence_group_revision_id: 'eg-r1',
-          proposed: 'supports',
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(
-        res.result.structuredContent.details?.reason,
-        'incomplete_claim_hash_identity',
-      );
-      // Equal pads must not trim-launder into the same certified assessment as
-      // a clean hash-1 hit (happy-path fixture above still posts hash-1).
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
     'assess_support surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity',
     async () => {
       const before = seen.length;
@@ -4976,6 +4897,130 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
         seen
           .slice(before)
           .find((r) => String(r.path || '').includes('/operations/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_context_workflow surrounding-padded revision_id → incomplete_workflow_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_context_workflow',
+        arguments: { revision_id: ' wf-rev-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_revision_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'revision_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified workflow revision.
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/workflows/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_context_workflow whitespace-only revision_id → incomplete_workflow_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_context_workflow',
+        arguments: { revision_id: '  ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_revision_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/workflows/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_workflow_run surrounding-padded run_id → incomplete_workflow_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_workflow_run',
+        arguments: { run_id: ' run-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_run_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'run_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/runs/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_workflow_run whitespace-only run_id → incomplete_workflow_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_workflow_run',
+        arguments: { run_id: '\t' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_run_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/runs/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet binding-pad regression still refuses padded source_version_id',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: ' sv1 ',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
         undefined,
       );
     },

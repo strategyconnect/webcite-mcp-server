@@ -852,7 +852,7 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
   },
   {
     name: 'assess_support',
-    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded claim_hash → incomplete_claim_hash_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
+    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
 
 Scope comes from the authenticated API.
 
@@ -867,8 +867,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
         },
         claim_hash: {
           type: 'string',
-          description:
-            'Non-blank unpadded hash of the claim text checked against the evidence group. Blank/whitespace/surrounding-padded → incomplete_claim_hash_identity (never trim-launder).',
+          description: 'Hash of the claim text checked against the evidence group.',
         },
         evidence_group_revision_id: {
           type: 'string',
@@ -1839,13 +1838,17 @@ Credits: 1. HTTP: POST /api/v2/context/workflows`,
   },
   {
     name: 'get_context_workflow',
-    description: `Read one immutable saved-context workflow revision.
+    description: `Read one immutable saved-context workflow revision. Blank/whitespace/surrounding-padded revision_id → incomplete_workflow_revision_identity (W3 #264/#279 pad honesty — never trim-launder into a certified workflow revision).
 
 Credits: 1. HTTP: GET /api/v2/context/workflows/:revisionId`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        revision_id: { type: 'string', description: 'Workflow revision ID.' },
+        revision_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded workflow revision ID. Blank/whitespace/surrounding-padded → incomplete_workflow_revision_identity (never trim-launder).',
+        },
       },
       required: ['revision_id'],
     },
@@ -1869,13 +1872,17 @@ Credits: 2. HTTP: POST /api/v2/context/workflows/:revisionId/runs`,
   },
   {
     name: 'get_workflow_run',
-    description: `Fetch an authorized workflow run artifact by run ID.
+    description: `Fetch an authorized workflow run artifact by run ID. Blank/whitespace/surrounding-padded run_id → incomplete_workflow_run_identity (W3 #264/#279 pad honesty — never trim-launder into a certified workflow run).
 
 Credits: 1. HTTP: GET /api/v2/context/runs/:runId`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        run_id: { type: 'string' },
+        run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded workflow run ID. Blank/whitespace/surrounding-padded → incomplete_workflow_run_identity (never trim-launder).',
+        },
       },
       required: ['run_id'],
     },

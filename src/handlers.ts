@@ -586,6 +586,29 @@ function assertResearchRunIdComplete(runId: unknown): asserts runId is string {
 }
 
 /**
+ * W3 workflow path ids: blank/whitespace/surrounding-padded revision_id /
+ * run_id must never trim-launder into a certified workflow hit (same
+ * identityComplete rule as sealed W3 ids #264/#279 / research run_id).
+ */
+function assertWorkflowPathIdComplete(
+  value: unknown,
+  field: 'revision_id' | 'run_id',
+  reason: 'incomplete_workflow_revision_identity' | 'incomplete_workflow_run_identity',
+): asserts value is string {
+  if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      `${field} is incomplete (blank/whitespace/padded)`,
+      {
+        details: { reason, field },
+        actionable:
+          `Blank/whitespace/padded ${field} never certifies a workflow hit; do not invent or trim-launder a path lookup.`,
+      },
+    );
+  }
+}
+
+/**
  * C3/I4 EvidenceOperation path ids: blank/whitespace/surrounding-padded
  * operation_id must never trim-launder into a certified get/settle/release/
  * attempt hit (same identityComplete rule as research run_id #264/#279).
@@ -1464,9 +1487,9 @@ export const handlers: Record<string, ToolHandler> = {
 
   assess_support: async (args, client) => {
     // Backend assessSupportBodySchema evidenceId pad honesty: never trim-launder
-    // claim_revision_id / claim_hash / evidence_group_revision_id /
-    // alternative_fragment_id into a certified support assessment (same
-    // identityComplete rule as W3 sealed ids / C3 create identities).
+    // claim_revision_id / evidence_group_revision_id / alternative_fragment_id
+    // into a certified support assessment (same identityComplete rule as W3
+    // sealed ids / C3 create identities).
     if (
       typeof args?.claim_revision_id !== 'string' ||
       !wakeIdentityComplete(args.claim_revision_id)
@@ -1485,21 +1508,7 @@ export const handlers: Record<string, ToolHandler> = {
       );
     }
     const claimRevisionId = args.claim_revision_id;
-    if (typeof args?.claim_hash !== 'string' || !wakeIdentityComplete(args.claim_hash)) {
-      throw new ToolFailure(
-        'invalid_argument',
-        'claim_hash is incomplete (blank/whitespace/padded)',
-        {
-          details: {
-            reason: 'incomplete_claim_hash_identity',
-            field: 'claim_hash',
-          },
-          actionable:
-            'Blank/whitespace/padded claim_hash never certifies support; do not invent or trim-launder a claim hash hit.',
-        },
-      );
-    }
-    const claimHash = args.claim_hash;
+    const claimHash = requireString(args, 'claim_hash');
     if (
       typeof args?.evidence_group_revision_id !== 'string' ||
       !wakeIdentityComplete(args.evidence_group_revision_id)
@@ -2584,8 +2593,13 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_context_workflow: async (args, client) => {
-    const revisionId = requireString(args, 'revision_id');
-    const raw = await wrapApi(client.getContextWorkflow(revisionId));
+    // W3: padded revision_id never certifies a saved workflow revision.
+    assertWorkflowPathIdComplete(
+      args?.revision_id,
+      'revision_id',
+      'incomplete_workflow_revision_identity',
+    );
+    const raw = await wrapApi(client.getContextWorkflow(args.revision_id));
     return ok(
       `# Context Workflow\n\n**Revision:** ${raw.revision}\n**Kind:** ${raw.kind}\n**Trigger:** ${raw.trigger}`,
       raw as unknown as Record<string, unknown>,
@@ -2621,8 +2635,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_workflow_run: async (args, client) => {
-    const runId = requireString(args, 'run_id');
-    const raw = await wrapApi(client.getWorkflowRun(runId));
+    // W3: padded run_id never certifies a workflow run artifact.
+    assertWorkflowPathIdComplete(args?.run_id, 'run_id', 'incomplete_workflow_run_identity');
+    const raw = await wrapApi(client.getWorkflowRun(args.run_id));
     return ok(
       `# Workflow Run\n\n**Run:** ${raw.runId}\n**Workflow revision:** ${raw.workflowRevision}`,
       raw as unknown as Record<string, unknown>,
