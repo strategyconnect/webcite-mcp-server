@@ -4214,6 +4214,235 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(formalized, /Predicate:\*\* equals/);
   });
 
+  await t.test(
+    'claim_structure_tier surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'claim_structure_tier',
+        arguments: {
+          assertion: { text: 'ARR is $10m', scope: { metric: 'ARR' } },
+          idempotency_key: ' tier-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-structure/tier'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified claim-structure-tier replay',
+      );
+    },
+  );
+
+  await t.test(
+    'claim_structure_tier whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'claim_structure_tier',
+        arguments: {
+          assertion: { text: 'ARR is $10m', scope: { metric: 'ARR' } },
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-structure/tier'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'claim_structure_tier equal-pad idempotency_key → incomplete_operation_idempotency_identity (never tier)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'claim_structure_tier',
+        arguments: {
+          assertion: { text: 'ARR is $10m', scope: { metric: 'ARR' } },
+          idempotency_key: ' tier-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-structure/tier'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guards: prior W2/W3 idempotency pads must stay fail-closed.
+  await t.test(
+    'number_inventory surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#112 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'occ-1',
+              raw: '10',
+              fragment_id: 'frag-a',
+              normalized_decimal: '10',
+              interpretation: 'unknown',
+              method: 'native',
+              recognition_state: 'read',
+            },
+          ],
+          idempotency_key: ' inv-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#115 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+          idempotency_key: ' rel-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'expand_seeds surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#116 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: ['a'],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', 'b'],
+          idempotency_key: ' expand-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_metric_definition surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#117 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_metric_definition',
+        arguments: {
+          definition: { metric: 'total_revenue', revisionId: 'def-reg-1' },
+          idempotency_key: ' metric-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/metric-definitions'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_seeds surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#114 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          idempotency_key: ' resolve-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  // Lean formal_check source trailing newlines must remain untouched by this slice (#110).
+  await t.test(
+    'formal_check padded idempotency still preserves Lean source trailing newline (claim_structure_tier slice)',
+    async () => {
+      const before = seen.length;
+      const lean = 'theorem t : True := trivial\n';
+      const res = await rpc('tools/call', {
+        name: 'formal_check',
+        arguments: {
+          source: lean,
+          idempotency_key: ' pad-key ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path || '').includes('/formal')),
+        undefined,
+        'must refuse before HTTP — Lean source must not be trim-laundered or posted',
+      );
+    },
+  );
+
   await t.test('research run create/list/get/checkpoint hit C3 routes', async () => {
     const created = await call('create_research_run', {
       objective: 'trace ARR',
