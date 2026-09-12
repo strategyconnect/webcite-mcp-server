@@ -7151,6 +7151,150 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+  await t.test(
+    'run_saved_workflow surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'run_saved_workflow',
+        arguments: {
+          revision_id: 'wf-rev-1',
+          mode: 'preview',
+          event_id: 'evt-1',
+          input: { k: 'v' },
+          idempotency_key: ' run-once ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        res.result.structuredContent.details?.field,
+        'idempotency_key',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find(
+            (r) =>
+              String(r.path || '').includes('/workflows/') &&
+              String(r.path || '').includes('/runs'),
+          ),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'run_saved_workflow whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'run_saved_workflow',
+        arguments: {
+          revision_id: 'wf-rev-1',
+          mode: 'propose',
+          event_id: 'evt-1',
+          input: { k: 'v' },
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find(
+            (r) =>
+              String(r.path || '').includes('/workflows/') &&
+              String(r.path || '').includes('/runs'),
+          ),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'publish_context_workflow surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'publish_context_workflow',
+        arguments: {
+          workflow: {
+            id: 'wf-1',
+            revision: '1',
+            kind: 'source_impact',
+            inputSchemaHash: 'h1',
+            outputSchemaHash: 'h2',
+            workflowVersion: 'v1',
+            trigger: 'manual',
+            budgetPolicy: { maxCredits: 1, maxTokens: 1, maxDurationMs: 1 },
+            reviewDestination: { system: 'webcite', bindingId: 'b1' },
+          },
+          idempotency_key: ' pub-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        res.result.structuredContent.details?.field,
+        'idempotency_key',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/workflows')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #90 operator_class pad must stay fail-closed after #86.
+  await t.test(
+    'create_evidence_packet surrounding-padded operator_class still → padded_operator_class (#90 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew',
+          operator_class: ' select_passage ',
+          bindings: [
+            {
+              source_version_id: 'sv-1',
+              source_unit_id: 'su-1',
+              representation_id: 'rep-1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'padded_operator_class',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/evidence-packets')),
+        undefined,
+      );
+    },
+  );
+
 
   await t.test(
     'get_evaluation surrounding-padded run_id → incomplete_evaluation_run_identity',

@@ -1938,7 +1938,7 @@ Credits: 1. HTTP: GET /api/v2/context/proofs/applies`,
   },
   {
     name: 'publish_context_workflow',
-    description: `Publish an immutable saved-context workflow revision. Returns the stored revision identity. Scope comes from the API key.
+    description: `Publish an immutable saved-context workflow revision. Returns the stored revision identity. Scope comes from the API key. Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (W3 settle/link #92/#94 honesty — never trim-launder into a certified publish-once pin).
 
 Credits: 1. HTTP: POST /api/v2/context/workflows`,
     inputSchema: {
@@ -1948,7 +1948,11 @@ Credits: 1. HTTP: POST /api/v2/context/workflows`,
           type: 'object',
           description: 'SavedWorkflow payload (id, revision, kind, schemas, trigger, budget, reviewDestination).',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When set: non-blank unpadded publish-once key. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
       },
       required: ['workflow'],
     },
@@ -1972,7 +1976,7 @@ Credits: 1. HTTP: GET /api/v2/context/workflows/:revisionId`,
   },
   {
     name: 'run_saved_workflow',
-    description: `Run a saved workflow in preview or propose mode. Preview keeps reviewItem and proposalId null and must not deliver notifications. Propose creates one typed review item. Idempotent on tenant/revision/mode/event_id/input. Blank/whitespace/surrounding-padded revision_id → incomplete_workflow_revision_identity; blank/whitespace/surrounding-padded event_id → incomplete_workflow_event_identity (W3 #264/#279 pad honesty — never trim-launder into a certified workflow run).
+    description: `Run a saved workflow in preview or propose mode. Preview keeps reviewItem and proposalId null and must not deliver notifications. Propose creates one typed review item. Idempotent on tenant/revision/mode/event_id/input. Blank/whitespace/surrounding-padded revision_id → incomplete_workflow_revision_identity; blank/whitespace/surrounding-padded event_id → incomplete_workflow_event_identity; blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (W3 #264/#279 / settle/link #92/#94 pad honesty — never trim-launder into a certified workflow run).
 
 Credits: 2. HTTP: POST /api/v2/context/workflows/:revisionId/runs`,
     inputSchema: {
@@ -1990,7 +1994,11 @@ Credits: 2. HTTP: POST /api/v2/context/workflows/:revisionId/runs`,
             'Non-blank unpadded workflow event ID. Blank/whitespace/surrounding-padded → incomplete_workflow_event_identity (never trim-launder).',
         },
         input: { type: 'object', description: 'Validated workflow input object.' },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When set: non-blank unpadded run-once key. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
       },
       required: ['revision_id', 'mode', 'event_id', 'input'],
     },
