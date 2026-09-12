@@ -393,7 +393,11 @@ export interface QueryContextOptions {
   filters?: Partial<ClaimScope>;
   max_hops?: 0 | 1 | 2;
   limit?: number;
-  /** Logical idempotency key forwarded to the API; never used as scope. */
+  /**
+   * Optional replay key. When string: blank/whitespace/surrounding-padded →
+   * incomplete_operation_idempotency_identity (never trim-launder into a
+   * certified query-context replay pin; same honesty as #92/#105).
+   */
   idempotency_key?: string;
 }
 
