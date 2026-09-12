@@ -612,13 +612,18 @@ function startStub(options = {}) {
             if (!identityComplete(rawText)) {
               unresolved.push('missing_occurrence_raw');
             }
-            if (!METHODS.has(method)) {
+            // Backend #300: padded method/interpretation/recognition must not
+            // trim-launder into certified labels (" ocr " / " measure " / " read ").
+            const RECOGNITION = new Set(['read', 'uncertain', 'unreadable']);
+            const labelComplete = (s, allowed) =>
+              identityComplete(String(s)) && allowed.has(String(s));
+            if (!labelComplete(method, METHODS)) {
               unresolved.push('invalid_occurrence_method');
             }
-            if (!INTERPRETATIONS.has(interpretation)) {
+            if (!labelComplete(interpretation, INTERPRETATIONS)) {
               unresolved.push('invalid_occurrence_interpretation');
             }
-            if (state !== 'read' && state !== 'uncertain' && state !== 'unreadable') {
+            if (!labelComplete(state ?? '', RECOGNITION)) {
               unresolved.push('invalid_recognition_state');
             }
             // Backend #278/#282: non-null blank/whitespace or surrounding-padded
@@ -2550,6 +2555,104 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       // Forward padded glyphs as-is — never strip into certified raw.
       assert.equal(req.body.occurrences[0].raw, ' 12 ');
       assert.equal(req.body.occurrences[1].raw, '\t9\t');
+    },
+  );
+
+  await t.test(
+    'number_inventory surrounding-padded interpretation → invalid_occurrence_interpretation',
+    async () => {
+      // " measure " trim-equals a real label but must not certify (#300).
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'pad',
+              raw: '12',
+              fragment_id: 'frag-pad',
+              method: 'ocr',
+              interpretation: ' measure ',
+              recognition_state: 'read',
+            },
+            {
+              id: 'tab',
+              raw: '9',
+              fragment_id: 'frag-tab',
+              method: 'native',
+              interpretation: '\tdate\t',
+              recognition_state: 'uncertain',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /invalid_occurrence_interpretation/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      // Forward padded labels as-is — never strip into certified enums.
+      assert.equal(req.body.occurrences[0].interpretation, ' measure ');
+      assert.equal(req.body.occurrences[1].interpretation, '\tdate\t');
+    },
+  );
+
+  await t.test(
+    'number_inventory surrounding-padded method → invalid_occurrence_method',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'pad',
+              raw: '12',
+              fragment_id: 'frag-pad',
+              method: ' ocr ',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /invalid_occurrence_method/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      assert.equal(req.body.occurrences[0].method, ' ocr ');
+    },
+  );
+
+  await t.test(
+    'number_inventory surrounding-padded recognition → invalid_recognition_state',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'pad',
+              raw: '12',
+              fragment_id: 'frag-pad',
+              method: 'ocr',
+              interpretation: 'unknown',
+              recognition_state: ' read ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /invalid_recognition_state/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      assert.equal(req.body.occurrences[0].recognition_state, ' read ');
     },
   );
 

@@ -528,6 +528,17 @@ function occurrenceIdentityComplete(id: string): boolean {
   return id.trim().length > 0 && id === id.trim();
 }
 
+/**
+ * Backend #300: non-blank, non-padded label that is also an allowed enum member.
+ * " ocr " / " measure " / " read " must not trim-launder into certified labels.
+ */
+function occurrenceLabelComplete(
+  value: string,
+  allowed: ReadonlySet<string>,
+): boolean {
+  return occurrenceIdentityComplete(value) && allowed.has(value);
+}
+
 function validateNumberInventoryOccurrence(
   raw: unknown,
   index: number,
@@ -560,32 +571,46 @@ function validateNumberInventoryOccurrence(
     });
   }
   const method = row.method;
-  if (typeof method !== 'string' || !NUMBER_METHOD_SET.has(method)) {
+  // Backend #300: padded method must not trim-launder into a certified label.
+  if (typeof method !== 'string' || !occurrenceLabelComplete(method, NUMBER_METHOD_SET)) {
     throw new ToolFailure(
       'invalid_api_output',
       `${label}.method must be native|ocr|asr|human|chart_estimate`,
       {
         actionable:
-          'Never invent method=native for omitted/invalid method; incomplete inventories must fail closed.',
+          'Never invent method=native for omitted/invalid/padded method; incomplete inventories must fail closed.',
       },
     );
   }
   const interpretation = row.interpretation;
-  if (typeof interpretation !== 'string' || !NUMBER_INTERPRETATION_SET.has(interpretation)) {
+  // Backend #300: padded interpretation must not trim-launder (" measure " ≠ measure).
+  if (
+    typeof interpretation !== 'string' ||
+    !occurrenceLabelComplete(interpretation, NUMBER_INTERPRETATION_SET)
+  ) {
     throw new ToolFailure(
       'invalid_api_output',
       `${label}.interpretation must be measure|date|identifier|ordinal|range|formula|unknown`,
       {
-        actionable: 'Reject invalid interpretation labels; do not repair them.',
+        actionable:
+          'Reject invalid or surrounding-padded interpretation labels; do not repair or trim-launder them.',
       },
     );
   }
   const recognition =
     row.recognition_state ?? row.recognitionState;
-  if (typeof recognition !== 'string' || !NUMBER_RECOGNITION_SET.has(recognition)) {
+  // Backend #300: padded recognition must not trim-launder (" read " ≠ read).
+  if (
+    typeof recognition !== 'string' ||
+    !occurrenceLabelComplete(recognition, NUMBER_RECOGNITION_SET)
+  ) {
     throw new ToolFailure(
       'invalid_api_output',
       `${label}.recognition_state must be read|uncertain|unreadable`,
+      {
+        actionable:
+          'Reject invalid or surrounding-padded recognition labels; do not repair or trim-launder them.',
+      },
     );
   }
   const decimal =
