@@ -874,6 +874,22 @@ export interface GetConsumerUsageResponse {
   engine?: string;
 }
 
+export interface GetProviderCostOptions {
+  operation_ids: string[];
+  idempotency_key?: string;
+}
+
+export interface GetProviderCostResponse {
+  cost: {
+    attemptIds: string[];
+    knownCost: string | null;
+    currency: string | null;
+    completeness: string;
+    unknownAttemptIds: string[];
+  };
+  engine?: string;
+}
+
 export interface ProofsAppliesOptions {
   status: string;
   binding_hash: string;

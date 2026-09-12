@@ -586,6 +586,23 @@ function startStub(options = {}) {
         return;
       }
 
+      if (url.pathname === '/api/v2/context/usage/provider-cost') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            cost: {
+              attemptIds: ['att-1'],
+              knownCost: '0.12',
+              currency: 'USD',
+              completeness: 'complete',
+              unknownAttemptIds: [],
+            },
+            engine: 'context_graph',
+          }),
+        );
+        return;
+      }
+
       if (url.pathname === '/api/v2/context/resolve-seeds' && body) {
         try {
           const parsed = JSON.parse(body);
@@ -1140,6 +1157,13 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/usage/consumer');
     assert.match(usage, /Known credits:\*\* 2/);
+
+    const providerCost = await call('get_provider_cost', {
+      operation_ids: ['op-1'],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/usage/provider-cost');
+    assert.match(providerCost, /Known cost:\*\* 0\.12/);
+    assert.match(providerCost, /Currency:\*\* USD/);
 
     const proof = await call('proofs_applies', {
       status: 'proved',

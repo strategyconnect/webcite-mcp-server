@@ -37,6 +37,7 @@ import type {
   ResolveOperationAttemptResponse,
   LinkOperationConsumerResponse,
   GetConsumerUsageResponse,
+  GetProviderCostResponse,
   ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
@@ -620,6 +621,40 @@ export function validateGetConsumerUsage(raw: unknown): GetConsumerUsageResponse
           : null,
       completeness:
         typeof usage.completeness === 'string' ? usage.completeness : 'unknown',
+    },
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateGetProviderCost(raw: unknown): GetProviderCostResponse {
+  const root = requireObject(raw, 'GetProviderCost');
+  const cost = requireObject(root.cost, 'GetProviderCost.cost');
+  if (!Array.isArray(cost.attemptIds)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'GetProviderCost.cost.attemptIds must be an array',
+    );
+  }
+  if (!Array.isArray(cost.unknownAttemptIds)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'GetProviderCost.cost.unknownAttemptIds must be an array',
+    );
+  }
+  return {
+    cost: {
+      attemptIds: cost.attemptIds as string[],
+      knownCost:
+        typeof cost.knownCost === 'string' || cost.knownCost === null
+          ? (cost.knownCost as string | null)
+          : null,
+      currency:
+        typeof cost.currency === 'string' || cost.currency === null
+          ? (cost.currency as string | null)
+          : null,
+      completeness:
+        typeof cost.completeness === 'string' ? cost.completeness : 'unknown',
+      unknownAttemptIds: cost.unknownAttemptIds as string[],
     },
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
