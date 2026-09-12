@@ -817,6 +817,63 @@ export interface ReleaseOperationResponse {
   engine?: string;
 }
 
+export interface RecordOperationAttemptOptions {
+  operation_id: string;
+  provider: string;
+  model?: string | null;
+  provider_idempotency_key?: string | null;
+  idempotency_key?: string;
+}
+
+export interface RecordOperationAttemptResponse {
+  attempt: Record<string, unknown>;
+  engine?: string;
+}
+
+export interface ResolveOperationAttemptOptions {
+  attempt_id: string;
+  state: 'succeeded' | 'failed' | 'outcome_unknown';
+  failure_class?: string | null;
+  measurements?: Record<string, unknown>;
+  price?: {
+    amount: string;
+    currency: string;
+    priceRevision: string;
+  } | null;
+  idempotency_key?: string;
+}
+
+export interface ResolveOperationAttemptResponse {
+  attempt: Record<string, unknown>;
+  engine?: string;
+}
+
+export interface LinkOperationConsumerOptions {
+  operation_id: string;
+  consumer_kind: string;
+  consumer_id: string;
+  idempotency_key?: string;
+}
+
+export interface LinkOperationConsumerResponse {
+  consumer: Record<string, unknown>;
+  engine?: string;
+}
+
+export interface GetConsumerUsageOptions {
+  consumer_kind: string;
+  consumer_id: string;
+}
+
+export interface GetConsumerUsageResponse {
+  usage: {
+    operationIds: string[];
+    knownCredits: number | null;
+    completeness: string;
+  };
+  engine?: string;
+}
+
 export interface ProofsAppliesOptions {
   status: string;
   binding_hash: string;

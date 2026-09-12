@@ -39,6 +39,10 @@ import {
   formatGetOperationAvailability,
   formatSettleOperation,
   formatReleaseOperation,
+  formatRecordOperationAttempt,
+  formatResolveOperationAttempt,
+  formatLinkOperationConsumer,
+  formatGetConsumerUsage,
   formatProofsApplies,
   formatFormalResolutionState,
   formatFormalRevenueBridge,
@@ -100,6 +104,10 @@ import {
   validateGetOperationAvailability,
   validateSettleOperation,
   validateReleaseOperation,
+  validateRecordOperationAttempt,
+  validateResolveOperationAttempt,
+  validateLinkOperationConsumer,
+  validateGetConsumerUsage,
   validateProofsApplies,
   validateFormalResolutionState,
   validateFormalRevenueBridge,
@@ -1150,6 +1158,134 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateReleaseOperation(raw);
     return ok(
       formatReleaseOperation(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  record_operation_attempt: async (args, client) => {
+    if (
+      typeof args?.operation_id !== 'string' ||
+      !args.operation_id.trim() ||
+      typeof args?.provider !== 'string'
+    ) {
+      throw new ToolFailure('invalid_argument', 'operation_id and provider are required');
+    }
+    const raw = await wrapApi(
+      client.recordOperationAttempt({
+        operation_id: args.operation_id,
+        provider: args.provider,
+        model:
+          typeof args?.model === 'string' || args?.model === null
+            ? (args.model as string | null)
+            : undefined,
+        provider_idempotency_key:
+          typeof args?.provider_idempotency_key === 'string' ||
+          args?.provider_idempotency_key === null
+            ? (args.provider_idempotency_key as string | null)
+            : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateRecordOperationAttempt(raw);
+    return ok(
+      formatRecordOperationAttempt(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  resolve_operation_attempt: async (args, client) => {
+    if (typeof args?.attempt_id !== 'string' || !args.attempt_id.trim()) {
+      throw new ToolFailure('invalid_argument', 'attempt_id is required');
+    }
+    if (
+      args?.state !== 'succeeded' &&
+      args?.state !== 'failed' &&
+      args?.state !== 'outcome_unknown'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'state must be succeeded|failed|outcome_unknown',
+      );
+    }
+    const raw = await wrapApi(
+      client.resolveOperationAttempt({
+        attempt_id: args.attempt_id,
+        state: args.state,
+        failure_class:
+          typeof args?.failure_class === 'string' || args?.failure_class === null
+            ? (args.failure_class as string | null)
+            : undefined,
+        measurements:
+          args?.measurements &&
+          typeof args.measurements === 'object' &&
+          !Array.isArray(args.measurements)
+            ? (args.measurements as Record<string, unknown>)
+            : undefined,
+        price:
+          args?.price === null
+            ? null
+            : args?.price && typeof args.price === 'object' && !Array.isArray(args.price)
+              ? (args.price as {
+                  amount: string;
+                  currency: string;
+                  priceRevision: string;
+                })
+              : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateResolveOperationAttempt(raw);
+    return ok(
+      formatResolveOperationAttempt(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  link_operation_consumer: async (args, client) => {
+    if (
+      typeof args?.operation_id !== 'string' ||
+      typeof args?.consumer_kind !== 'string' ||
+      typeof args?.consumer_id !== 'string'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'operation_id, consumer_kind, and consumer_id are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.linkOperationConsumer({
+        operation_id: args.operation_id,
+        consumer_kind: args.consumer_kind,
+        consumer_id: args.consumer_id,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateLinkOperationConsumer(raw);
+    return ok(
+      formatLinkOperationConsumer(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_consumer_usage: async (args, client) => {
+    if (typeof args?.consumer_kind !== 'string' || typeof args?.consumer_id !== 'string') {
+      throw new ToolFailure(
+        'invalid_argument',
+        'consumer_kind and consumer_id are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.getConsumerUsage({
+        consumer_kind: args.consumer_kind,
+        consumer_id: args.consumer_id,
+      }),
+    );
+    const validated = validateGetConsumerUsage(raw);
+    return ok(
+      formatGetConsumerUsage(validated),
       validated as unknown as Record<string, unknown>,
     );
   },
