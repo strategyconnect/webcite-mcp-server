@@ -616,8 +616,10 @@ export const NUMBER_OCCURRENCE_INTERPRETATIONS: readonly NumberOccurrenceInterpr
 ] as const;
 
 export interface NumberInventoryOccurrenceInput {
+  /** Blank/whitespace → missing_occurrence_identity (never invent). */
   id?: string;
   raw?: string;
+  /** Blank/whitespace → missing_occurrence_identity (never invent). */
   fragment_id?: string;
   fragmentId?: string;
   normalized_decimal?: string | null;
