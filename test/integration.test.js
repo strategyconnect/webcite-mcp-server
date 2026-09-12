@@ -2771,6 +2771,27 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  // Squash-regression guard: #58 resolve_fragment_uses sealed packet_id pad must stay fail-closed.
+  await t.test(
+    'resolve_fragment_uses surrounding-padded packet_id still → incomplete_packet_identity (#58 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          packet_id: ' packet-sealed-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_packet_identity');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('create_metric_definition and list_metric_definitions hit catalog routes', async () => {
     const created = await call('create_metric_definition', {
       definition: { revisionId: 'def-1-r1', metric: 'total_revenue' },
@@ -3720,6 +3741,83 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       assert.equal(
         res.result.structuredContent.details?.reason,
         'incomplete_answer_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses surrounding-padded allowed_fragment_ids → incomplete_allowed_fragment_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          allowed_fragment_ids: [' frag-1 '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_allowed_fragment_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified allow-list pin.
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses whitespace-only allowed_fragment_ids → incomplete_allowed_fragment_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          allowed_fragment_ids: ['  '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_allowed_fragment_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses equal-pad allowed_fragment_ids → incomplete_allowed_fragment_identity (never authorize)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          allowed_fragment_ids: [' frag-a ', ' frag-a '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_allowed_fragment_identity',
       );
       assert.equal(
         seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),

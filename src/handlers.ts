@@ -864,6 +864,36 @@ function assertExpandSeedGraphComplete(args: {
 }
 
 /**
+ * W3 resolve_fragment_uses allow-list: blank/whitespace/surrounding-padded
+ * allowed_fragment_ids must never trim-launder into a certified authorization
+ * pin (same identityComplete honesty as expand_seeds allowed #68).
+ */
+function assertAllowedFragmentIdsComplete(ids: unknown): asserts ids is string[] {
+  const reason = 'incomplete_allowed_fragment_identity';
+  const actionable =
+    'Blank/whitespace/padded allowed_fragment_ids never certify an authorized fragment use; do not invent or trim-launder allow-list hits.';
+  if (!Array.isArray(ids)) {
+    throw new ToolFailure('invalid_argument', 'allowed_fragment_ids must be an array', {
+      details: { reason, field: 'allowed_fragment_ids' },
+      actionable,
+    });
+  }
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `allowed_fragment_ids[${i}] is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason, field: 'allowed_fragment_ids', index: i },
+          actionable,
+        },
+      );
+    }
+  }
+}
+
+/**
  * C1 claim-relation argument / claim_revision ids: blank/whitespace/surrounding-
  * padded argument_ids or claim_revision_id must never trim-launder into a
  * certified catalog create/list/formalize (same identityComplete honesty as
@@ -1381,6 +1411,11 @@ export const handlers: Record<string, ToolHandler> = {
     }
     if (args.fragments !== undefined && !Array.isArray(args.fragments)) {
       throw new ToolFailure('invalid_argument', 'fragments must be an array when provided');
+    }
+    // W3 / expand_seeds #68: padded allow-list ids never trim-launder into a
+    // certified authorization pin — refuse before HTTP.
+    if (args.allowed_fragment_ids !== undefined) {
+      assertAllowedFragmentIdsComplete(args.allowed_fragment_ids);
     }
     // W3 #264/#279 pad honesty (same as get_change_impact): never trim-launder
     // sealed packet_id / answer_revision_id into a certified catalog hit.

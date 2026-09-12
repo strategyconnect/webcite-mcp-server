@@ -657,7 +657,7 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
   },
   {
     name: 'resolve_fragment_uses',
-    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set. Blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity; blank/whitespace/surrounding-padded answer_revision_id → incomplete_answer_revision_identity (W3 #264/#279 — never trim-launder into a certified sealed catalog hit).
+    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set. Blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity; blank/whitespace/surrounding-padded answer_revision_id → incomplete_answer_revision_identity (W3 #264/#279 — never trim-launder into a certified sealed catalog hit). Blank/whitespace/surrounding-padded allowed_fragment_ids → incomplete_allowed_fragment_identity (expand_seeds #68 allow-list honesty — never trim-launder into a certified authorization pin).
 
 Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
     inputSchema: {
@@ -706,7 +706,7 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
           type: 'array',
           items: { type: 'string' },
           description:
-            'Optional authorization allow-list; fragments outside are ignored. Forbidden when a sealed id is set.',
+            'Optional authorization allow-list (non-blank unpadded ids); fragments outside are ignored. Blank/whitespace/surrounding-padded → incomplete_allowed_fragment_identity (never trim-launder). Forbidden when a sealed id is set.',
         },
         cursor: {
           type: 'string',
