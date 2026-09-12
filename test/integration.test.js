@@ -6894,6 +6894,140 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'get_provider_cost surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_provider_cost',
+        arguments: {
+          operation_ids: ['op-1'],
+          idempotency_key: ' cost-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/provider-cost')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_provider_cost whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_provider_cost',
+        arguments: {
+          operation_ids: ['op-1'],
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/provider-cost')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_provider_cost equal-pad idempotency_key → incomplete_operation_idempotency_identity (never replay)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_provider_cost',
+        arguments: {
+          operation_ids: ['op-1'],
+          idempotency_key: ' cost-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/provider-cost')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #95 record_operation_attempt idempotency pad must stay fail-closed.
+  await t.test(
+    'record_operation_attempt surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#95 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: {
+          operation_id: 'op-1',
+          provider: 'openai',
+          idempotency_key: ' attempt-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #97 run_saved_workflow idempotency pad must stay fail-closed.
+  await t.test(
+    'run_saved_workflow surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#97 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'run_saved_workflow',
+        arguments: {
+          revision_id: 'rev-1',
+          mode: 'preview',
+          event_id: 'evt-1',
+          input: {},
+          idempotency_key: ' wf-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/workflows/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'reserve_operation surrounding-padded root_operation_id → incomplete_operation_identity',
     async () => {
       const before = seen.length;
