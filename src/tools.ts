@@ -1636,7 +1636,7 @@ Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
   },
   {
     name: 'link_operation_consumer',
-    description: `Link a consumer to an operation without re-charging the provider (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
+    description: `Link a consumer to an operation without re-charging the provider (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity; blank/whitespace/surrounding-padded consumer_kind / consumer_id → incomplete_consumer_identity (never trim-launder).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/consumers`,
     inputSchema: {
@@ -1647,8 +1647,16 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/consumers`,
           description:
             'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
         },
-        consumer_kind: { type: 'string' },
-        consumer_id: { type: 'string' },
+        consumer_kind: {
+          type: 'string',
+          description:
+            'Non-blank unpadded consumer kind. Blank/whitespace/surrounding-padded → incomplete_consumer_identity (never trim-launder).',
+        },
+        consumer_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded consumer id. Blank/whitespace/surrounding-padded → incomplete_consumer_identity (never trim-launder).',
+        },
         idempotency_key: { type: 'string' },
       },
       required: ['operation_id', 'consumer_kind', 'consumer_id'],
@@ -1656,14 +1664,22 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/consumers`,
   },
   {
     name: 'get_consumer_usage',
-    description: `Customer-credit usage for everything one consumer consumed (I4).
+    description: `Customer-credit usage for everything one consumer consumed (I4). Blank/whitespace/surrounding-padded consumer_kind / consumer_id → incomplete_consumer_identity (never trim-launder into a certified usage hit).
 
 Credits: 1. HTTP: GET /api/v2/context/usage/consumer`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        consumer_kind: { type: 'string' },
-        consumer_id: { type: 'string' },
+        consumer_kind: {
+          type: 'string',
+          description:
+            'Non-blank unpadded consumer kind. Blank/whitespace/surrounding-padded → incomplete_consumer_identity (never trim-launder).',
+        },
+        consumer_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded consumer id. Blank/whitespace/surrounding-padded → incomplete_consumer_identity (never trim-launder).',
+        },
       },
       required: ['consumer_kind', 'consumer_id'],
     },

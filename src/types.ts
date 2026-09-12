@@ -1112,7 +1112,9 @@ export interface ResolveOperationAttemptResponse {
 export interface LinkOperationConsumerOptions {
   /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
+  /** Non-blank unpadded; blank/padded → incomplete_consumer_identity (#264/#279). */
   consumer_kind: string;
+  /** Non-blank unpadded; blank/padded → incomplete_consumer_identity (#264/#279). */
   consumer_id: string;
   idempotency_key?: string;
 }
@@ -1123,7 +1125,9 @@ export interface LinkOperationConsumerResponse {
 }
 
 export interface GetConsumerUsageOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_consumer_identity (#264/#279). */
   consumer_kind: string;
+  /** Non-blank unpadded; blank/padded → incomplete_consumer_identity (#264/#279). */
   consumer_id: string;
 }
 

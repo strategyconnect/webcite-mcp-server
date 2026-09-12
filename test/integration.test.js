@@ -4533,6 +4533,117 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'link_operation_consumer surrounding-padded consumer_id → incomplete_consumer_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'link_operation_consumer',
+        arguments: {
+          operation_id: 'op-1',
+          consumer_kind: 'research_run',
+          consumer_id: ' run-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_consumer_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'consumer_id');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/consumers')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'link_operation_consumer surrounding-padded consumer_kind → incomplete_consumer_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'link_operation_consumer',
+        arguments: {
+          operation_id: 'op-1',
+          consumer_kind: ' research_run ',
+          consumer_id: 'run-1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_consumer_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'consumer_kind');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/consumers')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_consumer_usage surrounding-padded consumer_id → incomplete_consumer_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_consumer_usage',
+        arguments: {
+          consumer_kind: 'research_run',
+          consumer_id: ' run-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_consumer_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'consumer_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/usage/consumer')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_consumer_usage whitespace-only consumer_kind → incomplete_consumer_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_consumer_usage',
+        arguments: {
+          consumer_kind: '   ',
+          consumer_id: 'run-1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_consumer_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'consumer_kind');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/usage/consumer')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_provider_cost surrounding-padded operation_ids → incomplete_operation_identity',
     async () => {
       const before = seen.length;
