@@ -487,14 +487,17 @@ function startStub(options = {}) {
             if (!Array.isArray(links)) {
               unresolved.push('missing_dependency_graph');
             } else if (
-              links.some(
-                (link) =>
-                  !link ||
-                  typeof link.source_id !== 'string' ||
-                  !link.source_id.trim() ||
-                  typeof link.consumer_id !== 'string' ||
-                  !link.consumer_id.trim(),
-              )
+              // Backend #285: blank/whitespace/padded link endpoints → incomplete_dependency_graph.
+              links.some((link) => {
+                if (!link || typeof link.source_id !== 'string' || typeof link.consumer_id !== 'string') {
+                  return true;
+                }
+                const sourceIncomplete =
+                  !link.source_id.trim() || link.source_id !== link.source_id.trim();
+                const consumerIncomplete =
+                  !link.consumer_id.trim() || link.consumer_id !== link.consumer_id.trim();
+                return sourceIncomplete || consumerIncomplete;
+              })
             ) {
               unresolved.push('incomplete_dependency_graph');
             }
@@ -2966,6 +2969,70 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
       assert.ok(req);
       assert.deepEqual(req.body.changed_ids, ['src-a', '']);
+    },
+  );
+
+  await t.test(
+    'get_change_impact surrounding-padded link source_id → incomplete_dependency_graph',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['cell'],
+          links: [{ source_id: ' cell ', consumer_id: 'claim-1' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /incomplete_dependency_graph/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      // MCP must forward padded endpoints as-is — never trim into certified match.
+      assert.deepEqual(req.body.links, [{ source_id: ' cell ', consumer_id: 'claim-1' }]);
+    },
+  );
+
+  await t.test(
+    'get_change_impact surrounding-padded link consumer_id → incomplete_dependency_graph',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['cell'],
+          links: [{ source_id: 'cell', consumer_id: ' claim' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /incomplete_dependency_graph/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      assert.deepEqual(req.body.links, [{ source_id: 'cell', consumer_id: ' claim' }]);
+    },
+  );
+
+  await t.test(
+    'get_change_impact blank/whitespace link endpoints → incomplete_dependency_graph',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['cell'],
+          links: [{ source_id: 'cell', consumer_id: '  ' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /incomplete_dependency_graph/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      assert.deepEqual(req.body.links, [{ source_id: 'cell', consumer_id: '  ' }]);
     },
   );
 

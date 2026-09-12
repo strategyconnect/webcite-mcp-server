@@ -668,19 +668,19 @@ export const handlers: Record<string, ToolHandler> = {
           throw new ToolFailure('invalid_argument', `links[${i}] must be an object`);
         }
         const row = link as Record<string, unknown>;
-        const sourceId = typeof row.source_id === 'string' ? row.source_id.trim() : '';
-        const consumerId = typeof row.consumer_id === 'string' ? row.consumer_id.trim() : '';
-        if (!sourceId || !consumerId) {
+        // Backend #285: forward blank/whitespace/padded endpoints as-is — never
+        // trim into a silent certified dependency match / empty no-impact.
+        if (typeof row.source_id !== 'string' || typeof row.consumer_id !== 'string') {
           throw new ToolFailure(
             'invalid_argument',
-            `links[${i}] requires non-empty source_id and consumer_id`,
+            `links[${i}] requires string source_id and consumer_id`,
             {
               actionable:
-                'Blank link endpoints fail closed on HTTP as change_impact_incomplete; supply complete endpoints.',
+                'Blank/padded link endpoints fail closed on HTTP as incomplete_dependency_graph; supply complete unpadded endpoints.',
             },
           );
         }
-        links.push({ source_id: sourceId, consumer_id: consumerId });
+        links.push({ source_id: row.source_id, consumer_id: row.consumer_id });
       }
     }
 
