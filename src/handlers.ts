@@ -276,6 +276,52 @@ function assertLookupFiltersComplete(
 }
 
 /**
+ * W2 query_context optional sources: blank/whitespace or surrounding-padded
+ * source_texts / source_version_ids never materialize or pin a source scope —
+ * equal pads must not trim-launder into the same certified hit as clean
+ * aligned sources (same honesty as selectPassage text #314 / binding ids #264/#279).
+ */
+function assertQuerySourcesComplete(args: {
+  source_texts?: unknown;
+  source_version_ids?: unknown;
+}): void {
+  if (Array.isArray(args.source_texts)) {
+    for (const [i, value] of args.source_texts.entries()) {
+      if (typeof value !== 'string' || !selectTextComplete(value)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          `source_texts[${i}] is incomplete (blank/whitespace/padded)`,
+          {
+            details: { reason: 'padded_source_text', field: 'source_texts', index: i },
+            actionable:
+              'Blank/whitespace/padded source_texts never materialize a query source; do not invent or trim-launder topical text.',
+          },
+        );
+      }
+    }
+  }
+  if (Array.isArray(args.source_version_ids)) {
+    for (const [i, value] of args.source_version_ids.entries()) {
+      if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          `source_version_ids[${i}] is incomplete (blank/whitespace/padded)`,
+          {
+            details: {
+              reason: 'incomplete_source_version_identity',
+              field: 'source_version_ids',
+              index: i,
+            },
+            actionable:
+              'Blank/whitespace/padded source_version_ids never pin a query source; do not invent or trim-launder a source hit.',
+          },
+        );
+      }
+    }
+  }
+}
+
+/**
  * W2 A_SCOPE: blank/whitespace or surrounding-padded compare_assertions ClaimScope
  * fields never certify same/different — equal pads must not look like a certified
  * scope match (backend compareAssertions uses raw ===; never trim-launder).
@@ -1102,6 +1148,11 @@ export const handlers: Record<string, ToolHandler> = {
         : undefined;
     // Backend #307: padded/blank filters never certify a lookup_number bind.
     assertLookupFiltersComplete(filters);
+    // W2: padded/blank source_texts / source_version_ids never materialize or pin.
+    assertQuerySourcesComplete({
+      source_texts: args?.source_texts,
+      source_version_ids: args?.source_version_ids,
+    });
     const raw = await wrapApi(
       client.queryContext({
         text,
