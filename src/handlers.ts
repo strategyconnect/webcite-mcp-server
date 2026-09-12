@@ -764,6 +764,7 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * blank/whitespace/surrounding-padded never certifies a settle/link/attempt/
  * workflow publish-or-run / provider-cost / research create-or-checkpoint /
  * evaluation-compare / assess_support / compare_assertions /
+<<<<<<< HEAD
  * find_contradictions / assess_meaning / formal_eligibility / query_context
  * replay pin — refuse before HTTP (same identityComplete honesty as required
  * open_operation_root /
@@ -775,6 +776,18 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * find_contradictions (#104), assess_meaning (#103), formal_eligibility (#107),
  * and query_context (W2). Omit when not a string. Does not touch formal_check
  * Lean source trailing newlines.
+=======
+ * find_contradictions / assess_meaning / formal_eligibility / change-impact
+ * replay pin — refuse before HTTP (same identityComplete honesty as required
+ * open_operation_root / reserve_operation idempotency_key after #83/#88). Shared
+ * by settle_operation (#92), link_operation_consumer (#94),
+ * record/resolve_operation_attempt (#95), publish_context_workflow /
+ * run_saved_workflow (#97), create_evidence_packet (#98), get_provider_cost
+ * (#99), create/checkpoint_research_run (#100), compare_evaluations (#101),
+ * assess_support (#102), find_contradictions (#104), compare_assertions (#105),
+ * assess_meaning (#103), formal_eligibility (#107), and get_change_impact.
+ * Omit when not a string.
+>>>>>>> 6ce3a61 (feat: MCP get_change_impact refuse padded idempotency_key)
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -788,7 +801,11 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
+<<<<<<< HEAD
           'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+=======
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/change-impact replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+>>>>>>> 6ce3a61 (feat: MCP get_change_impact refuse padded idempotency_key)
       },
     );
   }
@@ -1849,6 +1866,10 @@ export const handlers: Record<string, ToolHandler> = {
         : typeof args?.observed_at_ms === 'number'
           ? args.observed_at_ms
           : undefined;
+
+    // W3 after #57/#92/#102: optional padded idempotency_key never certifies a
+    // change-impact replay pin (same helper as settle/assess_support).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
 
     const raw = await wrapApi(
       client.getChangeImpact({
