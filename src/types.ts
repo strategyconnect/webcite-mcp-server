@@ -1061,6 +1061,13 @@ export interface EvalCatalogResponse {
   private_gold_denied: boolean;
 }
 
+export interface CertifyPrivateUploadResponse {
+  ok: boolean;
+  mode?: 'local_root' | 'cloud_bucket' | string;
+  reason?: string;
+  engine?: string;
+}
+
 export interface SavedWorkflowPayload {
   id: string;
   revision: string;

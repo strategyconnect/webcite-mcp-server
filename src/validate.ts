@@ -46,6 +46,7 @@ import type {
   ClaimStructureResolveDefinitionResponse,
   FormalizeClaimRelationResponse,
   EvalCatalogResponse,
+  CertifyPrivateUploadResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
   ScopeCompareResult,
@@ -788,5 +789,27 @@ export function validateEvalCatalog(raw: unknown): EvalCatalogResponse {
       };
     }),
     private_gold_denied: root.private_gold_denied !== false,
+  };
+}
+
+export function validateCertifyPrivateUpload(
+  raw: unknown,
+): CertifyPrivateUploadResponse {
+  const root = requireObject(raw, 'CertifyPrivateUpload');
+  if (typeof root.ok !== 'boolean') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'CertifyPrivateUpload.ok must be a boolean',
+      {
+        actionable:
+          'Do not invent private-upload readiness; retry or report API contract drift.',
+      },
+    );
+  }
+  return {
+    ok: root.ok,
+    mode: typeof root.mode === 'string' ? root.mode : undefined,
+    reason: typeof root.reason === 'string' ? root.reason : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
