@@ -1022,7 +1022,7 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
   },
   {
     name: 'find_contradictions',
-    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank/padded bounds never invent a contradiction. Blank/whitespace/surrounding-padded interval endpoints and missing/blank/padded decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value; backend #289) — never trim-launder pads into certified known bounds or magnitudes, and never treat an empty pair list as a certified all-clear. Coverage complete means a certified scan.
+    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank/padded bounds never invent a contradiction. Blank/whitespace/surrounding-padded interval endpoints and missing/blank/padded decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value; backend #289) — never trim-launder pads into certified known bounds or magnitudes, and never treat an empty pair list as a certified all-clear. Coverage complete means a certified scan. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified contradiction-scan replay pin; same honesty as settle/compare/assess #92/#99/#101/#102).
 
 Credits: 1. HTTP: POST /api/v2/context/contradictions`,
     inputSchema: {
@@ -1061,7 +1061,11 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
             required: ['interval', 'decimal_value'],
           },
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a contradiction-scan replay pin).',
+        },
       },
       required: ['claims'],
     },

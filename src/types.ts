@@ -639,6 +639,10 @@ export interface FindContradictionsOptions {
     /** Null/blank/surrounding-padded on conflicting/unknown pairs → missing_decimal_value (#289). */
     decimal_value: string | null;
   }>;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92/#99/#101/#102 honesty).
+   */
   idempotency_key?: string;
 }
 
