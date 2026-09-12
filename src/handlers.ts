@@ -475,6 +475,25 @@ function assertLoopProgressComplete(run: ResearchRunPayload, label: string): voi
 
 
 /**
+ * C3 research-run path ids: blank/whitespace/surrounding-padded run_id must
+ * never trim-launder into a certified get/checkpoint/reserve hit (same
+ * identityComplete rule as create identities #281 / sealed W3 ids #264/#279).
+ */
+function assertResearchRunIdComplete(runId: unknown): asserts runId is string {
+  if (typeof runId !== 'string' || !wakeIdentityComplete(runId)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'run_id is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'incomplete_research_run_identity', field: 'run_id' },
+        actionable:
+          'Blank/whitespace/padded run_id never certifies a research-run hit; do not invent or trim-launder a run lookup.',
+      },
+    );
+  }
+}
+
+/**
  * Backend createRunSchema / researchScopeSchema use evidenceId: blank or
  * surrounding-padded snapshot/workflow/deal/session/root identities never
  * certify a research run (same id-pad honesty as wake #281 / eligibleNote #297 /
@@ -1132,52 +1151,29 @@ export const handlers: Record<string, ToolHandler> = {
           'Provide at least one source_version_id / source_unit_id / representation_id binding.',
       });
     }
-    // W3 #264/#279 pad honesty: never trim-launder binding identities into a
-    // certified sealed packet (same identityComplete rule as sealed catalog ids).
-    const normalizedBindings: Array<{
-      source_version_id: string;
-      source_unit_id: string;
-      representation_id: string;
-      snippet?: string;
-      seed?: string;
-    }> = [];
     for (const [i, binding] of bindings.entries()) {
       if (!binding || typeof binding !== 'object' || Array.isArray(binding)) {
         throw new ToolFailure('invalid_argument', `bindings[${i}] must be an object`);
       }
       const row = binding as Record<string, unknown>;
       for (const key of ['source_version_id', 'source_unit_id', 'representation_id'] as const) {
-        const value = row[key];
-        if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
-          throw new ToolFailure(
-            'invalid_argument',
-            `bindings[${i}].${key} is incomplete (blank/whitespace/padded)`,
-            {
-              details: {
-                reason: 'incomplete_binding_identity',
-                field: key,
-                index: i,
-              },
-              actionable:
-                'Blank/whitespace/padded binding ids never seal an evidence packet; do not invent or trim-launder a binding hit.',
-            },
-          );
+        if (typeof row[key] !== 'string' || !(row[key] as string).trim()) {
+          throw new ToolFailure('invalid_argument', `bindings[${i}].${key} is required`);
         }
       }
-      normalizedBindings.push({
-        source_version_id: row.source_version_id as string,
-        source_unit_id: row.source_unit_id as string,
-        representation_id: row.representation_id as string,
-        ...(typeof row.snippet === 'string' ? { snippet: row.snippet } : {}),
-        ...(typeof row.seed === 'string' ? { seed: row.seed } : {}),
-      });
     }
     const raw = await wrapApi(
       client.createEvidencePacket({
         claim_text: claimText,
         operator_class:
           typeof args?.operator_class === 'string' ? args.operator_class : undefined,
-        bindings: normalizedBindings,
+        bindings: bindings as Array<{
+          source_version_id: string;
+          source_unit_id: string;
+          representation_id: string;
+          snippet?: string;
+          seed?: string;
+        }>,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),
@@ -1588,9 +1584,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_research_run: async (args, client) => {
-    if (typeof args?.run_id !== 'string' || !args.run_id.trim()) {
-      throw new ToolFailure('invalid_argument', 'run_id is required');
-    }
+    // C3: refuse padded/blank run_id before HTTP — never trim-launder into a
+    // certified research-run lookup.
+    assertResearchRunIdComplete(args?.run_id);
     const raw = await wrapApi(client.getResearchRun({ run_id: args.run_id }));
     const validated = validateGetResearchRun(raw);
     return ok(formatGetResearchRun(validated), validated as unknown as Record<string, unknown>);
@@ -1608,8 +1604,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   checkpoint_research_run: async (args, client) => {
+    // C3: refuse padded/blank run_id before HTTP — never trim-launder into a
+    // certified checkpoint target.
+    assertResearchRunIdComplete(args?.run_id);
     if (
-      typeof args?.run_id !== 'string' ||
       typeof args?.expected_revision !== 'number' ||
       !args?.run ||
       typeof args.run !== 'object'
@@ -1819,8 +1817,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   reserve_research_budget: async (args, client) => {
+    // C3: refuse padded/blank run_id before HTTP — never trim-launder into a
+    // certified reserve against another run.
+    assertResearchRunIdComplete(args?.run_id);
     if (
-      typeof args?.run_id !== 'string' ||
       typeof args?.idempotency_key !== 'string' ||
       typeof args?.kind !== 'string' ||
       typeof args?.credits !== 'number'

@@ -514,7 +514,6 @@ export interface ChangeImpactResponse {
 export interface CreateEvidencePacketOptions {
   claim_text: string;
   operator_class?: string;
-  /** Binding ids must be non-blank unpadded; blank/padded → incomplete_binding_identity (#264/#279). */
   bindings: Array<{
     source_version_id: string;
     source_unit_id: string;
