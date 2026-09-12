@@ -524,6 +524,10 @@ export interface ChangeImpactResponse {
 }
 
 export interface CreateEvidencePacketOptions {
+  /**
+   * Non-blank unpadded claim text. Blank/whitespace/surrounding-padded →
+   * padded_claim_text (#314 honesty; never trim-launder into a sealed assertion).
+   */
   claim_text: string;
   operator_class?: string;
   /** Binding ids must be non-blank unpadded; blank/padded → incomplete_binding_identity (#264/#279). */
@@ -554,9 +558,13 @@ export interface CreateEvidencePacketResponse {
 }
 
 export interface AssessSupportOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_claim_revision_identity. */
   claim_revision_id: string;
+  /** Non-blank unpadded; blank/padded → incomplete_claim_hash_identity. */
   claim_hash: string;
+  /** Non-blank unpadded; blank/padded → incomplete_evidence_group_identity. */
   evidence_group_revision_id: string;
+  /** When set: non-blank unpadded; blank/padded → incomplete_alternative_fragment_identity. */
   alternative_fragment_id?: string | null;
   tier?: 1 | 2 | 3;
   proposed?: string;

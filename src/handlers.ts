@@ -226,6 +226,26 @@ function assertResolveSeedsTextComplete(text: unknown): asserts text is string {
 }
 
 /**
+ * W3 create_evidence_packet: blank/whitespace or surrounding-padded claim_text
+ * never seals into a certified packet assertion — refuse before HTTP so equal
+ * pads cannot trim-launder into the same sealed claim as clean claim text
+ * (same honesty as selectPassage #314 / resolve_seeds text #69).
+ */
+function assertClaimTextComplete(text: unknown): asserts text is string {
+  if (typeof text !== 'string' || !selectTextComplete(text)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'claim_text is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'padded_claim_text', field: 'claim_text' },
+        actionable:
+          'Blank/whitespace/padded claim_text never seals an evidence packet; do not invent or trim-launder a claim assertion.',
+      },
+    );
+  }
+}
+
+/**
  * Backend #311: blank/whitespace or surrounding-padded resolve_seeds filters are
  * dishonest constraints — never ignore them into a bare_term seed, and never
  * equal-pad-pin against a padded index scope. Refuse before HTTP.
@@ -1479,7 +1499,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   create_evidence_packet: async (args, client) => {
-    const claimText = requireString(args, 'claim_text');
+    // W3: refuse padded/blank claim_text before HTTP — never trim-launder into
+    // a certified sealed packet assertion (same honesty as selectPassage #314).
+    assertClaimTextComplete(args?.claim_text);
+    const claimText = args.claim_text;
     const bindings = args?.bindings;
     if (!Array.isArray(bindings) || bindings.length === 0) {
       throw new ToolFailure('invalid_argument', 'bindings must be a non-empty array', {
@@ -1543,9 +1566,10 @@ export const handlers: Record<string, ToolHandler> = {
 
   assess_support: async (args, client) => {
     // Backend assessSupportBodySchema evidenceId pad honesty: never trim-launder
-    // claim_revision_id / evidence_group_revision_id / alternative_fragment_id
-    // into a certified support assessment (same identityComplete rule as W3
-    // sealed ids / C3 create identities).
+    // claim_revision_id / claim_hash / evidence_group_revision_id /
+    // alternative_fragment_id into a certified support assessment (same
+    // identityComplete rule as W3 sealed ids / C3 create identities).
+    // Restores #73 claim_hash pad refuse if squash-regressed.
     if (
       typeof args?.claim_revision_id !== 'string' ||
       !wakeIdentityComplete(args.claim_revision_id)
@@ -1564,7 +1588,21 @@ export const handlers: Record<string, ToolHandler> = {
       );
     }
     const claimRevisionId = args.claim_revision_id;
-    const claimHash = requireString(args, 'claim_hash');
+    if (typeof args?.claim_hash !== 'string' || !wakeIdentityComplete(args.claim_hash)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'claim_hash is incomplete (blank/whitespace/padded)',
+        {
+          details: {
+            reason: 'incomplete_claim_hash_identity',
+            field: 'claim_hash',
+          },
+          actionable:
+            'Blank/whitespace/padded claim_hash never certifies support; do not invent or trim-launder a claim hash hit.',
+        },
+      );
+    }
+    const claimHash = args.claim_hash;
     if (
       typeof args?.evidence_group_revision_id !== 'string' ||
       !wakeIdentityComplete(args.evidence_group_revision_id)
