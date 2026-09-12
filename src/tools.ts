@@ -940,7 +940,7 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
   },
   {
     name: 'find_contradictions',
-    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown bounds never invent a contradiction.
+    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank bounds never invent a contradiction. Blank/whitespace interval endpoints and missing/blank decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value) — never treat an empty pair list as a certified all-clear. Coverage complete means a certified scan.
 
 Credits: 1. HTTP: POST /api/v2/context/contradictions`,
     inputSchema: {
@@ -949,18 +949,30 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
         claims: {
           type: 'array',
           minItems: 2,
+          description:
+            'Interval-valued claims. Blank/whitespace from/to → unknown bounds; missing/blank decimal_value on overlapping/unknown pairs → missing_decimal_value (HTTP refuses).',
           items: {
             type: 'object',
             properties: {
               interval: {
                 type: 'object',
                 properties: {
-                  from: { type: ['string', 'null'] },
-                  to: { type: ['string', 'null'] },
+                  from: {
+                    type: ['string', 'null'],
+                    description: 'Inclusive start; blank/whitespace is unknown (never invents a bound).',
+                  },
+                  to: {
+                    type: ['string', 'null'],
+                    description: 'Exclusive end; blank/whitespace is unknown (never invents a bound).',
+                  },
                 },
                 required: ['from', 'to'],
               },
-              decimal_value: { type: ['string', 'null'] },
+              decimal_value: {
+                type: ['string', 'null'],
+                description:
+                  'Exact decimal text. Null/blank on conflicting or unknown-bound pairs → contradiction_scan_incomplete: missing_decimal_value.',
+              },
             },
             required: ['interval', 'decimal_value'],
           },

@@ -271,6 +271,8 @@ const ROUTES = {
         right: { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
       },
     ],
+    coverage: 'complete',
+    unresolved: [],
     engine: 'context_graph',
   },
   '/api/v2/context/formal/eligibility': {
@@ -592,6 +594,98 @@ function startStub(options = {}) {
               JSON.stringify({
                 message: `number_inventory_incomplete: ${unique.join(',')}`,
                 statusCode: 400,
+              }),
+            );
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
+      }
+
+      // Dynamic contradiction scan: blank bounds / missing decimals fail closed (400).
+      // Mirror backend #256: never certify empty pairs when coverage is unknown.
+      if (url.pathname === '/api/v2/context/contradictions' && body) {
+        try {
+          const parsed = JSON.parse(body);
+          const claims = Array.isArray(parsed?.claims) ? parsed.claims : [];
+          if (claims.length >= 2) {
+            const CONFLICTING = new Set(['overlaps', 'equal', 'starts', 'during', 'finishes']);
+            const known = (iv) =>
+              iv &&
+              typeof iv.from === 'string' &&
+              iv.from.trim().length > 0 &&
+              typeof iv.to === 'string' &&
+              iv.to.trim().length > 0;
+            const decimalPresent = (v) => typeof v === 'string' && v.trim().length > 0;
+            const relation = (a, b) => {
+              if (!known(a) || !known(b)) return 'unknown';
+              if (!(a.from < a.to) || !(b.from < b.to)) return 'unknown';
+              if (a.from === b.from && a.to === b.to) return 'equal';
+              if (a.to <= b.from || b.to <= a.from) return 'before';
+              if (a.from === b.from && a.to < b.to) return 'starts';
+              if (b.from === a.from && b.to < a.to) return 'starts';
+              if (a.to === b.to && a.from > b.from) return 'finishes';
+              if (b.to === a.to && b.from > a.from) return 'finishes';
+              if (a.from > b.from && a.to < b.to) return 'during';
+              if (b.from > a.from && b.to < a.to) return 'during';
+              return 'overlaps';
+            };
+            const pairs = [];
+            const unresolved = new Set();
+            for (let i = 0; i < claims.length; i++) {
+              for (let j = i + 1; j < claims.length; j++) {
+                const left = claims[i];
+                const right = claims[j];
+                const rel = relation(left?.interval, right?.interval);
+                const leftDec = decimalPresent(left?.decimal_value);
+                const rightDec = decimalPresent(right?.decimal_value);
+                if (
+                  CONFLICTING.has(rel) &&
+                  leftDec &&
+                  rightDec &&
+                  left.decimal_value !== right.decimal_value
+                ) {
+                  pairs.push({
+                    left: {
+                      interval: left.interval,
+                      decimal_value: left.decimal_value,
+                    },
+                    right: {
+                      interval: right.interval,
+                      decimal_value: right.decimal_value,
+                    },
+                  });
+                  continue;
+                }
+                if (leftDec && rightDec && left.decimal_value !== right.decimal_value && rel === 'unknown') {
+                  unresolved.add('unknown_interval_bounds');
+                  continue;
+                }
+                if ((!leftDec || !rightDec) && (rel === 'unknown' || CONFLICTING.has(rel))) {
+                  unresolved.add('missing_decimal_value');
+                }
+              }
+            }
+            const unresolvedList = [...unresolved].sort();
+            if (unresolvedList.length) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  message: `contradiction_scan_incomplete: ${unresolvedList.join(',')}`,
+                  statusCode: 400,
+                }),
+              );
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                count: pairs.length,
+                pairs,
+                coverage: 'complete',
+                unresolved: [],
+                engine: 'context_graph',
               }),
             );
             return;
@@ -1302,7 +1396,20 @@ test('every tool round-trips through the real server against the API', async (t)
       ],
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/contradictions');
+    assert.match(text, /Coverage:\*\* complete/);
     assert.match(text, /Count:\*\* 1/);
+  });
+
+  await t.test('find_contradictions disjoint missing decimal stays complete all-clear', async () => {
+    const text = await call('find_contradictions', {
+      claims: [
+        { interval: { from: '2024-01-01', to: '2024-04-01' }, decimal_value: null },
+        { interval: { from: '2024-07-01', to: '2024-10-01' }, decimal_value: '12' },
+      ],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/contradictions');
+    assert.match(text, /Coverage:\*\* complete/);
+    assert.match(text, /Count:\*\* 0/);
   });
 
   await t.test('formal_eligibility refuses uncertain recognition', async () => {
@@ -1984,6 +2091,70 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.isError, true);
     assert.equal(res.result.structuredContent.code, 'api_error');
     assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+  });
+
+  await t.test('find_contradictions blank interval endpoint → contradiction_scan_incomplete', async () => {
+    const before = seen.length;
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [
+          { interval: { from: '   ', to: '2024-07-01' }, decimal_value: '10' },
+          { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /contradiction_scan_incomplete/);
+    assert.match(res.result.content[0].text, /unknown_interval_bounds/);
+    const req = seen.slice(before).find((r) => r.path === '/api/v2/context/contradictions');
+    assert.ok(req);
+    // MCP must forward blank endpoints as-is — never invent bounds.
+    assert.equal(req.body.claims[0].interval.from, '   ');
+  });
+
+  await t.test('find_contradictions missing decimal on overlap → missing_decimal_value', async () => {
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [
+          { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: null },
+          { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /contradiction_scan_incomplete/);
+    assert.match(res.result.content[0].text, /missing_decimal_value/);
+  });
+
+  await t.test('find_contradictions blank decimal on equal intervals → missing_decimal_value', async () => {
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [
+          { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '  ' },
+          { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '12' },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /missing_decimal_value/);
+  });
+
+  await t.test('find_contradictions <2 claims → invalid_argument', async () => {
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [{ interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' }],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'invalid_argument');
+    assert.match(res.result.content[0].text, /claims/);
   });
 
   await t.test('number_inventory omits method → incomplete (never invent native)', async () => {

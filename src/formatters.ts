@@ -688,7 +688,16 @@ export function formatAssessMeaning(result: AssessMeaningResponse): string {
 }
 
 export function formatFindContradictions(result: FindContradictionsResponse): string {
-  return `# Contradictions\n\n**Count:** ${result.count}\n**Pairs:** ${result.pairs.length}`;
+  const parts = [
+    `# Contradictions\n`,
+    `**Coverage:** ${result.coverage}`,
+    `**Count:** ${result.count}`,
+    `**Pairs:** ${result.pairs.length}`,
+  ];
+  if (result.unresolved.length > 0) {
+    parts.push(`**Unresolved:** ${result.unresolved.join(', ')}`);
+  }
+  return parts.join('\n');
 }
 
 export function formatNumberInventory(result: NumberInventoryResponse): string {
