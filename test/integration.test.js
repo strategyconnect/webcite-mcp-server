@@ -2487,6 +2487,81 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /Seeds:\*\* a, b/);
   });
 
+  await t.test(
+    'expand_seeds surrounding-padded seed → incomplete_expand_seed_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: [' a '],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', 'b'],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_expand_seed_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into authorized expansion',
+      );
+    },
+  );
+
+  await t.test(
+    'expand_seeds equal-pad edge endpoints → incomplete_expand_seed_identity (never expand)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: ['a'],
+          edges: [{ from: ' a ', to: ' b ' }],
+          allowed: [' a ', ' b '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_expand_seed_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'expand_seeds whitespace-only allowed id → incomplete_expand_seed_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: ['a'],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', '  '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_expand_seed_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('learning judge/apply/placeholder hit E2 routes', async () => {
     const judged = await call('learning_judge', {
       hard_failures: ['hard'],

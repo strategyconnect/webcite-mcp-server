@@ -582,6 +582,98 @@ function assertEvidenceConsumerIdentityComplete(args: {
   }
 }
 
+/**
+ * C2 expand_seeds: blank/whitespace/surrounding-padded seed / edge / allowed
+ * graph ids must never trim-launder into a certified authorized expansion
+ * (same identityComplete honesty as resolve_seeds #311 / W3 #264/#279).
+ */
+function assertExpandSeedGraphComplete(args: {
+  seeds: unknown;
+  edges: unknown;
+  allowed: unknown;
+}): void {
+  const reason = 'incomplete_expand_seed_identity';
+  const actionable =
+    'Blank/whitespace/padded expand graph ids never certify an authorized expansion; do not invent or trim-launder seed/edge/allowed ids.';
+
+  const seeds = args.seeds;
+  if (!Array.isArray(seeds)) {
+    throw new ToolFailure('invalid_argument', 'seeds must be an array', {
+      details: { reason, field: 'seeds' },
+      actionable,
+    });
+  }
+  for (let i = 0; i < seeds.length; i++) {
+    const id = seeds[i];
+    if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `seeds[${i}] is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason, field: 'seeds', index: i },
+          actionable,
+        },
+      );
+    }
+  }
+
+  const allowed = args.allowed;
+  if (!Array.isArray(allowed)) {
+    throw new ToolFailure('invalid_argument', 'allowed must be an array', {
+      details: { reason, field: 'allowed' },
+      actionable,
+    });
+  }
+  for (let i = 0; i < allowed.length; i++) {
+    const id = allowed[i];
+    if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `allowed[${i}] is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason, field: 'allowed', index: i },
+          actionable,
+        },
+      );
+    }
+  }
+
+  const edges = args.edges;
+  if (!Array.isArray(edges)) {
+    throw new ToolFailure('invalid_argument', 'edges must be an array', {
+      details: { reason, field: 'edges' },
+      actionable,
+    });
+  }
+  for (let i = 0; i < edges.length; i++) {
+    const edge = edges[i];
+    if (!edge || typeof edge !== 'object' || Array.isArray(edge)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `edges[${i}] must be an object with from/to`,
+        {
+          details: { reason, field: 'edges', index: i },
+          actionable,
+        },
+      );
+    }
+    const row = edge as Record<string, unknown>;
+    for (const key of ['from', 'to'] as const) {
+      const id = row[key];
+      if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          `edges[${i}].${key} is incomplete (blank/whitespace/padded)`,
+          {
+            details: { reason, field: `edges.${key}`, index: i },
+            actionable,
+          },
+        );
+      }
+    }
+  }
+}
+
 
 /**
  * Backend createRunSchema / researchScopeSchema use evidenceId: blank or
@@ -1800,6 +1892,13 @@ export const handlers: Record<string, ToolHandler> = {
         'seeds, edges, and allowed are required arrays',
       );
     }
+    // C2: refuse padded/blank seed/edge/allowed ids before HTTP — never
+    // trim-launder equal pads into a certified authorized expansion.
+    assertExpandSeedGraphComplete({
+      seeds: args.seeds,
+      edges: args.edges,
+      allowed: args.allowed,
+    });
     if (
       args?.hops !== undefined &&
       (typeof args.hops !== 'number' || !Number.isFinite(args.hops))
