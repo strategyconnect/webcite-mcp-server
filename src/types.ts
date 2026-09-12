@@ -744,6 +744,30 @@ export interface ReserveResearchBudgetResponse {
   engine?: string;
 }
 
+export interface GetOperationOptions {
+  operation_id: string;
+}
+
+export interface GetOperationResponse {
+  operation: Record<string, unknown>;
+  engine?: string;
+}
+
+export interface GetOperationAvailabilityOptions {
+  operation_id: string;
+}
+
+export interface GetOperationAvailabilityResponse {
+  availability: {
+    maxCredits: number;
+    maxTokens: number;
+    settledCredits: number;
+    outstandingCredits: number;
+    outstandingTokens: number;
+  };
+  engine?: string;
+}
+
 export interface FormalResolutionStateOptions {
   missing_operands?: boolean;
   undefined_definition?: boolean;

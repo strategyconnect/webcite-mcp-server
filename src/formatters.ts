@@ -32,6 +32,8 @@ import type {
   LearningPlaceholderResponse,
   FormatCertifyResponse,
   ReserveResearchBudgetResponse,
+  GetOperationResponse,
+  GetOperationAvailabilityResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
   ClaimStructureTierResponse,
@@ -714,6 +716,21 @@ export function formatReserveResearchBudget(
   result: ReserveResearchBudgetResponse,
 ): string {
   return `# Research Budget Reserve\n\n**Operation:** ${result.operationId}\n**Replay:** ${result.replay ? 'yes' : 'no'}`;
+}
+
+export function formatGetOperation(result: GetOperationResponse): string {
+  const id =
+    typeof result.operation.id === 'string' ? result.operation.id : '(unknown)';
+  const kind =
+    typeof result.operation.kind === 'string' ? result.operation.kind : '(unknown)';
+  return `# Operation\n\n**Id:** ${id}\n**Kind:** ${kind}`;
+}
+
+export function formatGetOperationAvailability(
+  result: GetOperationAvailabilityResponse,
+): string {
+  const a = result.availability;
+  return `# Operation Availability\n\n**Max credits:** ${a.maxCredits}\n**Settled:** ${a.settledCredits}\n**Outstanding credits:** ${a.outstandingCredits}\n**Outstanding tokens:** ${a.outstandingTokens}`;
 }
 
 export function formatFormalResolutionState(

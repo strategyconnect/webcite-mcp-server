@@ -55,6 +55,10 @@ import type {
   FormatCertifyResponse,
   ReserveResearchBudgetOptions,
   ReserveResearchBudgetResponse,
+  GetOperationOptions,
+  GetOperationResponse,
+  GetOperationAvailabilityOptions,
+  GetOperationAvailabilityResponse,
   FormalResolutionStateOptions,
   FormalResolutionStateResponse,
   FormalRevenueBridgeOptions,
@@ -623,6 +627,22 @@ export class WebCiteApiClient {
       `/api/v2/context/research-runs/${encodeURIComponent(run_id)}/reserve`,
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: body.idempotency_key },
+    );
+  }
+
+  async getOperation(options: GetOperationOptions): Promise<GetOperationResponse> {
+    return this.request(
+      `/api/v2/context/operations/${encodeURIComponent(options.operation_id)}`,
+      { method: 'GET' },
+    );
+  }
+
+  async getOperationAvailability(
+    options: GetOperationAvailabilityOptions,
+  ): Promise<GetOperationAvailabilityResponse> {
+    return this.request(
+      `/api/v2/context/operations/${encodeURIComponent(options.operation_id)}/availability`,
+      { method: 'GET' },
     );
   }
 

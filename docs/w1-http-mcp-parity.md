@@ -46,6 +46,8 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `learning_placeholder` | `GET /api/v2/context/learning/placeholder` | criterion? | checkpoint + authoritative:false | auth | 0 | — |
 | `format_certify` | `POST /api/v2/context/format/certify` | kind, expected[], found[] | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
 | `reserve_research_budget` | `POST /api/v2/context/research-runs/:runId/reserve` | run_id, idempotency_key, kind, credits | operationId + replay | missing root refuses | 0 | research run |
+| `get_operation` | `GET /api/v2/context/operations/:operationId` | operation_id | operation row | 404 | 0 | evidence operation |
+| `get_operation_availability` | `GET /api/v2/context/operations/:operationId/availability` | operation_id | root budget availability | 404 | 0 | root operation |
 | `formal_resolution_state` | `POST /api/v2/context/formal/resolution-state` | proof/search flags | state | auth | 0 | — |
 | `formal_revenue_bridge` | `POST /api/v2/context/formal/revenue-bridge` | total + components | discharged/refused | scope mismatch refuses | 0 | exact decimals |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |
