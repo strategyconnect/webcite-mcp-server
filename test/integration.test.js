@@ -284,6 +284,28 @@ const ROUTES = {
     leading_resolver: 'scope_tuple',
     engine: 'context_graph',
   },
+  '/api/v2/context/learning/judge': {
+    action: 'reject',
+    engine: 'context_graph',
+  },
+  '/api/v2/context/learning/apply': {
+    status: 'refused',
+    proposalId: 'lp-1',
+    reason: 'auto_apply_requires_policy_gate',
+    engine: 'context_graph',
+  },
+  '/api/v2/context/learning/placeholder': {
+    checkpoint: { id: 'checkpoint-placeholder', status: 'placeholder' },
+    authoritative: false,
+    engine: 'context_graph',
+  },
+  '/api/v2/context/format/certify': {
+    ok: false,
+    kind: 'spreadsheet',
+    reason: 'incomplete spreadsheet coverage: 1 cell(s) missing or mismatched',
+    missingCount: 1,
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -720,6 +742,44 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/resolve-seeds');
     assert.match(text, /Leading resolver:\*\* scope_tuple/);
+  });
+
+  await t.test('learning judge/apply/placeholder hit E2 routes', async () => {
+    const judged = await call('learning_judge', {
+      hard_failures: ['hard'],
+      verdict: 'uncertain',
+      attempts: 0,
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/learning/judge');
+    assert.match(judged, /Action:\*\* reject/);
+
+    const applied = await call('learning_apply', {
+      proposal: {
+        id: 'lp-1',
+        parentConfigHash: 'p',
+        candidateConfigHash: 'c',
+        reasonCaseIds: ['c1'],
+        evaluationRunIds: [],
+        status: 'evaluating',
+      },
+      gate: null,
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/learning/apply');
+    assert.match(applied, /Status:\*\* refused/);
+
+    const placeholder = await call('learning_placeholder', { criterion: 'support' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/learning/placeholder');
+    assert.match(placeholder, /Authoritative:\*\* no/);
+  });
+
+  await t.test('format_certify posts planted inventory', async () => {
+    const text = await call('format_certify', {
+      kind: 'spreadsheet',
+      expected: [{ sheet: 'S', address: 'A1', raw: '1', displayed: '1', formula: null }],
+      found: [],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/format/certify');
+    assert.match(text, /Ok:\*\* no/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {

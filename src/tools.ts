@@ -987,6 +987,72 @@ Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
     },
   },
   {
+    name: 'learning_judge',
+    description: `E2 judge control: hard failures reject; uncertain may request evidence once.
+
+Credits: 1. HTTP: POST /api/v2/context/learning/judge`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        hard_failures: { type: 'array', items: { type: 'string' } },
+        verdict: { type: 'string', enum: ['pass', 'fail', 'uncertain', 'error'] },
+        attempts: { type: 'number' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['verdict', 'attempts'],
+    },
+  },
+  {
+    name: 'learning_apply',
+    description: `Apply a learning proposal only when an explicit policy gate allows it (E2).
+
+Credits: 1. HTTP: POST /api/v2/context/learning/apply`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        proposal: { type: 'object' },
+        gate: {
+          type: ['object', 'null'],
+          properties: {
+            gateId: { type: 'string' },
+            allowed: { type: 'boolean' },
+            reason: { type: 'string' },
+          },
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['proposal'],
+    },
+  },
+  {
+    name: 'learning_placeholder',
+    description: `Return a non-authoritative placeholder calibration checkpoint (E2).
+
+Credits: 1. HTTP: GET /api/v2/context/learning/placeholder`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        criterion: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'format_certify',
+    description: `Certify planted spreadsheet/office/text inventory coverage (F1/F3/F4). Fails closed.
+
+Credits: 1. HTTP: POST /api/v2/context/format/certify`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        kind: { type: 'string', enum: ['spreadsheet', 'office', 'text'] },
+        expected: { type: 'array' },
+        found: { type: 'array' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['kind', 'expected', 'found'],
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -1124,6 +1190,10 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v2/context/research-runs/:runId': 'get_research_run',
   'POST /api/v2/context/research-runs/:runId/checkpoints': 'checkpoint_research_run',
   'POST /api/v2/context/resolve-seeds': 'resolve_seeds',
+  'POST /api/v2/context/learning/judge': 'learning_judge',
+  'POST /api/v2/context/learning/apply': 'learning_apply',
+  'GET /api/v2/context/learning/placeholder': 'learning_placeholder',
+  'POST /api/v2/context/format/certify': 'format_certify',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

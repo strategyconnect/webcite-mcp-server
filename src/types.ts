@@ -676,6 +676,57 @@ export interface ResolveSeedsResponse {
   engine?: string;
 }
 
+export interface LearningJudgeOptions {
+  hard_failures?: string[];
+  verdict: 'pass' | 'fail' | 'uncertain' | 'error';
+  attempts: number;
+  idempotency_key?: string;
+}
+
+export interface LearningJudgeResponse {
+  action: 'accept' | 'reject' | 'more_evidence' | 'escalate';
+  engine?: string;
+}
+
+export interface LearningApplyOptions {
+  proposal: Record<string, unknown>;
+  gate: { gateId: string; allowed: boolean; reason: string } | null;
+  idempotency_key?: string;
+}
+
+export interface LearningApplyResponse {
+  status: 'applied' | 'refused';
+  proposalId?: string;
+  gateId?: string;
+  reason?: string;
+  engine?: string;
+}
+
+export interface LearningPlaceholderOptions {
+  criterion?: string;
+}
+
+export interface LearningPlaceholderResponse {
+  checkpoint: Record<string, unknown>;
+  authoritative: boolean;
+  engine?: string;
+}
+
+export interface FormatCertifyOptions {
+  kind: 'spreadsheet' | 'office' | 'text';
+  expected: unknown[];
+  found: unknown[];
+  idempotency_key?: string;
+}
+
+export interface FormatCertifyResponse {
+  ok: boolean;
+  kind: string;
+  reason?: string;
+  missingCount?: number;
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;
