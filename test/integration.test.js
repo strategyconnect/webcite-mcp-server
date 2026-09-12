@@ -5448,6 +5448,151 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+
+  await t.test(
+    'get_evaluation surrounding-padded run_id → incomplete_evaluation_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_evaluation',
+        arguments: { run_id: ' eval-run-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_evaluation_run_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'run_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/evaluations/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_evaluation whitespace-only run_id → incomplete_evaluation_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_evaluation',
+        arguments: { run_id: '   ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_evaluation_run_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/evaluations/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'compare_evaluations surrounding-padded baseline_run_id → incomplete_evaluation_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_evaluations',
+        arguments: {
+          baseline_run_id: ' base-1 ',
+          candidate_run_id: 'cand-1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_evaluation_run_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'baseline_run_id');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evaluations/compare'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'compare_evaluations equal-pad candidate_run_id → incomplete_evaluation_run_identity (never compare)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_evaluations',
+        arguments: {
+          baseline_run_id: 'base-1',
+          candidate_run_id: ' cand-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_evaluation_run_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'candidate_run_id');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evaluations/compare'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_evaluation_case surrounding-padded case_id → incomplete_evaluation_case_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_evaluation_case',
+        arguments: { run_id: 'eval-run-1', case_id: ' case-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_evaluation_case_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'case_id');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/evaluations/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_evaluation_case surrounding-padded run_id → incomplete_evaluation_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_evaluation_case',
+        arguments: { run_id: ' eval-run-1 ', case_id: 'case-1' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_evaluation_run_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'run_id');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/evaluations/')),
+        undefined,
+      );
+    },
+  );
+
   await t.test(
     'create_evidence_packet binding-pad regression still refuses padded source_version_id',
     async () => {

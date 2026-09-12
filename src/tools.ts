@@ -1919,27 +1919,39 @@ Credits: 1. HTTP: GET /api/v2/context/runs/:runId`,
   },
   {
     name: 'get_evaluation',
-    description: `Describe an authorized evaluation run. Private gold stays denied.
+    description: `Describe an authorized evaluation run. Private gold stays denied. Blank/whitespace/surrounding-padded run_id → incomplete_evaluation_run_identity (W3 #264/#279 pad honesty — never trim-launder into a certified evaluation run).
 
 Credits: 1. HTTP: GET /api/v2/context/evaluations/:runId`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        run_id: { type: 'string' },
+        run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded evaluation run ID. Blank/whitespace/surrounding-padded → incomplete_evaluation_run_identity (never trim-launder).',
+        },
       },
       required: ['run_id'],
     },
   },
   {
     name: 'compare_evaluations',
-    description: `Compare two frozen evaluation runs via the E1 comparator (does not recompute grades).
+    description: `Compare two frozen evaluation runs via the E1 comparator (does not recompute grades). Blank/whitespace/surrounding-padded baseline_run_id / candidate_run_id → incomplete_evaluation_run_identity (W3 #264/#279 — never trim-launder into a certified compare).
 
 Credits: 1. HTTP: POST /api/v2/context/evaluations/compare`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        baseline_run_id: { type: 'string' },
-        candidate_run_id: { type: 'string' },
+        baseline_run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded baseline evaluation run ID. Blank/whitespace/surrounding-padded → incomplete_evaluation_run_identity (never trim-launder).',
+        },
+        candidate_run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded candidate evaluation run ID. Blank/whitespace/surrounding-padded → incomplete_evaluation_run_identity (never trim-launder).',
+        },
         idempotency_key: { type: 'string' },
       },
       required: ['baseline_run_id', 'candidate_run_id'],
@@ -1947,14 +1959,22 @@ Credits: 1. HTTP: POST /api/v2/context/evaluations/compare`,
   },
   {
     name: 'get_evaluation_case',
-    description: `Open one evaluation case artifact from a stored run without synthesizing a winner.
+    description: `Open one evaluation case artifact from a stored run without synthesizing a winner. Blank/whitespace/surrounding-padded run_id → incomplete_evaluation_run_identity; blank/whitespace/surrounding-padded case_id → incomplete_evaluation_case_identity (W3 #264/#279 — never trim-launder into a certified case).
 
 Credits: 1. HTTP: GET /api/v2/context/evaluations/:runId/cases/:caseId`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        run_id: { type: 'string' },
-        case_id: { type: 'string' },
+        run_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded evaluation run ID. Blank/whitespace/surrounding-padded → incomplete_evaluation_run_identity (never trim-launder).',
+        },
+        case_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded evaluation case ID. Blank/whitespace/surrounding-padded → incomplete_evaluation_case_identity (never trim-launder).',
+        },
       },
       required: ['run_id', 'case_id'],
     },

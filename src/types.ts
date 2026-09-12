@@ -1380,12 +1380,14 @@ export interface WorkflowExecutionResponse {
   [key: string]: unknown;
 }
 
+/** Evaluation run describe; path run_id must be non-blank unpadded (incomplete_evaluation_run_identity). */
 export interface EvaluationDescribeResponse {
   run_id: string;
   private_gold_denied: boolean;
   [key: string]: unknown;
 }
 
+/** Evaluation compare; baseline/candidate run ids must be non-blank unpadded (incomplete_evaluation_run_identity). */
 export interface EvaluationCompareResponse {
   baseline_run_id: string;
   candidate_run_id: string;
@@ -1394,6 +1396,7 @@ export interface EvaluationCompareResponse {
   [key: string]: unknown;
 }
 
+/** Evaluation case; run_id/case_id must be non-blank unpadded (incomplete_evaluation_run/case_identity). */
 export interface EvaluationCaseResponse {
   run_id: string;
   case_id: string;
