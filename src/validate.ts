@@ -161,6 +161,18 @@ export function validateContextQuery(raw: unknown): ContextQueryResponse {
     });
   }
   const gaps = Array.isArray(root.gaps) ? (root.gaps as string[]) : [];
+  // Backend #314: padded_select_text must not look like a certified no-match refuse.
+  if (gaps.includes('padded_select_text')) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'ContextQuery.gaps includes padded_select_text',
+      {
+        details: { reason: 'padded_select_text' },
+        actionable:
+          'Blank/whitespace/padded query text never certifies a passage select; do not invent or trim-launder topical seeds.',
+      },
+    );
+  }
   // Backend #307: padded_lookup_filter must not look like a certified no-match refuse.
   if (gaps.includes('padded_lookup_filter')) {
     throw new ToolFailure(
