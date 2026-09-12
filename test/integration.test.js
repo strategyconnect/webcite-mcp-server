@@ -306,6 +306,15 @@ const ROUTES = {
     missingCount: 1,
     engine: 'context_graph',
   },
+  '/api/v2/context/formal/resolution-state': {
+    state: 'unknown',
+    engine: 'context_graph',
+  },
+  '/api/v2/context/formal/revenue-bridge': {
+    status: 'discharged',
+    sum: '10',
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -364,11 +373,23 @@ function startStub(options = {}) {
       }
 
       const researchRunMatch = url.pathname.match(
-        /^\/api\/v2\/context\/research-runs\/([^/]+)(?:\/(checkpoints))?$/,
+        /^\/api\/v2\/context\/research-runs\/([^/]+)(?:\/(checkpoints|reserve))?$/,
       );
       if (researchRunMatch) {
         const runId = researchRunMatch[1];
-        const isCheckpoint = researchRunMatch[2] === 'checkpoints';
+        const action = researchRunMatch[2];
+        if (action === 'reserve') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              operationId: 'child-op-1',
+              replay: false,
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        const isCheckpoint = action === 'checkpoints';
         const run = {
           id: runId,
           checkpointRevision: isCheckpoint ? 1 : 0,
@@ -780,6 +801,46 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/format/certify');
     assert.match(text, /Ok:\*\* no/);
+  });
+
+  await t.test('reserve_research_budget and P4 formal tools hit routes', async () => {
+    const reserved = await call('reserve_research_budget', {
+      run_id: '11111111-1111-1111-1111-111111111111',
+      idempotency_key: 'key-1',
+      kind: 'parse',
+      credits: 2,
+    });
+    assert.equal(
+      seen.at(-1).path,
+      '/api/v2/context/research-runs/11111111-1111-1111-1111-111111111111/reserve',
+    );
+    assert.match(reserved, /Operation:\*\* child-op-1/);
+
+    const state = await call('formal_resolution_state', {
+      proof_search_failed: true,
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/formal/resolution-state');
+    assert.match(state, /State:\*\* unknown/);
+
+    const bridge = await call('formal_revenue_bridge', {
+      totalPoints: '10',
+      currency: 'USD',
+      period: 'FY2024',
+      entityId: 'acme',
+      scale: '1',
+      components: [
+        {
+          points: '10',
+          currency: 'USD',
+          period: 'FY2024',
+          entityId: 'acme',
+          scale: '1',
+          definitionRevisionId: 'd1',
+        },
+      ],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/formal/revenue-bridge');
+    assert.match(bridge, /Status:\*\* discharged/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {

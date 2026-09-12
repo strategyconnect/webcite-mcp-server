@@ -32,6 +32,9 @@ import {
   formatLearningApply,
   formatLearningPlaceholder,
   formatFormatCertify,
+  formatReserveResearchBudget,
+  formatFormalResolutionState,
+  formatFormalRevenueBridge,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -47,6 +50,7 @@ import type {
   FindContradictionsOptions,
   ResolveSeedsOptions,
   ResearchRunPayload,
+  FormalRevenueBridgeOptions,
   AssetRefOptions,
   BatchItem,
   Citation,
@@ -79,6 +83,9 @@ import {
   validateLearningApply,
   validateLearningPlaceholder,
   validateFormatCertify,
+  validateReserveResearchBudget,
+  validateFormalResolutionState,
+  validateFormalRevenueBridge,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -878,6 +885,99 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateFormatCertify(raw);
     return ok(formatFormatCertify(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  reserve_research_budget: async (args, client) => {
+    if (
+      typeof args?.run_id !== 'string' ||
+      typeof args?.idempotency_key !== 'string' ||
+      typeof args?.kind !== 'string' ||
+      typeof args?.credits !== 'number'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'run_id, idempotency_key, kind, and credits are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.reserveResearchBudget({
+        run_id: args.run_id,
+        idempotency_key: args.idempotency_key,
+        kind: args.kind,
+        credits: args.credits,
+        tokens: typeof args?.tokens === 'number' ? args.tokens : undefined,
+      }),
+    );
+    const validated = validateReserveResearchBudget(raw);
+    return ok(
+      formatReserveResearchBudget(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  formal_resolution_state: async (args, client) => {
+    const raw = await wrapApi(
+      client.formalResolutionState({
+        missing_operands:
+          typeof args?.missing_operands === 'boolean' ? args.missing_operands : undefined,
+        undefined_definition:
+          typeof args?.undefined_definition === 'boolean'
+            ? args.undefined_definition
+            : undefined,
+        proof_search_failed:
+          typeof args?.proof_search_failed === 'boolean'
+            ? args.proof_search_failed
+            : undefined,
+        proof_timed_out:
+          typeof args?.proof_timed_out === 'boolean' ? args.proof_timed_out : undefined,
+        counterexample_found:
+          typeof args?.counterexample_found === 'boolean'
+            ? args.counterexample_found
+            : undefined,
+        checked_negation:
+          typeof args?.checked_negation === 'boolean' ? args.checked_negation : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateFormalResolutionState(raw);
+    return ok(
+      formatFormalResolutionState(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  formal_revenue_bridge: async (args, client) => {
+    if (
+      typeof args?.totalPoints !== 'string' ||
+      typeof args?.currency !== 'string' ||
+      typeof args?.period !== 'string' ||
+      typeof args?.entityId !== 'string' ||
+      typeof args?.scale !== 'string' ||
+      !Array.isArray(args?.components)
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'totalPoints, currency, period, entityId, scale, and components are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.formalRevenueBridge({
+        totalPoints: args.totalPoints,
+        currency: args.currency,
+        period: args.period,
+        entityId: args.entityId,
+        scale: args.scale,
+        components: args.components as FormalRevenueBridgeOptions['components'],
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateFormalRevenueBridge(raw);
+    return ok(
+      formatFormalRevenueBridge(validated),
+      validated as unknown as Record<string, unknown>,
+    );
   },
 
   eval_catalog: async (_args, client) => {

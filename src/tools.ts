@@ -1053,6 +1053,60 @@ Credits: 1. HTTP: POST /api/v2/context/format/certify`,
     },
   },
   {
+    name: 'reserve_research_budget',
+    description: `Reserve credits under a research run's root operation (I4). Missing root refuses.
+
+Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        run_id: { type: 'string' },
+        idempotency_key: { type: 'string' },
+        kind: { type: 'string' },
+        credits: { type: 'number' },
+        tokens: { type: 'number' },
+      },
+      required: ['run_id', 'idempotency_key', 'kind', 'credits'],
+    },
+  },
+  {
+    name: 'formal_resolution_state',
+    description: `Classify negative formal/search states without collapsing them (P4).
+
+Credits: 1. HTTP: POST /api/v2/context/formal/resolution-state`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        missing_operands: { type: 'boolean' },
+        undefined_definition: { type: 'boolean' },
+        proof_search_failed: { type: 'boolean' },
+        proof_timed_out: { type: 'boolean' },
+        counterexample_found: { type: 'boolean' },
+        checked_negation: { type: 'boolean' },
+        idempotency_key: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'formal_revenue_bridge',
+    description: `Discharge a revenue-bridge obligation over exact consistent scopes (P4).
+
+Credits: 1. HTTP: POST /api/v2/context/formal/revenue-bridge`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        totalPoints: { type: 'string' },
+        currency: { type: 'string' },
+        period: { type: 'string' },
+        entityId: { type: 'string' },
+        scale: { type: 'string' },
+        components: { type: 'array' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['totalPoints', 'currency', 'period', 'entityId', 'scale', 'components'],
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -1194,6 +1248,9 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/learning/apply': 'learning_apply',
   'GET /api/v2/context/learning/placeholder': 'learning_placeholder',
   'POST /api/v2/context/format/certify': 'format_certify',
+  'POST /api/v2/context/research-runs/:runId/reserve': 'reserve_research_budget',
+  'POST /api/v2/context/formal/resolution-state': 'formal_resolution_state',
+  'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

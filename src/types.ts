@@ -727,6 +727,59 @@ export interface FormatCertifyResponse {
   engine?: string;
 }
 
+export interface ReserveResearchBudgetOptions {
+  run_id: string;
+  idempotency_key: string;
+  kind: string;
+  credits: number;
+  tokens?: number;
+}
+
+export interface ReserveResearchBudgetResponse {
+  operationId: string;
+  replay: boolean;
+  engine?: string;
+}
+
+export interface FormalResolutionStateOptions {
+  missing_operands?: boolean;
+  undefined_definition?: boolean;
+  proof_search_failed?: boolean;
+  proof_timed_out?: boolean;
+  counterexample_found?: boolean;
+  checked_negation?: boolean;
+  idempotency_key?: string;
+}
+
+export interface FormalResolutionStateResponse {
+  state: string;
+  engine?: string;
+}
+
+export interface FormalRevenueBridgeOptions {
+  totalPoints: string;
+  currency: string;
+  period: string;
+  entityId: string;
+  scale: string;
+  components: Array<{
+    points: string;
+    currency: string;
+    period: string;
+    entityId: string;
+    scale: string;
+    definitionRevisionId: string | null;
+  }>;
+  idempotency_key?: string;
+}
+
+export interface FormalRevenueBridgeResponse {
+  status: 'discharged' | 'refused';
+  sum?: string;
+  reason?: string;
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;
