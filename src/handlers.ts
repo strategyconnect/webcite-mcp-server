@@ -1164,9 +1164,67 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   assess_support: async (args, client) => {
-    const claimRevisionId = requireString(args, 'claim_revision_id');
+    // Backend assessSupportBodySchema evidenceId pad honesty: never trim-launder
+    // claim_revision_id / evidence_group_revision_id / alternative_fragment_id
+    // into a certified support assessment (same identityComplete rule as W3
+    // sealed ids / C3 create identities).
+    if (
+      typeof args?.claim_revision_id !== 'string' ||
+      !wakeIdentityComplete(args.claim_revision_id)
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'claim_revision_id is incomplete (blank/whitespace/padded)',
+        {
+          details: {
+            reason: 'incomplete_claim_revision_identity',
+            field: 'claim_revision_id',
+          },
+          actionable:
+            'Blank/whitespace/padded claim_revision_id never certifies support; do not invent or trim-launder a claim hit.',
+        },
+      );
+    }
+    const claimRevisionId = args.claim_revision_id;
     const claimHash = requireString(args, 'claim_hash');
-    const evidenceGroupRevisionId = requireString(args, 'evidence_group_revision_id');
+    if (
+      typeof args?.evidence_group_revision_id !== 'string' ||
+      !wakeIdentityComplete(args.evidence_group_revision_id)
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'evidence_group_revision_id is incomplete (blank/whitespace/padded)',
+        {
+          details: {
+            reason: 'incomplete_evidence_group_identity',
+            field: 'evidence_group_revision_id',
+          },
+          actionable:
+            'Blank/whitespace/padded evidence_group_revision_id never certifies support; do not invent or trim-launder an evidence-group hit.',
+        },
+      );
+    }
+    const evidenceGroupRevisionId = args.evidence_group_revision_id;
+    let alternativeFragmentId: string | null | undefined;
+    if (args?.alternative_fragment_id === null) {
+      alternativeFragmentId = null;
+    } else if (typeof args?.alternative_fragment_id === 'string') {
+      if (!wakeIdentityComplete(args.alternative_fragment_id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          'alternative_fragment_id is incomplete (blank/whitespace/padded)',
+          {
+            details: {
+              reason: 'incomplete_alternative_fragment_identity',
+              field: 'alternative_fragment_id',
+            },
+            actionable:
+              'Blank/whitespace/padded alternative_fragment_id never certifies an alternative; omit or pass a non-blank unpadded id.',
+          },
+        );
+      }
+      alternativeFragmentId = args.alternative_fragment_id;
+    }
     const tierRaw = args?.tier;
     const tier =
       tierRaw === 1 || tierRaw === 2 || tierRaw === 3
@@ -1177,12 +1235,7 @@ export const handlers: Record<string, ToolHandler> = {
         claim_revision_id: claimRevisionId,
         claim_hash: claimHash,
         evidence_group_revision_id: evidenceGroupRevisionId,
-        alternative_fragment_id:
-          typeof args?.alternative_fragment_id === 'string'
-            ? args.alternative_fragment_id
-            : args?.alternative_fragment_id === null
-              ? null
-              : undefined,
+        alternative_fragment_id: alternativeFragmentId,
         tier,
         proposed: typeof args?.proposed === 'string' ? args.proposed : undefined,
         binding: typeof args?.binding === 'string' ? args.binding : undefined,
