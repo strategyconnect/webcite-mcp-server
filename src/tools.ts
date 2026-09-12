@@ -644,6 +644,63 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
     },
   },
   {
+    name: 'resolve_fragment_uses',
+    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure.
+
+Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        selector: {
+          type: 'object',
+          description:
+            'FragmentSelector with kind (tokens|image) and representationId. Unsupported kinds refuse.',
+        },
+        fragments: {
+          type: 'array',
+          description: 'Optional authorized SourceFragment catalog (empty → no matches).',
+          items: { type: 'object' },
+        },
+        groups: {
+          type: 'array',
+          description: 'Optional EvidenceGroup rows for groupIds on matches.',
+          items: { type: 'object' },
+        },
+        links: {
+          type: 'array',
+          description: 'Optional EvidenceLink rows for linkIds on matches.',
+          items: { type: 'object' },
+        },
+        consumers: {
+          type: 'array',
+          description: 'Optional consumer rows (fragment_id/consumer_id/use_age).',
+          items: { type: 'object' },
+        },
+        allowed_fragment_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional authorization allow-list; fragments outside are ignored.',
+        },
+        cursor: {
+          type: 'string',
+          description: 'Pagination cursor from a prior nextCursor.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max matches to return. Default: 50',
+          default: 50,
+          minimum: 1,
+          maximum: 200,
+        },
+        idempotency_key: {
+          type: 'string',
+          description: 'Logical idempotency key. Not a scope field.',
+        },
+      },
+      required: ['selector'],
+    },
+  },
+  {
     name: 'get_change_impact',
     description: `Inspect freshness/change impact for an immutable answer revision. Historical answer content stays sealed; this returns observational coverage only.
 
@@ -1563,6 +1620,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v2/evidence-packets/:id': 'get_evidence_packet',
   'POST /api/v2/context/query': 'query_context',
   'POST /api/v2/context/compare-assertions': 'compare_assertions',
+  'POST /api/v2/context/fragments/resolve-uses': 'resolve_fragment_uses',
   'POST /api/v2/context/change-impact': 'get_change_impact',
   'POST /api/v2/context/evidence-packets': 'create_evidence_packet',
   'POST /api/v2/context/assess-support': 'assess_support',

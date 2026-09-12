@@ -11,6 +11,7 @@ import type {
   ClaimGroup,
   ClassifyResult,
   CompareAssertionsResponse,
+  ResolveFragmentUsesResponse,
   Conflict,
   ContextQueryResponse,
   CreateEvidencePacketResponse,
@@ -575,6 +576,29 @@ export function formatCompareAssertions(result: CompareAssertionsResponse): stri
   }
   parts.push(`\n**Left:** ${JSON.stringify(result.left)}`);
   parts.push(`**Right:** ${JSON.stringify(result.right)}`);
+  return parts.join('\n');
+}
+
+export function formatResolveFragmentUses(result: ResolveFragmentUsesResponse): string {
+  const parts: string[] = [];
+  parts.push(`# Fragment Uses\n`);
+  parts.push(`**Status:** ${result.status}`);
+  if (result.status === 'refuse') {
+    parts.push(`Successful refuse — no invented uses.`);
+    if (result.reason) parts.push(`**Reason:** ${result.reason}`);
+  }
+  parts.push(`**Matches:** ${result.matches.length}`);
+  for (const match of result.matches) {
+    parts.push(
+      `- ${match.fragmentId} (${match.matchKind}, ${match.useAge}); semanticSupport=false`,
+    );
+    if (match.consumerIds.length) {
+      parts.push(`  consumers: ${match.consumerIds.join(', ')}`);
+    }
+  }
+  if (result.nextCursor) {
+    parts.push(`\n**Next cursor:** ${result.nextCursor}`);
+  }
   return parts.join('\n');
 }
 

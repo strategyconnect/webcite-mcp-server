@@ -7,6 +7,9 @@ import { ToolFailure } from './errors.js';
 import type {
   ChangeImpactResponse,
   CompareAssertionsResponse,
+  ResolveFragmentUsesResponse,
+  FragmentUseMatch,
+  FragmentUseMatchKind,
   ContextQueryResponse,
   CreateEvidencePacketResponse,
   AssessSupportResponse,
@@ -197,6 +200,80 @@ export function validateCompareAssertions(raw: unknown): CompareAssertionsRespon
     result: root.result as ScopeCompareResult,
     left: isObject(root.left) ? root.left : {},
     right: isObject(root.right) ? root.right : {},
+  };
+}
+
+const FRAGMENT_USE_MATCH_KINDS: FragmentUseMatchKind[] = [
+  'exact',
+  'contains',
+  'contained',
+  'overlap',
+];
+
+function validateFragmentUseMatch(raw: unknown, index: number): FragmentUseMatch {
+  const row = requireObject(raw, `ResolveFragmentUses.matches[${index}]`);
+  if (!FRAGMENT_USE_MATCH_KINDS.includes(row.matchKind as FragmentUseMatchKind)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `ResolveFragmentUses.matches[${index}].matchKind must be exact|contains|contained|overlap`,
+    );
+  }
+  if (row.semanticSupport !== false) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `ResolveFragmentUses.matches[${index}].semanticSupport must be false`,
+      {
+        actionable: 'Overlap never implies semantic support; do not invent supported.',
+      },
+    );
+  }
+  const useAge = row.useAge;
+  if (useAge !== 'current' && useAge !== 'historical') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `ResolveFragmentUses.matches[${index}].useAge must be current|historical`,
+    );
+  }
+  return {
+    matchKind: row.matchKind as FragmentUseMatchKind,
+    fragmentId: requireString(row, 'fragmentId', `ResolveFragmentUses.matches[${index}]`),
+    groupIds: Array.isArray(row.groupIds) ? (row.groupIds as string[]) : [],
+    linkIds: Array.isArray(row.linkIds) ? (row.linkIds as string[]) : [],
+    consumerIds: Array.isArray(row.consumerIds) ? (row.consumerIds as string[]) : [],
+    useAge,
+    semanticSupport: false,
+  };
+}
+
+export function validateResolveFragmentUses(raw: unknown): ResolveFragmentUsesResponse {
+  const root = requireObject(raw, 'ResolveFragmentUses');
+  if (root.status !== 'ok' && root.status !== 'refuse') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'ResolveFragmentUses.status must be ok|refuse',
+      {
+        actionable: 'Refuse is not an HTTP error; do not invent matches on contract drift.',
+      },
+    );
+  }
+  if (!Array.isArray(root.matches)) {
+    throw new ToolFailure('invalid_api_output', 'ResolveFragmentUses.matches must be an array');
+  }
+  const matches = root.matches.map((row, i) => validateFragmentUseMatch(row, i));
+  if (root.status === 'refuse' && matches.length > 0) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'ResolveFragmentUses refuse must return empty matches',
+    );
+  }
+  const nextCursor =
+    root.nextCursor === null || typeof root.nextCursor === 'string' ? root.nextCursor : null;
+  return {
+    status: root.status,
+    reason: typeof root.reason === 'string' ? root.reason : undefined,
+    matches,
+    nextCursor,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
 

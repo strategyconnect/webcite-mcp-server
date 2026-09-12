@@ -416,6 +416,39 @@ export interface CompareAssertionsResponse {
   right: Partial<ClaimScope>;
 }
 
+export type FragmentUseMatchKind = 'exact' | 'contains' | 'contained' | 'overlap';
+
+export interface FragmentUseMatch {
+  matchKind: FragmentUseMatchKind;
+  fragmentId: string;
+  groupIds: string[];
+  linkIds: string[];
+  consumerIds: string[];
+  useAge: 'current' | 'historical';
+  /** Geometric discovery never implies semantic support. */
+  semanticSupport: false;
+}
+
+export interface ResolveFragmentUsesOptions {
+  selector: Record<string, unknown>;
+  fragments?: unknown[];
+  groups?: unknown[];
+  links?: unknown[];
+  consumers?: unknown[];
+  allowed_fragment_ids?: string[];
+  cursor?: string | null;
+  limit?: number;
+  idempotency_key?: string;
+}
+
+export interface ResolveFragmentUsesResponse {
+  status: 'ok' | 'refuse';
+  reason?: string;
+  matches: FragmentUseMatch[];
+  nextCursor: string | null;
+  engine?: string;
+}
+
 export interface ChangeImpactOptions {
   answer_revision_id: string;
   idempotency_key?: string;

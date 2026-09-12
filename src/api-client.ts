@@ -16,6 +16,8 @@ import type {
   ClassifyResult,
   CompareAssertionsOptions,
   CompareAssertionsResponse,
+  ResolveFragmentUsesOptions,
+  ResolveFragmentUsesResponse,
   ContextQueryResponse,
   CreateEvidencePacketOptions,
   CreateEvidencePacketResponse,
@@ -413,6 +415,17 @@ export class WebCiteApiClient {
     return this.request(
       '/api/v2/context/compare-assertions',
       { method: 'POST', body: JSON.stringify({ left, right }) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async resolveFragmentUses(
+    options: ResolveFragmentUsesOptions,
+  ): Promise<ResolveFragmentUsesResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/fragments/resolve-uses',
+      { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );
   }

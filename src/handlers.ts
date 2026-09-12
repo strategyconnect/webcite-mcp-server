@@ -13,6 +13,7 @@ import {
   formatCitation,
   formatClassify,
   formatCompareAssertions,
+  formatResolveFragmentUses,
   formatContextQuery,
   formatCreatePacket,
   formatAssessSupport,
@@ -82,6 +83,7 @@ import type {
 import {
   validateChangeImpact,
   validateCompareAssertions,
+  validateResolveFragmentUses,
   validateContextQuery,
   validateCreatePacket,
   validateAssessSupport,
@@ -499,6 +501,40 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateCompareAssertions(raw);
     return ok(formatCompareAssertions(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  resolve_fragment_uses: async (args, client) => {
+    if (!args?.selector || typeof args.selector !== 'object' || Array.isArray(args.selector)) {
+      throw new ToolFailure('invalid_argument', 'selector object is required', {
+        actionable:
+          'Provide a FragmentSelector with kind + representationId (tokens or image).',
+      });
+    }
+    if (args.fragments !== undefined && !Array.isArray(args.fragments)) {
+      throw new ToolFailure('invalid_argument', 'fragments must be an array when provided');
+    }
+    const raw = await wrapApi(
+      client.resolveFragmentUses({
+        selector: args.selector as Record<string, unknown>,
+        fragments: Array.isArray(args.fragments) ? args.fragments : undefined,
+        groups: Array.isArray(args.groups) ? args.groups : undefined,
+        links: Array.isArray(args.links) ? args.links : undefined,
+        consumers: Array.isArray(args.consumers) ? args.consumers : undefined,
+        allowed_fragment_ids: Array.isArray(args.allowed_fragment_ids)
+          ? (args.allowed_fragment_ids as string[])
+          : undefined,
+        cursor:
+          args?.cursor === null || typeof args?.cursor === 'string' ? args.cursor : undefined,
+        limit: clamp(args?.limit, 50, 1, 200),
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateResolveFragmentUses(raw);
+    return ok(
+      formatResolveFragmentUses(validated),
+      validated as unknown as Record<string, unknown>,
+    );
   },
 
   get_change_impact: async (args, client) => {
