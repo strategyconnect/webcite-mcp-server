@@ -3826,6 +3826,73 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'get_change_impact surrounding-padded answer_revision_id → incomplete_answer_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: { answer_revision_id: ' answer-v1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_answer_revision_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified freshness hit.
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_change_impact whitespace-only answer_revision_id → incomplete_answer_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: { answer_revision_id: '  ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_answer_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_change_impact surrounding-padded packet_id → incomplete_packet_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['src-a'],
+          packet_id: ' packet-1 ',
+          links: [{ source_id: 'src-a', consumer_id: 'claim-1' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_packet_identity');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_change_impact surrounding-padded changed_ids → incomplete_changed_ids',
     async () => {
       const before = seen.length;

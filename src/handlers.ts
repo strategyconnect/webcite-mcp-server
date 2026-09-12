@@ -896,10 +896,40 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_change_impact: async (args, client) => {
-    const answerRevisionId =
-      typeof args?.answer_revision_id === 'string' && args.answer_revision_id.trim()
-        ? args.answer_revision_id.trim()
-        : undefined;
+    // W3 #264/#279 pad honesty: never trim-launder answer_revision_id /
+    // packet_id into a certified freshness or sealed-packet lookup (same
+    // identityComplete rule as changed_ids / link endpoints — pads must not
+    // look like a clean revision or packet hit).
+    let answerRevisionId: string | undefined;
+    if (typeof args?.answer_revision_id === 'string') {
+      if (!wakeIdentityComplete(args.answer_revision_id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          'answer_revision_id is incomplete (blank/whitespace/padded)',
+          {
+            details: { reason: 'incomplete_answer_revision_identity', field: 'answer_revision_id' },
+            actionable:
+              'Blank/whitespace/padded answer_revision_id never certifies freshness; do not invent or trim-launder a sealed answer hit.',
+          },
+        );
+      }
+      answerRevisionId = args.answer_revision_id;
+    }
+    let packetId: string | undefined;
+    if (typeof args?.packet_id === 'string') {
+      if (!wakeIdentityComplete(args.packet_id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          'packet_id is incomplete (blank/whitespace/padded)',
+          {
+            details: { reason: 'incomplete_packet_identity', field: 'packet_id' },
+            actionable:
+              'Blank/whitespace/padded packet_id never certifies a sealed packet; do not invent or trim-launder a packet hit.',
+          },
+        );
+      }
+      packetId = args.packet_id;
+    }
     // Backend #264: forward blank/whitespace changed_ids as-is — never strip into
     // a silent empty list that looks like certified no-impact.
     const changedIds = Array.isArray(args?.changed_ids)
@@ -965,9 +995,7 @@ export const handlers: Record<string, ToolHandler> = {
     const raw = await wrapApi(
       client.getChangeImpact({
         ...(answerRevisionId ? { answer_revision_id: answerRevisionId } : {}),
-        ...(typeof args?.packet_id === 'string' && args.packet_id.trim()
-          ? { packet_id: args.packet_id.trim() }
-          : {}),
+        ...(packetId ? { packet_id: packetId } : {}),
         ...(changedIds && changedIds.length > 0 ? { changed_ids: changedIds } : {}),
         ...(links ? { links } : {}),
         ...(observedAtMs !== undefined ? { observed_at_ms: observedAtMs } : {}),
