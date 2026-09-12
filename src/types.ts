@@ -732,9 +732,12 @@ export interface LearningPlaceholderResponse {
 }
 
 export interface FormatCertifyOptions {
-  kind: 'spreadsheet' | 'office' | 'text';
+  kind: 'spreadsheet' | 'office' | 'text' | 'image' | 'container' | 'media';
   expected: unknown[];
   found: unknown[];
+  decode_finished?: boolean;
+  alignments?: unknown[];
+  require_precise_timing?: boolean;
   idempotency_key?: string;
 }
 
