@@ -625,9 +625,9 @@ export interface NumberInventoryOccurrenceInput {
   /** Blank/whitespace/padded → missing_occurrence_identity (never invent). */
   fragment_id?: string;
   fragmentId?: string;
-  /** Non-null blank/whitespace → blank_normalized_decimal (backend #278); null allowed. */
+  /** Non-null blank/whitespace or surrounding-padded → blank_normalized_decimal (#278/#282); null allowed. */
   normalized_decimal?: string | null;
-  /** Alias of normalized_decimal; non-null blank/whitespace → blank_normalized_decimal. */
+  /** Alias of normalized_decimal; non-null blank/padded → blank_normalized_decimal. */
   normalizedDecimal?: string | null;
   interpretation?: NumberOccurrenceInterpretation | string;
   /** Required for complete coverage; omit/blank/invalid → number_inventory_incomplete (never defaulted to native). */
