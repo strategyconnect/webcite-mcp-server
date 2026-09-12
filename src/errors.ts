@@ -61,6 +61,19 @@ export class ApiClientError extends Error {
         actionable: 'Stored content failed integrity checks; do not regenerate from a model.',
       });
     }
+    // C3: CONTEXT_GRAPH_RESEARCH default-off — HTTP 400 refuse; never invent a run.
+    if (/CONTEXT_GRAPH_RESEARCH is disabled/i.test(this.body)) {
+      return new ToolFailure('api_error', this.message, {
+        details: {
+          status: this.status,
+          body: this.body,
+          flag: 'CONTEXT_GRAPH_RESEARCH',
+          default_off: true,
+        },
+        actionable:
+          'CONTEXT_GRAPH_RESEARCH is default-off; enable only for intentional C3 cutover. Do not invent a research run or checkpoint.',
+      });
+    }
     return new ToolFailure('api_error', this.message, {
       details: { status: this.status, body: this.body },
       actionable: 'Retry with the same Idempotency-Key if the call was chargeable; inspect the API body.',

@@ -621,6 +621,18 @@ function startStub(options = {}) {
       if (researchRunMatch) {
         const runId = researchRunMatch[1];
         const action = researchRunMatch[2];
+        // Mirror backend: CONTEXT_GRAPH_RESEARCH default-off → 400 refuse.
+        if (runId === 'flag-off') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              statusCode: 400,
+              message: 'CONTEXT_GRAPH_RESEARCH is disabled',
+              error: 'Bad Request',
+            }),
+          );
+          return;
+        }
         if (action === 'reserve') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(
@@ -642,6 +654,26 @@ function startStub(options = {}) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ run, engine: 'context_graph' }));
         return;
+      }
+
+      // create_research_run flag-off refuse (before static ROUTES)
+      if (url.pathname === '/api/v2/context/research-runs' && req.method === 'POST' && body) {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed.objective === '__flag_off__') {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                statusCode: 400,
+                message: 'CONTEXT_GRAPH_RESEARCH is disabled',
+                error: 'Bad Request',
+              }),
+            );
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
       }
 
       if (url.pathname === '/api/v2/context/operations/open-root') {
@@ -1339,6 +1371,63 @@ test('every tool round-trips through the real server against the API', async (t)
       '/api/v2/context/research-runs/11111111-1111-1111-1111-111111111111/checkpoints',
     );
     assert.match(checkpointed, /Revision:\*\* 1/);
+  });
+
+  await t.test('research create/get/checkpoint/reserve refuse when CONTEXT_GRAPH_RESEARCH off', async () => {
+    const created = await rpc('tools/call', {
+      name: 'create_research_run',
+      arguments: {
+        objective: '__flag_off__',
+        snapshot_id: 'snap-1',
+        workflow_version: 'wf-1',
+        budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+      },
+    });
+    assert.equal(created.result.isError, true);
+    assert.equal(created.result.structuredContent.code, 'api_error');
+    assert.match(created.result.content[0].text, /CONTEXT_GRAPH_RESEARCH is disabled/);
+    assert.match(created.result.content[0].text, /default-off|Do not invent/);
+    assert.equal(created.result.structuredContent.details.flag, 'CONTEXT_GRAPH_RESEARCH');
+    assert.equal(created.result.structuredContent.details.default_off, true);
+
+    const got = await rpc('tools/call', {
+      name: 'get_research_run',
+      arguments: { run_id: 'flag-off' },
+    });
+    assert.equal(got.result.isError, true);
+    assert.equal(got.result.structuredContent.code, 'api_error');
+    assert.match(got.result.content[0].text, /CONTEXT_GRAPH_RESEARCH is disabled/);
+    assert.equal(got.result.structuredContent.details.default_off, true);
+
+    const checkpointed = await rpc('tools/call', {
+      name: 'checkpoint_research_run',
+      arguments: {
+        run_id: 'flag-off',
+        expected_revision: 0,
+        run: {
+          id: 'flag-off',
+          checkpointRevision: 0,
+          objective: 'x',
+          phase: 'running',
+        },
+      },
+    });
+    assert.equal(checkpointed.result.isError, true);
+    assert.equal(checkpointed.result.structuredContent.code, 'api_error');
+    assert.match(checkpointed.result.content[0].text, /CONTEXT_GRAPH_RESEARCH is disabled/);
+
+    const reserved = await rpc('tools/call', {
+      name: 'reserve_research_budget',
+      arguments: {
+        run_id: 'flag-off',
+        idempotency_key: 'idem-flag-off',
+        kind: 'step',
+        credits: 1,
+      },
+    });
+    assert.equal(reserved.result.isError, true);
+    assert.equal(reserved.result.structuredContent.code, 'api_error');
+    assert.match(reserved.result.content[0].text, /CONTEXT_GRAPH_RESEARCH is disabled/);
   });
 
   await t.test('resolve_seeds posts index and returns leading resolver', async () => {
