@@ -1133,7 +1133,7 @@ Credits: 1. HTTP: POST /api/v2/context/formal/check`,
   },
   {
     name: 'create_claim_relation',
-    description: `Persist a formalized claim relation (C1). Unrecognised predicates are refused. Blank/whitespace/surrounding-padded predicate → incomplete_claim_predicate_identity; blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity; blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog relation).
+    description: `Persist a formalized claim relation (C1). Unrecognised predicates are refused. Blank/whitespace/surrounding-padded predicate → incomplete_claim_predicate_identity; blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity; blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog relation). Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified claim-relation replay pin; same honesty as settle/formal_check #92/#110). Lean formal_check source trailing newlines are out of scope for this tool.
 
 Credits: 1. HTTP: POST /api/v2/context/claim-relations`,
     inputSchema: {
@@ -1157,7 +1157,11 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations`,
           description:
             'Optional non-blank unpadded claim revision id. Blank/whitespace/surrounding-padded → incomplete_claim_revision_identity (never trim-launder).',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a claim-relation replay pin).',
+        },
       },
       required: ['predicate', 'argument_ids', 'arguments_resolved'],
     },

@@ -814,6 +814,10 @@ export interface CreateClaimRelationOptions {
   arguments_resolved: boolean;
   /** Non-blank unpadded when set; blank/padded → incomplete_claim_revision_identity. */
   claim_revision_id?: string | null;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 
