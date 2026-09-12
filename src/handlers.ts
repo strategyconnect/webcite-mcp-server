@@ -1031,14 +1031,40 @@ export const handlers: Record<string, ToolHandler> = {
     ) {
       throw new ToolFailure('invalid_argument', 'kind, expected, and found are required');
     }
-    if (args.kind !== 'spreadsheet' && args.kind !== 'office' && args.kind !== 'text') {
-      throw new ToolFailure('invalid_argument', 'kind must be spreadsheet|office|text');
+    const allowed = new Set([
+      'spreadsheet',
+      'office',
+      'text',
+      'image',
+      'container',
+      'media',
+    ]);
+    if (!allowed.has(args.kind)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'kind must be spreadsheet|office|text|image|container|media',
+      );
     }
     const raw = await wrapApi(
       client.formatCertify({
-        kind: args.kind,
+        kind: args.kind as
+          | 'spreadsheet'
+          | 'office'
+          | 'text'
+          | 'image'
+          | 'container'
+          | 'media',
         expected: args.expected,
         found: args.found,
+        decode_finished:
+          typeof args?.decode_finished === 'boolean'
+            ? args.decode_finished
+            : undefined,
+        alignments: Array.isArray(args?.alignments) ? args.alignments : undefined,
+        require_precise_timing:
+          typeof args?.require_precise_timing === 'boolean'
+            ? args.require_precise_timing
+            : undefined,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),

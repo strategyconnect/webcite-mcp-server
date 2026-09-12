@@ -1133,15 +1133,21 @@ Credits: 1. HTTP: GET /api/v2/context/learning/placeholder`,
   },
   {
     name: 'format_certify',
-    description: `Certify planted spreadsheet/office/text inventory coverage (F1/F3/F4). Fails closed.
+    description: `Certify planted spreadsheet/office/text/image/container/media inventory coverage (F1–F4). Fails closed. Media requires decode_finished.
 
 Credits: 1. HTTP: POST /api/v2/context/format/certify`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        kind: { type: 'string', enum: ['spreadsheet', 'office', 'text'] },
+        kind: {
+          type: 'string',
+          enum: ['spreadsheet', 'office', 'text', 'image', 'container', 'media'],
+        },
         expected: { type: 'array' },
         found: { type: 'array' },
+        decode_finished: { type: 'boolean' },
+        alignments: { type: 'array' },
+        require_precise_timing: { type: 'boolean' },
         idempotency_key: { type: 'string' },
       },
       required: ['kind', 'expected', 'found'],

@@ -1093,6 +1093,14 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/format/certify');
     assert.match(text, /Ok:\*\* no/);
+
+    const image = await call('format_certify', {
+      kind: 'image',
+      expected: ['digit-1'],
+      found: [],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/format/certify');
+    assert.match(image, /Ok:\*\* no/);
   });
 
   await t.test('reserve_research_budget and P4 formal tools hit routes', async () => {

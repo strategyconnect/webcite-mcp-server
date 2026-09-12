@@ -45,7 +45,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `learning_judge` | `POST /api/v2/context/learning/judge` | verdict, attempts, hard_failures? | action | auth | 0 | — |
 | `learning_apply` | `POST /api/v2/context/learning/apply` | proposal, gate | applied/refused | no gate → refused | 0 | proposal id |
 | `learning_placeholder` | `GET /api/v2/context/learning/placeholder` | criterion? | checkpoint + authoritative:false | auth | 0 | — |
-| `format_certify` | `POST /api/v2/context/format/certify` | kind, expected[], found[] | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
+| `format_certify` | `POST /api/v2/context/format/certify` | kind (spreadsheet\|office\|text\|image\|container\|media), expected[], found[], media: decode_finished? | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
 | `reserve_research_budget` | `POST /api/v2/context/research-runs/:runId/reserve` | run_id, idempotency_key, kind, credits | operationId + replay | missing root refuses | 0 | research run |
 | `open_operation_root` | `POST /api/v2/context/operations/open-root` | idempotency_key, kind, max_credits, max_tokens, deadline_ms | root operation | auth / invalid budget | 0 | evidence operation |
 | `reserve_operation` | `POST /api/v2/context/operations/reserve` | idempotency_key, kind, credits, root_operation_id? | operation + replay | auth / insufficient budget | 0 | evidence operation |
