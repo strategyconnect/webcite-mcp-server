@@ -47,6 +47,7 @@ import type {
   FormalizeClaimRelationResponse,
   EvalCatalogResponse,
   CertifyPrivateUploadResponse,
+  CertifyRetrieveFlagResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
   ScopeCompareResult,
@@ -810,6 +811,28 @@ export function validateCertifyPrivateUpload(
     ok: root.ok,
     mode: typeof root.mode === 'string' ? root.mode : undefined,
     reason: typeof root.reason === 'string' ? root.reason : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateCertifyRetrieveFlag(
+  raw: unknown,
+): CertifyRetrieveFlagResponse {
+  const root = requireObject(raw, 'CertifyRetrieveFlag');
+  if (typeof root.ok !== 'boolean' || typeof root.enabled !== 'boolean') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'CertifyRetrieveFlag.ok and enabled must be booleans',
+      {
+        actionable:
+          'Do not invent retrieve-flag posture; retry or report API contract drift.',
+      },
+    );
+  }
+  return {
+    ok: root.ok,
+    enabled: root.enabled,
+    default_off: root.default_off !== false,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

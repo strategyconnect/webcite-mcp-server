@@ -54,6 +54,7 @@ import {
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatCertifyPrivateUpload,
+  formatCertifyRetrieveFlag,
   formatExtractedDoc,
   formatFigures,
   formatGaps,
@@ -121,6 +122,7 @@ import {
   validateFormalizeClaimRelation,
   validateEvalCatalog,
   validateCertifyPrivateUpload,
+  validateCertifyRetrieveFlag,
   validateResolvedAnswer,
   validateResolvedPacket,
 } from './validate.js';
@@ -1452,6 +1454,15 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateCertifyPrivateUpload(raw);
     return ok(
       formatCertifyPrivateUpload(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  certify_retrieve_flag: async (_args, client) => {
+    const raw = await wrapApi(client.certifyRetrieveFlag());
+    const validated = validateCertifyRetrieveFlag(raw);
+    return ok(
+      formatCertifyRetrieveFlag(validated),
       validated as unknown as Record<string, unknown>,
     );
   },

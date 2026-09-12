@@ -1418,6 +1418,16 @@ Credits: 1. HTTP: GET /api/v2/context/private-upload/certify`,
     },
   },
   {
+    name: 'certify_retrieve_flag',
+    description: `C2: Report CONTEXT_GRAPH_RETRIEVE posture for cutover/eval. Default remains off; enabled:false is ok (default_off: true), not a misconfiguration.
+
+Credits: 1. HTTP: GET /api/v2/context/retrieve/flag`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
     name: 'proofs_applies',
     description: `Probe whether a proof receipt still binds under the current premise hash and approved toolchains (P3). Does not invent proved status.
 
@@ -1594,6 +1604,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'GET /api/v2/context/private-upload/certify': 'certify_private_upload',
+  'GET /api/v2/context/retrieve/flag': 'certify_retrieve_flag',
   'GET /api/v2/context/proofs/applies': 'proofs_applies',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

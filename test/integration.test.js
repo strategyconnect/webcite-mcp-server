@@ -350,6 +350,12 @@ const ROUTES = {
     reason: 'not_run: EVIDENCE_STORAGE_ROOT or EVIDENCE_BUCKET_NAME required',
     engine: 'context_graph',
   },
+  '/api/v2/context/retrieve/flag': {
+    ok: true,
+    enabled: false,
+    default_off: true,
+    engine: 'context_graph',
+  },
 };
 
 function startStub(options = {}) {
@@ -1256,6 +1262,12 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(seen.at(-1).path, '/api/v2/context/private-upload/certify');
     assert.match(upload, /Ok:\*\* no/);
     assert.match(upload, /not_run/);
+
+    const flag = await call('certify_retrieve_flag', {});
+    assert.equal(seen.at(-1).path, '/api/v2/context/retrieve/flag');
+    assert.match(flag, /Ok:\*\* yes/);
+    assert.match(flag, /Enabled:\*\* no/);
+    assert.match(flag, /Default off:\*\* yes/);
   });
 
   await t.test('Q_MCP_FAILURES: invalid argument is isError without crashing', async () => {
