@@ -758,6 +758,19 @@ export interface ReserveResearchBudgetResponse {
   engine?: string;
 }
 
+export interface OpenOperationRootOptions {
+  idempotency_key: string;
+  kind: string;
+  max_credits: number;
+  max_tokens: number;
+  deadline_ms: number;
+}
+
+export interface OpenOperationRootResponse {
+  operation: Record<string, unknown>;
+  engine?: string;
+}
+
 export interface GetOperationOptions {
   operation_id: string;
 }
@@ -779,6 +792,20 @@ export interface GetOperationAvailabilityResponse {
     outstandingCredits: number;
     outstandingTokens: number;
   };
+  engine?: string;
+}
+
+export interface ProofsAppliesOptions {
+  status: string;
+  binding_hash: string;
+  toolchain_version: string;
+  current_binding_hash: string;
+  approved_toolchains?: string[];
+  checker_digest?: string;
+}
+
+export interface ProofsAppliesResponse {
+  applies: boolean;
   engine?: string;
 }
 

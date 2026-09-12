@@ -427,6 +427,34 @@ function startStub(options = {}) {
         return;
       }
 
+      if (url.pathname === '/api/v2/context/operations/open-root') {
+        let parsed = {};
+        try {
+          parsed = body ? JSON.parse(body) : {};
+        } catch {
+          parsed = {};
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            operation: {
+              id: 'op-root-opened',
+              kind: parsed.kind || 'research_run',
+              rootOperationId: null,
+              maxCredits: parsed.max_credits ?? 100,
+            },
+            engine: 'context_graph',
+          }),
+        );
+        return;
+      }
+
+      if (url.pathname === '/api/v2/context/proofs/applies') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ applies: true, engine: 'context_graph' }));
+        return;
+      }
+
       const operationMatch = url.pathname.match(
         /^\/api\/v2\/context\/operations\/([^/]+)(?:\/(availability))?$/,
       );
@@ -957,6 +985,16 @@ test('every tool round-trips through the real server against the API', async (t)
     );
     assert.match(reserved, /Operation:\*\* child-op-1/);
 
+    const opened = await call('open_operation_root', {
+      idempotency_key: 'root-key-1',
+      kind: 'research_run',
+      max_credits: 50,
+      max_tokens: 1000,
+      deadline_ms: 60000,
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/open-root');
+    assert.match(opened, /Id:\*\* op-root-opened/);
+
     const described = await call('get_operation', { operation_id: 'op-root-1' });
     assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-root-1');
     assert.match(described, /Id:\*\* op-root-1/);
@@ -968,6 +1006,16 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-root-1/availability');
     assert.match(availability, /Max credits:\*\* 100/);
     assert.match(availability, /Outstanding credits:\*\* 5/);
+
+    const proof = await call('proofs_applies', {
+      status: 'proved',
+      binding_hash: 'bind-1',
+      toolchain_version: 'v4.33.1',
+      current_binding_hash: 'bind-1',
+      approved_toolchains: ['v4.33.1'],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/proofs/applies');
+    assert.match(proof, /Applies:\*\* yes/);
 
     const state = await call('formal_resolution_state', {
       proof_search_failed: true,

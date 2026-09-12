@@ -33,8 +33,10 @@ import type {
   LearningPlaceholderResponse,
   FormatCertifyResponse,
   ReserveResearchBudgetResponse,
+  OpenOperationRootResponse,
   GetOperationResponse,
   GetOperationAvailabilityResponse,
+  ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
   ClaimStructureTierResponse,
@@ -723,6 +725,14 @@ export function formatReserveResearchBudget(
   return `# Research Budget Reserve\n\n**Operation:** ${result.operationId}\n**Replay:** ${result.replay ? 'yes' : 'no'}`;
 }
 
+export function formatOpenOperationRoot(result: OpenOperationRootResponse): string {
+  const id =
+    typeof result.operation.id === 'string' ? result.operation.id : '(unknown)';
+  const kind =
+    typeof result.operation.kind === 'string' ? result.operation.kind : '(unknown)';
+  return `# Open Operation Root\n\n**Id:** ${id}\n**Kind:** ${kind}`;
+}
+
 export function formatGetOperation(result: GetOperationResponse): string {
   const id =
     typeof result.operation.id === 'string' ? result.operation.id : '(unknown)';
@@ -736,6 +746,10 @@ export function formatGetOperationAvailability(
 ): string {
   const a = result.availability;
   return `# Operation Availability\n\n**Max credits:** ${a.maxCredits}\n**Settled:** ${a.settledCredits}\n**Outstanding credits:** ${a.outstandingCredits}\n**Outstanding tokens:** ${a.outstandingTokens}`;
+}
+
+export function formatProofsApplies(result: ProofsAppliesResponse): string {
+  return `# Proofs Applies\n\n**Applies:** ${result.applies ? 'yes' : 'no'}`;
 }
 
 export function formatFormalResolutionState(

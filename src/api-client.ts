@@ -57,10 +57,14 @@ import type {
   FormatCertifyResponse,
   ReserveResearchBudgetOptions,
   ReserveResearchBudgetResponse,
+  OpenOperationRootOptions,
+  OpenOperationRootResponse,
   GetOperationOptions,
   GetOperationResponse,
   GetOperationAvailabilityOptions,
   GetOperationAvailabilityResponse,
+  ProofsAppliesOptions,
+  ProofsAppliesResponse,
   FormalResolutionStateOptions,
   FormalResolutionStateResponse,
   FormalRevenueBridgeOptions,
@@ -641,6 +645,26 @@ export class WebCiteApiClient {
     );
   }
 
+  async openOperationRoot(
+    options: OpenOperationRootOptions,
+  ): Promise<OpenOperationRootResponse> {
+    const { idempotency_key, ...rest } = options;
+    return this.request(
+      '/api/v2/context/operations/open-root',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          idempotency_key,
+          kind: rest.kind,
+          max_credits: rest.max_credits,
+          max_tokens: rest.max_tokens,
+          deadline_ms: rest.deadline_ms,
+        }),
+      },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
   async getOperation(options: GetOperationOptions): Promise<GetOperationResponse> {
     return this.request(
       `/api/v2/context/operations/${encodeURIComponent(options.operation_id)}`,
@@ -653,6 +677,22 @@ export class WebCiteApiClient {
   ): Promise<GetOperationAvailabilityResponse> {
     return this.request(
       `/api/v2/context/operations/${encodeURIComponent(options.operation_id)}/availability`,
+      { method: 'GET' },
+    );
+  }
+
+  async proofsApplies(options: ProofsAppliesOptions): Promise<ProofsAppliesResponse> {
+    const params = new URLSearchParams();
+    params.set('status', options.status);
+    params.set('bindingHash', options.binding_hash);
+    params.set('toolchainVersion', options.toolchain_version);
+    params.set('currentBindingHash', options.current_binding_hash);
+    if (options.approved_toolchains?.length) {
+      params.set('approvedToolchains', options.approved_toolchains.join(','));
+    }
+    if (options.checker_digest) params.set('checkerDigest', options.checker_digest);
+    return this.request(
+      `/api/v2/context/proofs/applies?${params.toString()}`,
       { method: 'GET' },
     );
   }
