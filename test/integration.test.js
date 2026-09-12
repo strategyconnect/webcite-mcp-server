@@ -6071,6 +6071,115 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'reserve_operation surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_operation',
+        arguments: {
+          idempotency_key: ' ik-pad-1 ',
+          kind: 'parse',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/operations/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_operation whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_operation',
+        arguments: {
+          idempotency_key: '   ',
+          kind: 'parse',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/operations/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_operation surrounding-padded kind → incomplete_operation_kind_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_operation',
+        arguments: {
+          idempotency_key: 'ik-kind-1',
+          kind: ' parse ',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_kind_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'kind');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/operations/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'open_operation_root pad regression still refuses padded idempotency_key',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'open_operation_root',
+        arguments: {
+          idempotency_key: ' root-key-1 ',
+          kind: 'research_run',
+          max_credits: 50,
+          max_tokens: 1000,
+          deadline_ms: 60000,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/operations/open-root'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_context_workflow surrounding-padded revision_id → incomplete_workflow_revision_identity',
     async () => {
       const before = seen.length;
