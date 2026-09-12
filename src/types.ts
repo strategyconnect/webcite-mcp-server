@@ -1191,6 +1191,7 @@ export interface LinkOperationConsumerOptions {
   consumer_kind: string;
   /** Non-blank unpadded; blank/padded → incomplete_consumer_identity (#264/#279). */
   consumer_id: string;
+  /** When set: non-blank unpadded; blank/padded → incomplete_operation_idempotency_identity (#92). */
   idempotency_key?: string;
 }
 
