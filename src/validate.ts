@@ -26,6 +26,9 @@ import type {
   LearningApplyResponse,
   LearningPlaceholderResponse,
   FormatCertifyResponse,
+  ReserveResearchBudgetResponse,
+  FormalResolutionStateResponse,
+  FormalRevenueBridgeResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -451,6 +454,46 @@ export function validateFormatCertify(raw: unknown): FormatCertifyResponse {
     kind: requireString(root, 'kind', 'FormatCertify'),
     reason: typeof root.reason === 'string' ? root.reason : undefined,
     missingCount: typeof root.missingCount === 'number' ? root.missingCount : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateReserveResearchBudget(
+  raw: unknown,
+): ReserveResearchBudgetResponse {
+  const root = requireObject(raw, 'ReserveResearchBudget');
+  return {
+    operationId: requireString(root, 'operationId', 'ReserveResearchBudget'),
+    replay: root.replay === true,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateFormalResolutionState(
+  raw: unknown,
+): FormalResolutionStateResponse {
+  const root = requireObject(raw, 'FormalResolutionState');
+  return {
+    state: requireString(root, 'state', 'FormalResolutionState'),
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateFormalRevenueBridge(
+  raw: unknown,
+): FormalRevenueBridgeResponse {
+  const root = requireObject(raw, 'FormalRevenueBridge');
+  const status = requireString(root, 'status', 'FormalRevenueBridge');
+  if (status !== 'discharged' && status !== 'refused') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `FormalRevenueBridge.status invalid: ${status}`,
+    );
+  }
+  return {
+    status,
+    sum: typeof root.sum === 'string' ? root.sum : undefined,
+    reason: typeof root.reason === 'string' ? root.reason : undefined,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

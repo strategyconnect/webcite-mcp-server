@@ -31,6 +31,9 @@ import type {
   LearningApplyResponse,
   LearningPlaceholderResponse,
   FormatCertifyResponse,
+  ReserveResearchBudgetResponse,
+  FormalResolutionStateResponse,
+  FormalRevenueBridgeResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -693,6 +696,24 @@ export function formatLearningPlaceholder(
 
 export function formatFormatCertify(result: FormatCertifyResponse): string {
   return `# Format Certify\n\n**Kind:** ${result.kind}\n**Ok:** ${result.ok ? 'yes' : 'no'}${result.reason ? `\n**Reason:** ${result.reason}` : ''}`;
+}
+
+export function formatReserveResearchBudget(
+  result: ReserveResearchBudgetResponse,
+): string {
+  return `# Research Budget Reserve\n\n**Operation:** ${result.operationId}\n**Replay:** ${result.replay ? 'yes' : 'no'}`;
+}
+
+export function formatFormalResolutionState(
+  result: FormalResolutionStateResponse,
+): string {
+  return `# Formal Resolution State\n\n**State:** ${result.state}`;
+}
+
+export function formatFormalRevenueBridge(
+  result: FormalRevenueBridgeResponse,
+): string {
+  return `# Formal Revenue Bridge\n\n**Status:** ${result.status}${result.sum ? `\n**Sum:** ${result.sum}` : ''}${result.reason ? `\n**Reason:** ${result.reason}` : ''}`;
 }
 
 export function formatEvalCatalog(result: EvalCatalogResponse): string {

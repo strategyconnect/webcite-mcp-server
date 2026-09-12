@@ -53,6 +53,12 @@ import type {
   LearningPlaceholderResponse,
   FormatCertifyOptions,
   FormatCertifyResponse,
+  ReserveResearchBudgetOptions,
+  ReserveResearchBudgetResponse,
+  FormalResolutionStateOptions,
+  FormalResolutionStateResponse,
+  FormalRevenueBridgeOptions,
+  FormalRevenueBridgeResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -565,6 +571,47 @@ export class WebCiteApiClient {
     const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/format/certify',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async reserveResearchBudget(
+    options: ReserveResearchBudgetOptions,
+  ): Promise<ReserveResearchBudgetResponse> {
+    const { run_id, ...body } = options;
+    return this.request(
+      `/api/v2/context/research-runs/${encodeURIComponent(run_id)}/reserve`,
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: body.idempotency_key },
+    );
+  }
+
+  async formalResolutionState(
+    options: FormalResolutionStateOptions,
+  ): Promise<FormalResolutionStateResponse> {
+    const { idempotency_key, ...rest } = options;
+    const body = {
+      missingOperands: rest.missing_operands,
+      undefinedDefinition: rest.undefined_definition,
+      proofSearchFailed: rest.proof_search_failed,
+      proofTimedOut: rest.proof_timed_out,
+      counterexampleFound: rest.counterexample_found,
+      checkedNegation: rest.checked_negation,
+    };
+    return this.request(
+      '/api/v2/context/formal/resolution-state',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async formalRevenueBridge(
+    options: FormalRevenueBridgeOptions,
+  ): Promise<FormalRevenueBridgeResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/formal/revenue-bridge',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );
