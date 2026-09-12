@@ -760,12 +760,13 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
 }
 
 /**
- * C3/I4 optional operation idempotency_key: when present as string,
- * blank/whitespace/surrounding-padded never certifies a settle/link/attempt
- * replay pin — refuse before HTTP (same identityComplete honesty as required
- * open_operation_root / reserve_operation idempotency_key after #83/#88).
- * Shared by settle_operation (#92), link_operation_consumer (#94),
- * record_operation_attempt, and resolve_operation_attempt. Omit when not a string.
+ * C3/I4 + W3 optional idempotency_key: when present as string,
+ * blank/whitespace/surrounding-padded never certifies a settle/link/attempt/
+ * workflow publish-or-run replay pin — refuse before HTTP (same identityComplete
+ * honesty as required open_operation_root / reserve_operation idempotency_key
+ * after #83/#88). Shared by settle_operation (#92), link_operation_consumer (#94),
+ * record_operation_attempt / resolve_operation_attempt (#95), and
+ * publish_context_workflow / run_saved_workflow. Omit when not a string.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -779,7 +780,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies an operation settle/link/attempt replay; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -3112,6 +3113,9 @@ export const handlers: Record<string, ToolHandler> = {
     if (!args?.workflow || typeof args.workflow !== 'object' || Array.isArray(args.workflow)) {
       throw new ToolFailure('invalid_argument', 'workflow object is required');
     }
+    // W3: optional padded idempotency_key never certifies a publish-once pin
+    // (sibling of settle/link #92/#94).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.publishContextWorkflow(
         args.workflow as import('./types.js').SavedWorkflowPayload,
@@ -3157,6 +3161,9 @@ export const handlers: Record<string, ToolHandler> = {
     if (!args?.input || typeof args.input !== 'object' || Array.isArray(args.input)) {
       throw new ToolFailure('invalid_argument', 'input object is required');
     }
+    // W3: optional padded idempotency_key never certifies a run-once pin
+    // (sibling of settle/link #92/#94).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.runSavedWorkflow({
         revision_id: args.revision_id,
