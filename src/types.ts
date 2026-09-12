@@ -591,6 +591,10 @@ export interface AssessSupportOptions {
   tier?: 1 | 2 | 3;
   proposed?: string;
   binding?: string;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 

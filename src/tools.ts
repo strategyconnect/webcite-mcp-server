@@ -863,7 +863,7 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
   },
   {
     name: 'assess_support',
-    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded claim_hash → incomplete_claim_hash_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
+    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded claim_hash → incomplete_claim_hash_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment). Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified assess-support replay pin; same honesty as settle/packet #92/#98).
 
 Scope comes from the authenticated API.
 
@@ -906,7 +906,8 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
         },
         idempotency_key: {
           type: 'string',
-          description: 'Logical idempotency key. Not a scope field.',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into an assess-support replay pin).',
         },
       },
       required: ['claim_revision_id', 'claim_hash', 'evidence_group_revision_id'],
