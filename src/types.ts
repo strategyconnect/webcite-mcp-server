@@ -375,7 +375,15 @@ export interface QueryContextOptions {
    * selectPassage topical seeds.
    */
   text: string;
+  /**
+   * Optional inline source texts. Blank/whitespace/surrounding-padded entries →
+   * padded_source_text; never trim-launder into a certified materialization.
+   */
   source_texts?: string[];
+  /**
+   * Optional persisted source version ids. Blank/whitespace/surrounding-padded →
+   * incomplete_source_version_identity (#264/#279); never trim-launder into a pin.
+   */
   source_version_ids?: string[];
   /**
    * ClaimScope filters. Blank/whitespace/surrounding-padded string values →
@@ -890,10 +898,6 @@ export interface CheckpointResearchRunResponse {
 }
 
 export interface ResolveSeedsOptions {
-  /**
-   * Natural-language resolve text. Blank/whitespace or surrounding-padded →
-   * padded_resolve_text (#311/#314); never trim-launder into certified seeds.
-   */
   text: string;
   /**
    * Optional ClaimScope filters. Blank/whitespace or surrounding-padded values →

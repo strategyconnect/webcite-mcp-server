@@ -575,6 +575,8 @@ Credits: 1. HTTP: GET /api/v2/evidence-packets/:id`,
 
 Blank/whitespace or surrounding-padded query text fails closed as padded_select_text (backend #314 selectPassage) — equal pads never certify a lexical select and must not trim-launder into seeds.
 
+Blank/whitespace or surrounding-padded source_texts → padded_source_text; blank/whitespace/surrounding-padded source_version_ids → incomplete_source_version_identity — equal pads never materialize or pin a query source and must not trim-launder (#264/#279 / #314 honesty).
+
 Never supply tenant/scope fields; the API derives scope from the API key.
 
 Credits: 1. HTTP: POST /api/v2/context/query`,
@@ -589,12 +591,14 @@ Credits: 1. HTTP: POST /api/v2/context/query`,
         source_texts: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional inline source texts to materialize for the query.',
+          description:
+            'Optional inline source texts to materialize. Blank/whitespace/surrounding-padded entries → padded_source_text (never trim-launder).',
         },
         source_version_ids: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional persisted source version IDs aligned with source_texts.',
+          description:
+            'Optional persisted source version IDs aligned with source_texts. Blank/whitespace/surrounding-padded → incomplete_source_version_identity (never trim-launder).',
         },
         filters: {
           type: 'object',
@@ -1314,17 +1318,13 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
   },
   {
     name: 'resolve_seeds',
-    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback. Omit index to use the SQL metric-definition catalog. Blank/whitespace/surrounding-padded text fails closed as padded_resolve_text (#311/#314 surface — never trim-launder into certified seeds). Blank/whitespace or surrounding-padded ClaimScope filters fail closed as padded_resolve_filter (backend #311) — equal pads never pin a scope_tuple and must not fall through to bare_term; never trim-launder filters.
+    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback. Omit index to use the SQL metric-definition catalog. Blank/whitespace or surrounding-padded ClaimScope filters fail closed as padded_resolve_filter (backend #311) — equal pads never pin a scope_tuple and must not fall through to bare_term; never trim-launder filters.
 
 Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        text: {
-          type: 'string',
-          description:
-            'Natural-language resolve text. Non-blank unpadded; blank/whitespace/surrounding-padded → padded_resolve_text (never trim-launder).',
-        },
+        text: { type: 'string' },
         filters: {
           type: 'object',
           description:

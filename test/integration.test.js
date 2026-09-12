@@ -1700,6 +1700,95 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'query_context surrounding-padded source_version_ids → incomplete_source_version_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          source_version_ids: [' sv1 '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_source_version_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'source_version_ids');
+      assert.match(res.result.content[0].text, /blank|whitespace|padded/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/query');
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'query_context equal-pad source_version_ids → incomplete_source_version_identity (never pin)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          source_version_ids: ['sv1', ' sv1 '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_source_version_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.index, 1);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'query_context whitespace-only source_texts → padded_source_text',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          source_texts: ['   '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_source_text');
+      assert.equal(res.result.structuredContent.details?.field, 'source_texts');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'query_context surrounding-padded source_texts → padded_source_text (never materialize)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          source_texts: [' revenue grew '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_source_text');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('compare_assertions returns same/different/unknown', async () => {
     const text = await call('compare_assertions', {
       left: { metric: 'revenue', period: 'FY24' },
@@ -2388,48 +2477,6 @@ test('every tool round-trips through the real server against the API', async (t)
   });
 
   await t.test(
-    'resolve_seeds surrounding-padded text → padded_resolve_text',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'resolve_seeds',
-        arguments: { text: ' revenue ' },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_text');
-      assert.equal(res.result.structuredContent.details?.field, 'text');
-      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
-      assert.equal(
-        seen
-          .slice(before)
-          .find((r) => String(r.path || '').includes('/resolve-seeds')),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
-    'resolve_seeds whitespace-only text → padded_resolve_text',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'resolve_seeds',
-        arguments: { text: '   ' },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_text');
-      assert.equal(
-        seen
-          .slice(before)
-          .find((r) => String(r.path || '').includes('/resolve-seeds')),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
     'resolve_seeds surrounding-padded metric filter → padded_resolve_filter',
     async () => {
       const before = seen.length;
@@ -2996,7 +3043,9 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   await t.test('successful no-match remains distinguishable from failure', async () => {
     const res = await rpc('tools/call', {
       name: 'query_context',
-      arguments: { text: 'nomatch', source_texts: [''] },
+      // Omit blank source_texts — empty/padded entries refuse as padded_source_text
+      // before HTTP and must not be used to simulate a certified no-match.
+      arguments: { text: 'nomatch' },
     });
     assert.ok(!res.result.isError);
     assert.equal(res.result.structuredContent.status, 'refuse');
