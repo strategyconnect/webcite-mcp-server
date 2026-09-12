@@ -1819,6 +1819,83 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /assess:hash-1:eg-r1/);
   });
 
+  await t.test(
+    'assess_support surrounding-padded claim_revision_id → incomplete_claim_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: ' claim-r1 ',
+          claim_hash: 'hash-1',
+          evidence_group_revision_id: 'eg-r1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_revision_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_support surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: 'hash-1',
+          evidence_group_revision_id: ' eg-r1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_evidence_group_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_support surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: 'hash-1',
+          evidence_group_revision_id: 'eg-r1',
+          alternative_fragment_id: ' alt-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_alternative_fragment_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('assess_meaning returns independent facets', async () => {
     const text = await call('assess_meaning', {
       assessment: {

@@ -833,7 +833,7 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
   },
   {
     name: 'assess_support',
-    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3).
+    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
 
 Scope comes from the authenticated API.
 
@@ -843,7 +843,8 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
       properties: {
         claim_revision_id: {
           type: 'string',
-          description: 'Claim revision under assessment.',
+          description:
+            'Non-blank unpadded claim revision under assessment. Blank/whitespace/surrounding-padded → incomplete_claim_revision_identity (never trim-launder).',
         },
         claim_hash: {
           type: 'string',
@@ -851,11 +852,13 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
         },
         evidence_group_revision_id: {
           type: 'string',
-          description: 'Evidence group revision providing candidate support.',
+          description:
+            'Non-blank unpadded evidence group revision. Blank/whitespace/surrounding-padded → incomplete_evidence_group_identity (never trim-launder).',
         },
         alternative_fragment_id: {
           type: 'string',
-          description: 'Optional competing fragment id when comparing alternatives.',
+          description:
+            'Optional competing fragment id. Blank/whitespace/surrounding-padded → incomplete_alternative_fragment_identity (never trim-launder); null omits.',
         },
         tier: {
           type: 'integer',
