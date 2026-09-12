@@ -34,6 +34,7 @@ import type {
   FormatCertifyResponse,
   ReserveResearchBudgetResponse,
   OpenOperationRootResponse,
+  ReserveOperationResponse,
   GetOperationResponse,
   GetOperationAvailabilityResponse,
   SettleOperationResponse,
@@ -747,6 +748,10 @@ export function formatOpenOperationRoot(result: OpenOperationRootResponse): stri
   const kind =
     typeof result.operation.kind === 'string' ? result.operation.kind : '(unknown)';
   return `# Open Operation Root\n\n**Id:** ${id}\n**Kind:** ${kind}`;
+}
+
+export function formatReserveOperation(result: ReserveOperationResponse): string {
+  return `# Operation Reserve\n\n**Operation:** ${result.operation.id}\n**Replay:** ${result.replay ? 'yes' : 'no'}`;
 }
 
 export function formatGetOperation(result: GetOperationResponse): string {

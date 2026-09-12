@@ -59,6 +59,8 @@ import type {
   ReserveResearchBudgetResponse,
   OpenOperationRootOptions,
   OpenOperationRootResponse,
+  ReserveOperationOptions,
+  ReserveOperationResponse,
   GetOperationOptions,
   GetOperationResponse,
   GetOperationAvailabilityOptions,
@@ -673,6 +675,26 @@ export class WebCiteApiClient {
           max_credits: rest.max_credits,
           max_tokens: rest.max_tokens,
           deadline_ms: rest.deadline_ms,
+        }),
+      },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async reserveOperation(
+    options: ReserveOperationOptions,
+  ): Promise<ReserveOperationResponse> {
+    const { idempotency_key, ...rest } = options;
+    return this.request(
+      '/api/v2/context/operations/reserve',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          idempotency_key,
+          kind: rest.kind,
+          credits: rest.credits,
+          tokens: rest.tokens,
+          root_operation_id: rest.root_operation_id ?? null,
         }),
       },
       { idempotencyKey: idempotency_key },

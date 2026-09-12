@@ -773,6 +773,20 @@ export interface OpenOperationRootResponse {
   engine?: string;
 }
 
+export interface ReserveOperationOptions {
+  idempotency_key: string;
+  kind: string;
+  credits: number;
+  tokens?: number;
+  root_operation_id?: string | null;
+}
+
+export interface ReserveOperationResponse {
+  operation: { id: string };
+  replay: boolean;
+  engine?: string;
+}
+
 export interface GetOperationOptions {
   operation_id: string;
 }

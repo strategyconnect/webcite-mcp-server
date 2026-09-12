@@ -1188,6 +1188,23 @@ Credits: 1. HTTP: POST /api/v2/context/operations/open-root`,
     },
   },
   {
+    name: 'reserve_operation',
+    description: `Reserve credits for one logical EvidenceOperation call (I4). Optional root_operation_id holds against a shared root budget without requiring a research run.
+
+Credits: 1. HTTP: POST /api/v2/context/operations/reserve`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        idempotency_key: { type: 'string' },
+        kind: { type: 'string' },
+        credits: { type: 'number' },
+        tokens: { type: 'number' },
+        root_operation_id: { type: 'string' },
+      },
+      required: ['idempotency_key', 'kind', 'credits'],
+    },
+  },
+  {
     name: 'get_operation',
     description: `Read one EvidenceOperation the caller owns (I4), including settlement fields.
 
@@ -1546,6 +1563,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/format/certify': 'format_certify',
   'POST /api/v2/context/research-runs/:runId/reserve': 'reserve_research_budget',
   'POST /api/v2/context/operations/open-root': 'open_operation_root',
+  'POST /api/v2/context/operations/reserve': 'reserve_operation',
   'GET /api/v2/context/operations/:operationId': 'get_operation',
   'GET /api/v2/context/operations/:operationId/availability':
     'get_operation_availability',

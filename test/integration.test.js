@@ -449,6 +449,18 @@ function startStub(options = {}) {
         return;
       }
 
+      if (url.pathname === '/api/v2/context/operations/reserve') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            operation: { id: 'op-reserved-1' },
+            replay: false,
+            engine: 'context_graph',
+          }),
+        );
+        return;
+      }
+
       if (url.pathname === '/api/v2/context/proofs/applies') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ applies: true, engine: 'context_graph' }));
@@ -1105,6 +1117,16 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/operations/open-root');
     assert.match(opened, /Id:\*\* op-root-opened/);
+
+    const reservedOp = await call('reserve_operation', {
+      idempotency_key: 'reserve-key-1',
+      kind: 'parse',
+      credits: 3,
+      root_operation_id: 'op-root-opened',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/reserve');
+    assert.match(reservedOp, /Operation:\*\* op-reserved-1/);
+    assert.match(reservedOp, /Replay:\*\* no/);
 
     const described = await call('get_operation', { operation_id: 'op-root-1' });
     assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-root-1');
