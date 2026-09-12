@@ -912,12 +912,75 @@ function assertEligibleNotesCompleteOutput(
   }
 }
 
+/**
+ * Backend #304: blank/padded loopStop requirement ids must not certify a stop
+ * on research-run output (same honesty as eligibleNote/wake id-pad).
+ */
+function assertRequirementIdListCompleteOutput(
+  ids: unknown,
+  label: string,
+  field: string,
+): void {
+  if (ids === undefined || ids === null) return;
+  if (!Array.isArray(ids)) {
+    throw new ToolFailure('invalid_api_output', `${label} must be an array`, {
+      details: { reason: 'incomplete_loop_requirement_identity', field },
+      actionable:
+        'Reject incomplete requirement ids; do not invent a certified loop stop.',
+    });
+  }
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        `${label}[${i}] is incomplete (blank/whitespace/padded)`,
+        {
+          details: {
+            reason: 'incomplete_loop_requirement_identity',
+            field,
+            index: i,
+          },
+          actionable:
+            'Blank/whitespace/padded requirement ids never certify a loop stop; do not invent or trim-launder.',
+        },
+      );
+    }
+  }
+}
+
+function assertLoopProgressCompleteOutput(
+  run: Record<string, unknown>,
+  label: string,
+): void {
+  const progress = run.progress;
+  if (progress === undefined || progress === null) return;
+  if (typeof progress !== 'object' || Array.isArray(progress)) {
+    throw new ToolFailure('invalid_api_output', `${label}.progress must be an object`, {
+      details: { reason: 'incomplete_loop_requirement_identity' },
+      actionable: 'Reject incomplete loop progress; do not invent a certified loop stop.',
+    });
+  }
+  const p = progress as Record<string, unknown>;
+  assertRequirementIdListCompleteOutput(
+    p.openRequirementIds,
+    `${label}.progress.openRequirementIds`,
+    'openRequirementIds',
+  );
+  assertRequirementIdListCompleteOutput(
+    p.failedRequirementIds,
+    `${label}.progress.failedRequirementIds`,
+    'failedRequirementIds',
+  );
+}
+
 function requireResearchRun(raw: unknown, label: string): CreateResearchRunResponse['run'] {
   const run = requireObject(raw, label);
-  // Preserve wait/notes as-is when present; refuse blank/padded identity fail-closed.
+  // Preserve wait/notes/progress as-is when present; refuse blank/padded identity fail-closed.
   assertWakeSubjectCompleteOutput(run.wait, label);
   assertWakeTenantCompleteOutput(run, label);
   assertEligibleNotesCompleteOutput(run, label);
+  assertLoopProgressCompleteOutput(run, label);
   return {
     ...run,
     id: requireString(run, 'id', label),

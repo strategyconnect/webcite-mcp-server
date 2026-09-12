@@ -320,6 +320,70 @@ function assertEligibleNotesComplete(run: ResearchRunPayload, label: string): vo
   }
 }
 
+/**
+ * Backend #304: blank/whitespace/padded loopStop requirement ids must not
+ * certify insufficient_evidence / no_progress / max_steps / complete.
+ */
+function assertRequirementIdListComplete(
+  ids: unknown,
+  label: string,
+  field: string,
+): void {
+  if (ids === undefined || ids === null) return;
+  if (!Array.isArray(ids)) {
+    throw new ToolFailure('invalid_argument', `${label} must be an array`, {
+      details: { reason: 'incomplete_loop_requirement_identity', field },
+      actionable:
+        'Pass non-blank unpadded requirement ids; blank/padded ids never certify a loop stop.',
+    });
+  }
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `${label}[${i}] is incomplete (blank/whitespace/padded)`,
+        {
+          details: {
+            reason: 'incomplete_loop_requirement_identity',
+            field,
+            index: i,
+          },
+          actionable:
+            'Blank/whitespace/padded requirement ids never certify a loop stop; do not invent or trim-launder.',
+        },
+      );
+    }
+  }
+}
+
+/**
+ * Backend #304: when progress is present, open/failed requirement ids must be
+ * non-blank/unpadded — equal pads must not look like a certified loop stop.
+ */
+function assertLoopProgressComplete(run: ResearchRunPayload, label: string): void {
+  const progress = (run as Record<string, unknown>).progress;
+  if (progress === undefined || progress === null) return;
+  if (typeof progress !== 'object' || Array.isArray(progress)) {
+    throw new ToolFailure('invalid_argument', `${label}.progress must be an object`, {
+      details: { reason: 'incomplete_loop_requirement_identity' },
+      actionable:
+        'Pass LoopProgress with non-blank unpadded openRequirementIds/failedRequirementIds.',
+    });
+  }
+  const p = progress as Record<string, unknown>;
+  assertRequirementIdListComplete(
+    p.openRequirementIds,
+    `${label}.progress.openRequirementIds`,
+    'openRequirementIds',
+  );
+  assertRequirementIdListComplete(
+    p.failedRequirementIds,
+    `${label}.progress.failedRequirementIds`,
+    'failedRequirementIds',
+  );
+}
+
 function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
@@ -1161,6 +1225,12 @@ export const handlers: Record<string, ToolHandler> = {
         'objective, snapshot_id, workflow_version, and budget are required',
       );
     }
+    // Backend #304: padded open requirement ids never certify a loop stop.
+    assertRequirementIdListComplete(
+      args?.open_requirement_ids,
+      'create_research_run.open_requirement_ids',
+      'open_requirement_ids',
+    );
     const budget = args.budget as Record<string, unknown>;
     const raw = await wrapApi(
       client.createResearchRun({
@@ -1236,6 +1306,8 @@ export const handlers: Record<string, ToolHandler> = {
     assertWakeTenantComplete(run, 'checkpoint_research_run.run');
     // Backend #297: padded note/scope ids never certify eligible memory.
     assertEligibleNotesComplete(run, 'checkpoint_research_run.run');
+    // Backend #304: padded loopStop requirement ids never certify a stop.
+    assertLoopProgressComplete(run, 'checkpoint_research_run.run');
     const raw = await wrapApi(
       client.checkpointResearchRun({
         run_id: args.run_id,
