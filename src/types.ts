@@ -431,6 +431,10 @@ export interface FragmentUseMatch {
 
 export interface ResolveFragmentUsesOptions {
   selector: Record<string, unknown>;
+  /** Sealed packet id — loads catalog server-side; mutually exclusive with answer_revision_id. */
+  packet_id?: string;
+  /** Sealed answer revision — loads evidence catalog; mutually exclusive with packet_id. */
+  answer_revision_id?: string;
   fragments?: unknown[];
   groups?: unknown[];
   links?: unknown[];
@@ -447,6 +451,8 @@ export interface ResolveFragmentUsesResponse {
   matches: FragmentUseMatch[];
   nextCursor: string | null;
   engine?: string;
+  packet_id?: string;
+  answer_revision_id?: string;
 }
 
 export interface ChangeImpactOptions {
