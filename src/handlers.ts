@@ -607,13 +607,16 @@ function assertResearchRunIdComplete(runId: unknown): asserts runId is string {
 
 /**
  * W3 workflow path ids: blank/whitespace/surrounding-padded revision_id /
- * run_id must never trim-launder into a certified workflow hit (same
- * identityComplete rule as sealed W3 ids #264/#279 / research run_id).
+ * run_id / event_id must never trim-launder into a certified workflow hit
+ * (same identityComplete rule as sealed W3 ids #264/#279 / research run_id).
  */
 function assertWorkflowPathIdComplete(
   value: unknown,
-  field: 'revision_id' | 'run_id',
-  reason: 'incomplete_workflow_revision_identity' | 'incomplete_workflow_run_identity',
+  field: 'revision_id' | 'run_id' | 'event_id',
+  reason:
+    | 'incomplete_workflow_revision_identity'
+    | 'incomplete_workflow_run_identity'
+    | 'incomplete_workflow_event_identity',
 ): asserts value is string {
   if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
     throw new ToolFailure(
@@ -2724,20 +2727,29 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   run_saved_workflow: async (args, client) => {
-    const revisionId = requireString(args, 'revision_id');
+    // W3: padded revision_id / event_id never certify a saved workflow run.
+    assertWorkflowPathIdComplete(
+      args?.revision_id,
+      'revision_id',
+      'incomplete_workflow_revision_identity',
+    );
     const mode = requireString(args, 'mode');
     if (mode !== 'preview' && mode !== 'propose') {
       throw new ToolFailure('invalid_argument', 'mode must be preview or propose');
     }
-    const eventId = requireString(args, 'event_id');
+    assertWorkflowPathIdComplete(
+      args?.event_id,
+      'event_id',
+      'incomplete_workflow_event_identity',
+    );
     if (!args?.input || typeof args.input !== 'object' || Array.isArray(args.input)) {
       throw new ToolFailure('invalid_argument', 'input object is required');
     }
     const raw = await wrapApi(
       client.runSavedWorkflow({
-        revision_id: revisionId,
+        revision_id: args.revision_id,
         mode,
-        event_id: eventId,
+        event_id: args.event_id,
         input: args.input as Record<string, unknown>,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
