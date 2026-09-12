@@ -721,7 +721,7 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
   },
   {
     name: 'get_change_impact',
-    description: `Inspect freshness and/or packet change impact (W3). Pass answer_revision_id for sealed-answer freshness, and/or changed_ids (+ optional links/packet_id/window) for packet dependency impact. Blank/whitespace/padded changed_ids → incomplete_changed_ids; blank/whitespace/padded link endpoints → incomplete_dependency_graph; source_id === consumer_id → self_loop_dependency; incomplete sealed-packet or dependency graphs fail closed as change_impact_incomplete — never silent empty "no impact". Historical answer content stays sealed.
+    description: `Inspect freshness and/or packet change impact (W3). Pass answer_revision_id for sealed-answer freshness, and/or changed_ids (+ optional links/packet_id/window) for packet dependency impact. Blank/whitespace/padded answer_revision_id → incomplete_answer_revision_identity; blank/whitespace/padded packet_id → incomplete_packet_identity (never trim-launder into a certified hit; W3 #264/#279 pad honesty). Blank/whitespace/padded changed_ids → incomplete_changed_ids; blank/whitespace/padded link endpoints → incomplete_dependency_graph; source_id === consumer_id → self_loop_dependency; incomplete sealed-packet or dependency graphs fail closed as change_impact_incomplete — never silent empty "no impact". Historical answer content stays sealed.
 
 Credits: 1. HTTP: POST /api/v2/context/change-impact`,
     inputSchema: {
@@ -729,12 +729,13 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
       properties: {
         answer_revision_id: {
           type: 'string',
-          description: 'Answer revision to inspect for source freshness/change impact.',
+          description:
+            'Non-blank unpadded answer revision for freshness. Blank/whitespace/surrounding-padded → incomplete_answer_revision_identity (never trim-launder).',
         },
         packet_id: {
           type: 'string',
           description:
-            'Optional sealed packet id. When set with changed_ids, missing packets fail closed (change_impact_incomplete).',
+            'Optional non-blank unpadded sealed packet id. Blank/whitespace/surrounding-padded → incomplete_packet_identity. When set with changed_ids, missing packets fail closed (change_impact_incomplete).',
         },
         changed_ids: {
           type: 'array',
