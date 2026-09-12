@@ -4635,6 +4635,108 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'expand_seeds surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: ['a'],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', 'b'],
+          idempotency_key: ' expand-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'expand_seeds whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: ['a'],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', 'b'],
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'expand_seeds equal-pad idempotency_key → incomplete_operation_idempotency_identity (never expand)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: ['a'],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', 'b'],
+          idempotency_key: ' expand-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'expand_seeds surrounding-padded seed still → incomplete_expand_seed_identity (#68 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: [' seed-a '],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', 'b'],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_expand_seed_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('learning judge/apply/placeholder hit E2 routes', async () => {
     const judged = await call('learning_judge', {
       hard_failures: ['hard'],
