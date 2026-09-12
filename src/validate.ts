@@ -809,11 +809,90 @@ function assertWakeTenantCompleteOutput(
   }
 }
 
+const RESEARCH_SCOPE_KEYS = ['tenantId', 'userId', 'dealId', 'sessionId'] as const;
+
+/**
+ * Backend #297: ResearchScope ids must be non-blank/unpadded to certify
+ * eligibleNote matches — equal pads must not look like a scoped memory hit.
+ */
+function assertResearchScopeCompleteOutput(scope: unknown, label: string): void {
+  if (!scope || typeof scope !== 'object' || Array.isArray(scope)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label} is incomplete (missing ResearchScope)`,
+      {
+        details: { reason: 'incomplete_eligible_note_identity' },
+        actionable:
+          'Reject incomplete note scope; do not invent a certified eligible memory match.',
+      },
+    );
+  }
+  const s = scope as Record<string, unknown>;
+  for (const key of RESEARCH_SCOPE_KEYS) {
+    const value = s[key];
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        `${label}.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_eligible_note_identity', field: key },
+          actionable:
+            'Blank/whitespace/padded note/scope identity never certifies eligible memory; do not invent or trim-launder.',
+        },
+      );
+    }
+  }
+}
+
+/**
+ * Backend #297: surfaced MemoryNote rows certify eligible scoped memory —
+ * blank/whitespace/padded note id or ResearchScope fields must fail closed.
+ */
+function assertEligibleNotesCompleteOutput(
+  run: Record<string, unknown>,
+  label: string,
+): void {
+  const notes = run.notes;
+  if (notes === undefined || notes === null) return;
+  if (!Array.isArray(notes)) {
+    throw new ToolFailure('invalid_api_output', `${label}.notes must be an array`, {
+      details: { reason: 'incomplete_eligible_note_identity' },
+      actionable: 'Reject malformed notes; do not invent eligible memory.',
+    });
+  }
+  if (notes.length === 0) return;
+  assertResearchScopeCompleteOutput(run.scope, `${label}.scope`);
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    const nLabel = `${label}.notes[${i}]`;
+    if (!note || typeof note !== 'object' || Array.isArray(note)) {
+      throw new ToolFailure('invalid_api_output', `${nLabel} must be an object`, {
+        details: { reason: 'incomplete_eligible_note_identity', index: i },
+        actionable: 'Reject malformed notes; do not invent eligible memory.',
+      });
+    }
+    const n = note as Record<string, unknown>;
+    if (typeof n.id !== 'string' || !wakeIdentityComplete(n.id)) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        `${nLabel}.id is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_eligible_note_identity', field: 'id', index: i },
+          actionable:
+            'Blank/whitespace/padded note id never certifies eligible memory; do not invent or trim-launder.',
+        },
+      );
+    }
+    assertResearchScopeCompleteOutput(n.scope, `${nLabel}.scope`);
+  }
+}
+
 function requireResearchRun(raw: unknown, label: string): CreateResearchRunResponse['run'] {
   const run = requireObject(raw, label);
-  // Preserve wait as-is when present; refuse blank subject/tenant identity fail-closed.
+  // Preserve wait/notes as-is when present; refuse blank/padded identity fail-closed.
   assertWakeSubjectCompleteOutput(run.wait, label);
   assertWakeTenantCompleteOutput(run, label);
+  assertEligibleNotesCompleteOutput(run, label);
   return {
     ...run,
     id: requireString(run, 'id', label),

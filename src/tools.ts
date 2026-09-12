@@ -1209,7 +1209,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs`,
   },
   {
     name: 'get_research_run',
-    description: `Load a research run by id (C3). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
+    description: `Load a research run by id (C3). Surfaced notes with blank/padded note id or ResearchScope fields fail closed (incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
     inputSchema: {
@@ -1222,7 +1222,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
   },
   {
     name: 'list_research_runs',
-    description: `List durable research runs for the authenticated tenant only (C3). Tenant comes from the API key — never supply tenant/tenant_id/tenantId (blank or surrounding-padded overrides → incomplete_list_tenant_identity; pads must not trim-launder into a certified list). Never invents foreign-tenant rows; empty when none. Listed rows with blank/padded scope.tenantId fail closed. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a list.
+    description: `List durable research runs for the authenticated tenant only (C3). Tenant comes from the API key — never supply tenant/tenant_id/tenantId (blank or surrounding-padded overrides → incomplete_list_tenant_identity; pads must not trim-launder into a certified list). Never invents foreign-tenant rows; empty when none. Listed rows with blank/padded scope.tenantId fail closed. Surfaced notes with padded note/scope ids fail closed (incomplete_eligible_note_identity; #297). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a list.
 
 Credits: 1. HTTP: GET /api/v2/context/research-runs`,
     inputSchema: {
@@ -1232,7 +1232,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
+    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). When run.notes is non-empty, each note id and ResearchScope (tenantId/userId/dealId/sessionId) on the note and run.scope must be non-blank/unpadded (whitespace/pad → incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
@@ -1243,7 +1243,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
         run: {
           type: 'object',
           description:
-            'Full ResearchRun payload. Optional wait requires non-blank unpadded subjectId + subjectRevisionId (blank/whitespace/padded → incomplete_wake_subject_identity) and non-blank unpadded scope.tenantId (blank/whitespace/padded → incomplete_wake_tenant_identity).',
+            'Full ResearchRun payload. Optional wait requires non-blank unpadded subjectId + subjectRevisionId (blank/whitespace/padded → incomplete_wake_subject_identity) and non-blank unpadded scope.tenantId (blank/whitespace/padded → incomplete_wake_tenant_identity). Non-empty notes require non-blank unpadded note id + ResearchScope fields on note and run.scope (blank/whitespace/padded → incomplete_eligible_note_identity; #297).',
         },
         idempotency_key: { type: 'string' },
       },

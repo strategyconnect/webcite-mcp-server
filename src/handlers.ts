@@ -245,6 +245,81 @@ function assertListTenantArgHonesty(args: Args | undefined): void {
   }
 }
 
+const RESEARCH_SCOPE_KEYS = ['tenantId', 'userId', 'dealId', 'sessionId'] as const;
+
+/**
+ * Backend #297: ResearchScope ids must be non-blank/unpadded to certify
+ * eligibleNote matches — equal pads must not look like a scoped memory hit.
+ */
+function assertResearchScopeComplete(
+  scope: unknown,
+  label: string,
+): void {
+  if (!scope || typeof scope !== 'object' || Array.isArray(scope)) {
+    throw new ToolFailure('invalid_argument', `${label} is incomplete (missing ResearchScope)`, {
+      details: { reason: 'incomplete_eligible_note_identity' },
+      actionable:
+        'Pass a ResearchScope with non-blank unpadded tenantId, userId, dealId, and sessionId.',
+    });
+  }
+  const s = scope as Record<string, unknown>;
+  for (const key of RESEARCH_SCOPE_KEYS) {
+    const value = s[key];
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `${label}.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_eligible_note_identity', field: key },
+          actionable:
+            'Blank/whitespace/padded note/scope identity never certifies eligible memory; do not invent or trim-launder.',
+        },
+      );
+    }
+  }
+}
+
+/**
+ * Backend #297: blank/whitespace/padded MemoryNote id or ResearchScope fields
+ * never certify eligibility — refuse before HTTP so equal pads cannot look
+ * like a scoped memory match (same honesty as wake id-pad #281).
+ */
+function assertEligibleNotesComplete(run: ResearchRunPayload, label: string): void {
+  const notes = (run as Record<string, unknown>).notes;
+  if (notes === undefined || notes === null) return;
+  if (!Array.isArray(notes)) {
+    throw new ToolFailure('invalid_argument', `${label}.notes must be an array`, {
+      details: { reason: 'incomplete_eligible_note_identity' },
+      actionable: 'Pass notes as MemoryNote[] or omit; do not invent eligible memory.',
+    });
+  }
+  if (notes.length === 0) return;
+  assertResearchScopeComplete(run.scope, `${label}.scope`);
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    const nLabel = `${label}.notes[${i}]`;
+    if (!note || typeof note !== 'object' || Array.isArray(note)) {
+      throw new ToolFailure('invalid_argument', `${nLabel} must be an object`, {
+        details: { reason: 'incomplete_eligible_note_identity', index: i },
+        actionable: 'Pass complete MemoryNote rows; do not invent eligible memory.',
+      });
+    }
+    const n = note as Record<string, unknown>;
+    if (typeof n.id !== 'string' || !wakeIdentityComplete(n.id)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `${nLabel}.id is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_eligible_note_identity', field: 'id', index: i },
+          actionable:
+            'Blank/whitespace/padded note id never certifies eligible memory; do not invent or trim-launder.',
+        },
+      );
+    }
+    assertResearchScopeComplete(n.scope, `${nLabel}.scope`);
+  }
+}
+
 function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
@@ -1159,11 +1234,13 @@ export const handlers: Record<string, ToolHandler> = {
     // refuse before HTTP so equal blanks cannot look like a certified match.
     assertWakeSubjectComplete(run.wait, 'checkpoint_research_run.run.wait');
     assertWakeTenantComplete(run, 'checkpoint_research_run.run');
+    // Backend #297: padded note/scope ids never certify eligible memory.
+    assertEligibleNotesComplete(run, 'checkpoint_research_run.run');
     const raw = await wrapApi(
       client.checkpointResearchRun({
         run_id: args.run_id,
         expected_revision: args.expected_revision,
-        // Forward wait/scope ids as-is — never invent or strip whitespace.
+        // Forward wait/scope/note ids as-is — never invent or strip whitespace.
         run,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,

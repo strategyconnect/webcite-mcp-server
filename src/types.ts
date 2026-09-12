@@ -781,6 +781,20 @@ export interface ResearchWaitCondition {
 export interface ResearchRunScope {
   /** Non-blank/unpadded when wait is set; whitespace/pad → incomplete_wake_tenant_identity (#277/#281). */
   tenantId: string;
+  /** When notes are present: non-blank/unpadded → incomplete_eligible_note_identity (#297). */
+  userId?: string;
+  /** When notes are present: non-blank/unpadded → incomplete_eligible_note_identity (#297). */
+  dealId?: string;
+  /** When notes are present: non-blank/unpadded → incomplete_eligible_note_identity (#297). */
+  sessionId?: string;
+  [key: string]: unknown;
+}
+
+/** Memory note surfaced on a research run; padded id/scope never certify eligibility (#297). */
+export interface ResearchMemoryNote {
+  /** Non-blank/unpadded; whitespace/pad → incomplete_eligible_note_identity (#297). */
+  id: string;
+  scope: ResearchRunScope;
   [key: string]: unknown;
 }
 
@@ -791,8 +805,10 @@ export interface ResearchRunPayload {
   phase: string;
   /** When set, subjectId + subjectRevisionId must be non-blank/unpadded; scope.tenantId likewise. */
   wait?: ResearchWaitCondition | null;
-  /** Required non-blank/unpadded tenantId when wait is set (backend #277/#281). */
+  /** Required non-blank/unpadded tenantId when wait is set (backend #277/#281). Full ResearchScope required when notes are present (#297). */
   scope?: ResearchRunScope;
+  /** When present, each note id + ResearchScope must be non-blank/unpadded (#297). */
+  notes?: ResearchMemoryNote[];
   [key: string]: unknown;
 }
 
