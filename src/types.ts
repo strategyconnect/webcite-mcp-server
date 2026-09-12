@@ -460,7 +460,10 @@ export interface ChangeImpactOptions {
   answer_revision_id?: string;
   /** When set, sealed packet must resolve or HTTP fails closed as change_impact_incomplete. */
   packet_id?: string;
-  /** Packet dependency path — W3 incomplete sealed-packet / graph surfaces. */
+  /**
+   * Packet dependency path — W3 incomplete sealed-packet / graph surfaces.
+   * Blank/whitespace entries → incomplete_changed_ids (never invent / never strip).
+   */
   changed_ids?: string[];
   links?: Array<{ source_id: string; consumer_id: string }>;
   observed_at_ms?: number | null;

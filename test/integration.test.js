@@ -472,6 +472,14 @@ function startStub(options = {}) {
             const packetId =
               typeof parsed?.packet_id === 'string' ? parsed.packet_id.trim() : '';
             const unresolved = [];
+            // Backend #264: blank/whitespace roots → incomplete_changed_ids.
+            if (
+              changedIds.some(
+                (id) => typeof id !== 'string' || !String(id).trim(),
+              )
+            ) {
+              unresolved.push('incomplete_changed_ids');
+            }
             if (!Array.isArray(links)) {
               unresolved.push('missing_dependency_graph');
             } else if (
@@ -2283,6 +2291,50 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.match(res.result.content[0].text, /change_impact_incomplete/);
     assert.match(res.result.content[0].text, /missing_dependency_graph|missing_sealed_packet/);
   });
+
+  await t.test(
+    'get_change_impact whitespace-only changed_ids → incomplete_changed_ids',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['  ', '\t'],
+          links: [{ source_id: 'src-a', consumer_id: 'claim-1' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /incomplete_changed_ids/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      // MCP must forward whitespace roots as-is — never strip into certified empty impact.
+      assert.deepEqual(req.body.changed_ids, ['  ', '\t']);
+    },
+  );
+
+  await t.test(
+    'get_change_impact mixed blank changed_ids → incomplete_changed_ids',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: ['src-a', ''],
+          packet_id: 'packet-1',
+          links: [{ source_id: 'src-a', consumer_id: 'claim-1' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /incomplete_changed_ids/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      assert.deepEqual(req.body.changed_ids, ['src-a', '']);
+    },
+  );
 
   await t.test('invalid API output → isError invalid_api_output', async () => {
     const res = await rpc('tools/call', {
