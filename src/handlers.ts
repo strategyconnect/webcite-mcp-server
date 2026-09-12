@@ -35,6 +35,7 @@ import {
   formatFormatCertify,
   formatReserveResearchBudget,
   formatOpenOperationRoot,
+  formatReserveOperation,
   formatGetOperation,
   formatGetOperationAvailability,
   formatSettleOperation,
@@ -101,6 +102,7 @@ import {
   validateFormatCertify,
   validateReserveResearchBudget,
   validateOpenOperationRoot,
+  validateReserveOperation,
   validateGetOperation,
   validateGetOperationAvailability,
   validateSettleOperation,
@@ -1098,6 +1100,36 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateOpenOperationRoot(raw);
     return ok(
       formatOpenOperationRoot(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  reserve_operation: async (args, client) => {
+    if (
+      typeof args?.idempotency_key !== 'string' ||
+      typeof args?.kind !== 'string' ||
+      typeof args?.credits !== 'number'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'idempotency_key, kind, and credits are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.reserveOperation({
+        idempotency_key: args.idempotency_key,
+        kind: args.kind,
+        credits: args.credits,
+        tokens: typeof args?.tokens === 'number' ? args.tokens : undefined,
+        root_operation_id:
+          typeof args?.root_operation_id === 'string'
+            ? args.root_operation_id
+            : null,
+      }),
+    );
+    const validated = validateReserveOperation(raw);
+    return ok(
+      formatReserveOperation(validated),
       validated as unknown as Record<string, unknown>,
     );
   },

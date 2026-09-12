@@ -48,6 +48,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `format_certify` | `POST /api/v2/context/format/certify` | kind, expected[], found[] | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
 | `reserve_research_budget` | `POST /api/v2/context/research-runs/:runId/reserve` | run_id, idempotency_key, kind, credits | operationId + replay | missing root refuses | 0 | research run |
 | `open_operation_root` | `POST /api/v2/context/operations/open-root` | idempotency_key, kind, max_credits, max_tokens, deadline_ms | root operation | auth / invalid budget | 0 | evidence operation |
+| `reserve_operation` | `POST /api/v2/context/operations/reserve` | idempotency_key, kind, credits, root_operation_id? | operation + replay | auth / insufficient budget | 0 | evidence operation |
 | `get_operation` | `GET /api/v2/context/operations/:operationId` | operation_id | operation row | 404 | 0 | evidence operation |
 | `get_operation_availability` | `GET /api/v2/context/operations/:operationId/availability` | operation_id | root budget availability | 404 | 0 | root operation |
 | `settle_operation` | `POST /api/v2/context/operations/:operationId/settle` | operation_id, settled_credits (number\|null) | operation | already settled → conflict | 0 | evidence operation |

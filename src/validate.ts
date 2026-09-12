@@ -29,6 +29,7 @@ import type {
   FormatCertifyResponse,
   ReserveResearchBudgetResponse,
   OpenOperationRootResponse,
+  ReserveOperationResponse,
   GetOperationResponse,
   GetOperationAvailabilityResponse,
   SettleOperationResponse,
@@ -509,6 +510,18 @@ export function validateOpenOperationRoot(
   const operation = requireObject(root.operation, 'OpenOperationRoot.operation');
   return {
     operation,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateReserveOperation(
+  raw: unknown,
+): ReserveOperationResponse {
+  const root = requireObject(raw, 'ReserveOperation');
+  const operation = requireObject(root.operation, 'ReserveOperation.operation');
+  return {
+    operation: { id: requireString(operation, 'id', 'ReserveOperation.operation') },
+    replay: root.replay === true,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
