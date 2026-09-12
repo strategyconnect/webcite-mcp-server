@@ -984,6 +984,29 @@ function startStub(options = {}) {
           );
           return;
         }
+        // Backend #304: padded loopStop requirement ids in API output must fail closed.
+        if (runId === 'padded-progress' && !action) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              run: {
+                id: runId,
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'running',
+                progress: {
+                  steps: 2,
+                  maxSteps: 32,
+                  consecutiveNoProgress: 2,
+                  openRequirementIds: [' revenue '],
+                  failedRequirementIds: [],
+                },
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
         const isCheckpoint = action === 'checkpoints';
         let parsedBody = {};
         if (isCheckpoint && body) {
@@ -1007,6 +1030,10 @@ function startStub(options = {}) {
           isCheckpoint && incomingRun && typeof incomingRun === 'object'
             ? incomingRun.notes
             : undefined;
+        const incomingProgress =
+          isCheckpoint && incomingRun && typeof incomingRun === 'object'
+            ? incomingRun.progress
+            : undefined;
         const run = {
           id: runId,
           checkpointRevision: isCheckpoint ? 1 : 0,
@@ -1015,6 +1042,7 @@ function startStub(options = {}) {
           ...(incomingWait !== undefined ? { wait: incomingWait } : {}),
           ...(incomingScope !== undefined ? { scope: incomingScope } : {}),
           ...(incomingNotes !== undefined ? { notes: incomingNotes } : {}),
+          ...(incomingProgress !== undefined ? { progress: incomingProgress } : {}),
         };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ run, engine: 'context_graph' }));
@@ -3299,6 +3327,147 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       assert.ok(req);
       assert.equal(req.body.run.notes[0].id, 'n1');
       assert.equal(req.body.run.scope.sessionId, 's1');
+    },
+  );
+
+  await t.test(
+    'create_research_run padded open_requirement_ids → incomplete_loop_requirement_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_research_run',
+        arguments: {
+          objective: 'trace ARR',
+          snapshot_id: 'snap-1',
+          workflow_version: 'wf-1',
+          budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+          open_requirement_ids: [' revenue '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details.reason,
+        'incomplete_loop_requirement_identity',
+      );
+      assert.match(res.result.content[0].text, /incomplete_loop_requirement_identity|padded/);
+      const req = seen
+        .slice(before)
+        .find((r) => r.path === '/api/v2/context/research-runs' && r.method === 'POST');
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'create_research_run blank open_requirement_ids → incomplete_loop_requirement_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_research_run',
+        arguments: {
+          objective: 'trace ARR',
+          snapshot_id: 'snap-1',
+          workflow_version: 'wf-1',
+          budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+          open_requirement_ids: ['  '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details.reason,
+        'incomplete_loop_requirement_identity',
+      );
+      assert.match(res.result.content[0].text, /blank|whitespace|padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_research_run padded progress openRequirementIds → incomplete_loop_requirement_identity',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: 'padded-progress' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.match(res.result.content[0].text, /incomplete_loop_requirement_identity|padded/);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run padded progress failedRequirementIds → incomplete_loop_requirement_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: 'run-progress-pad',
+          expected_revision: 0,
+          run: {
+            id: 'run-progress-pad',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+            progress: {
+              steps: 2,
+              maxSteps: 32,
+              consecutiveNoProgress: 0,
+              openRequirementIds: [],
+              failedRequirementIds: [' revenue '],
+            },
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_loop_requirement_identity|padded/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run complete progress forwards unpadded requirement ids',
+    async () => {
+      const before = seen.length;
+      const progress = {
+        steps: 2,
+        maxSteps: 32,
+        consecutiveNoProgress: 2,
+        openRequirementIds: ['revenue'],
+        failedRequirementIds: [],
+      };
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: 'run-progress-ok',
+          expected_revision: 0,
+          run: {
+            id: 'run-progress-ok',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+            progress,
+          },
+        },
+      });
+      assert.equal(res.result.isError, undefined);
+      assert.equal(
+        res.result.structuredContent.run.progress.openRequirementIds[0],
+        'revenue',
+      );
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.ok(req);
+      assert.equal(req.body.run.progress.openRequirementIds[0], 'revenue');
     },
   );
 

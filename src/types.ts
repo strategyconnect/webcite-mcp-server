@@ -766,6 +766,7 @@ export interface CreateResearchRunOptions {
   };
   root_operation_id?: string | null;
   root_idempotency_key?: string;
+  /** Non-blank/unpadded; blank/pad → incomplete_loop_requirement_identity (#304). */
   open_requirement_ids?: string[];
   max_steps?: number;
   idempotency_key?: string;
@@ -800,6 +801,17 @@ export interface ResearchMemoryNote {
   [key: string]: unknown;
 }
 
+export interface ResearchRunLoopProgress {
+  steps?: number;
+  maxSteps?: number;
+  consecutiveNoProgress?: number;
+  /** Non-blank/unpadded; blank/pad → incomplete_loop_requirement_identity (#304). */
+  openRequirementIds?: string[];
+  /** Non-blank/unpadded; blank/pad → incomplete_loop_requirement_identity (#304). */
+  failedRequirementIds?: string[];
+  [key: string]: unknown;
+}
+
 export interface ResearchRunPayload {
   id: string;
   checkpointRevision: number;
@@ -811,6 +823,8 @@ export interface ResearchRunPayload {
   scope?: ResearchRunScope;
   /** When present, each note id + ResearchScope must be non-blank/unpadded (#297). */
   notes?: ResearchMemoryNote[];
+  /** When present, open/failed requirement ids must be non-blank/unpadded (#304). */
+  progress?: ResearchRunLoopProgress;
   [key: string]: unknown;
 }
 

@@ -1181,7 +1181,7 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
   },
   {
     name: 'create_research_run',
-    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
+    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget. Blank/whitespace/padded open_requirement_ids fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs`,
     inputSchema: {
@@ -1206,7 +1206,12 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs`,
           type: 'string',
           description: 'Idempotency key when auto-opening a root budget',
         },
-        open_requirement_ids: { type: 'array', items: { type: 'string' } },
+        open_requirement_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Non-blank unpadded requirement ids (backend #304). Blank/whitespace/padded → incomplete_loop_requirement_identity; never trim-launder into a certified loop stop.',
+        },
         max_steps: { type: 'number' },
         idempotency_key: { type: 'string' },
       },
@@ -1215,7 +1220,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs`,
   },
   {
     name: 'get_research_run',
-    description: `Load a research run by id (C3). Surfaced notes with blank/padded note id or ResearchScope fields fail closed (incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
+    description: `Load a research run by id (C3). Surfaced notes with blank/padded note id or ResearchScope fields fail closed (incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). Surfaced progress with blank/padded openRequirementIds/failedRequirementIds fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
     inputSchema: {
@@ -1238,7 +1243,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). When run.notes is non-empty, each note id and ResearchScope (tenantId/userId/dealId/sessionId) on the note and run.scope must be non-blank/unpadded (whitespace/pad → incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
+    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). When run.notes is non-empty, each note id and ResearchScope (tenantId/userId/dealId/sessionId) on the note and run.scope must be non-blank/unpadded (whitespace/pad → incomplete_eligible_note_identity; backend #297 — equal pads never certify eligible memory). When run.progress is set, openRequirementIds/failedRequirementIds must be non-blank/unpadded (whitespace/pad → incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
@@ -1249,7 +1254,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
         run: {
           type: 'object',
           description:
-            'Full ResearchRun payload. Optional wait requires non-blank unpadded subjectId + subjectRevisionId (blank/whitespace/padded → incomplete_wake_subject_identity) and non-blank unpadded scope.tenantId (blank/whitespace/padded → incomplete_wake_tenant_identity). Non-empty notes require non-blank unpadded note id + ResearchScope fields on note and run.scope (blank/whitespace/padded → incomplete_eligible_note_identity; #297).',
+            'Full ResearchRun payload. Optional wait requires non-blank unpadded subjectId + subjectRevisionId (blank/whitespace/padded → incomplete_wake_subject_identity) and non-blank unpadded scope.tenantId (blank/whitespace/padded → incomplete_wake_tenant_identity). Non-empty notes require non-blank unpadded note id + ResearchScope fields on note and run.scope (blank/whitespace/padded → incomplete_eligible_note_identity; #297). Optional progress requires non-blank unpadded openRequirementIds/failedRequirementIds (blank/whitespace/padded → incomplete_loop_requirement_identity; #304).',
         },
         idempotency_key: { type: 'string' },
       },
