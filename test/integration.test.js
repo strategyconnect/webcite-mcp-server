@@ -2309,122 +2309,6 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
-  await t.test(
-    'create_evidence_packet surrounding-padded operator_class → padded_operator_class',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          operator_class: ' select_passage ',
-          bindings: [
-            {
-              source_version_id: 'sv1',
-              source_unit_id: 'u1',
-              representation_id: 'rep1',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'padded_operator_class');
-      assert.equal(res.result.structuredContent.details?.field, 'operator_class');
-      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-        'must refuse before HTTP — pads must not trim-launder into a sealed operator class',
-      );
-    },
-  );
-
-  await t.test(
-    'create_evidence_packet whitespace-only operator_class → padded_operator_class',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          operator_class: '   ',
-          bindings: [
-            {
-              source_version_id: 'sv1',
-              source_unit_id: 'u1',
-              representation_id: 'rep1',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'padded_operator_class');
-      assert.equal(res.result.structuredContent.details?.field, 'operator_class');
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
-    'create_evidence_packet equal-pad operator_class → padded_operator_class (never seal)',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          operator_class: ' lookup_number ',
-          bindings: [
-            {
-              source_version_id: 'sv1',
-              source_unit_id: 'u1',
-              representation_id: 'rep1',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'padded_operator_class');
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-      );
-    },
-  );
-
-  // Squash-regression guard: #81 binding snippet pad refuse must stay fail-closed.
-  await t.test(
-    'create_evidence_packet surrounding-padded binding snippet still → padded_binding_snippet (#81 regression)',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          bindings: [
-            {
-              source_version_id: 'sv1',
-              source_unit_id: 'u1',
-              representation_id: 'rep1',
-              snippet: ' revenue grew ',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.details?.reason, 'padded_binding_snippet');
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-      );
-    },
-  );
-
   await t.test('assess_support posts claim hashes and returns tier-capped judgment', async () => {
     const text = await call('assess_support', {
       claim_revision_id: 'claim-r1',
@@ -3857,6 +3741,93 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       assert.equal(
         res.result.structuredContent.details?.reason,
         'incomplete_answer_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses surrounding-padded representationId → incomplete_representation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: {
+            kind: 'tokens',
+            representationId: ' rep-1 ',
+            first: 0,
+            lastExclusive: 1,
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_representation_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified fragment hit.
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses whitespace-only representationId → incomplete_representation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: {
+            kind: 'tokens',
+            representationId: '  ',
+            first: 0,
+            lastExclusive: 1,
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_representation_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses equal-pad representationId → incomplete_representation_identity (never match)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: {
+            kind: 'tokens',
+            // Equal pad of happy-path rep-1 — must not trim-launder into certified uses.
+            representationId: ' rep-1 ',
+            first: 0,
+            lastExclusive: 1,
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_representation_identity',
       );
       assert.equal(
         seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),

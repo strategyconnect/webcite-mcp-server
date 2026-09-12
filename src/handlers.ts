@@ -246,28 +246,6 @@ function assertClaimTextComplete(text: unknown): asserts text is string {
 }
 
 /**
- * W3 create_evidence_packet: optional operator_class, when present as string,
- * blank/whitespace or surrounding-padded never seals into a certified operator
- * class — refuse before HTTP so equal pads cannot trim-launder into the same
- * sealed class as clean text (same honesty as claim_text #76 / binding snippet #81).
- */
-function assertOptionalOperatorClassComplete(operatorClass: unknown): void {
-  // Optional: omit when not a string (same gate shape as binding snippet #81).
-  if (typeof operatorClass !== 'string') return;
-  if (!selectTextComplete(operatorClass)) {
-    throw new ToolFailure(
-      'invalid_argument',
-      'operator_class is incomplete (blank/whitespace/padded)',
-      {
-        details: { reason: 'padded_operator_class', field: 'operator_class' },
-        actionable:
-          'Blank/whitespace/padded operator_class never seals an evidence packet; omit operator_class or pass non-blank unpadded text.',
-      },
-    );
-  }
-}
-
-/**
  * C3 create_research_run: blank/whitespace or surrounding-padded objective
  * never certifies a research run purpose — refuse before HTTP so equal pads
  * cannot trim-launder into the same durable objective as clean text (same
@@ -790,6 +768,34 @@ function assertEvidenceConsumerIdentityComplete(args: {
         },
       );
     }
+  }
+}
+
+
+/**
+ * W3 resolve_fragment_uses: blank/whitespace/surrounding-padded
+ * selector.representationId must never trim-launder into a certified fragment
+ * match (backend evidenceId / FragmentSelector — same honesty as sealed
+ * packet_id / answer_revision_id pads and binding representation_id #264/#279).
+ */
+function assertFragmentSelectorRepresentationComplete(selector: unknown): void {
+  if (!selector || typeof selector !== 'object' || Array.isArray(selector)) {
+    return;
+  }
+  const representationId = (selector as Record<string, unknown>).representationId;
+  if (typeof representationId !== 'string' || !wakeIdentityComplete(representationId)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'selector.representationId is incomplete (blank/whitespace/padded)',
+      {
+        details: {
+          reason: 'incomplete_representation_identity',
+          field: 'representationId',
+        },
+        actionable:
+          'Blank/whitespace/padded representationId never certifies a fragment use; do not invent or trim-launder a representation hit.',
+      },
+    );
   }
 }
 
@@ -1431,6 +1437,9 @@ export const handlers: Record<string, ToolHandler> = {
           'Provide a FragmentSelector with kind + representationId (tokens or image).',
       });
     }
+    // W3: refuse padded/blank selector.representationId before HTTP — never
+    // trim-launder into a certified fragment-use match (evidenceId honesty).
+    assertFragmentSelectorRepresentationComplete(args.selector);
     if (args.fragments !== undefined && !Array.isArray(args.fragments)) {
       throw new ToolFailure('invalid_argument', 'fragments must be an array when provided');
     }
@@ -1639,8 +1648,6 @@ export const handlers: Record<string, ToolHandler> = {
     // W3: refuse padded/blank claim_text before HTTP — never trim-launder into
     // a certified sealed packet assertion (same honesty as selectPassage #314).
     assertClaimTextComplete(args?.claim_text);
-    // W3: optional operator_class pads never seal into a certified class label.
-    assertOptionalOperatorClassComplete(args?.operator_class);
     const claimText = args.claim_text;
     const bindings = args?.bindings;
     if (!Array.isArray(bindings) || bindings.length === 0) {

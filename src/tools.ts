@@ -657,7 +657,7 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
   },
   {
     name: 'resolve_fragment_uses',
-    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set. Blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity; blank/whitespace/surrounding-padded answer_revision_id → incomplete_answer_revision_identity (W3 #264/#279 — never trim-launder into a certified sealed catalog hit). Blank/whitespace/surrounding-padded allowed_fragment_ids → incomplete_allowed_fragment_identity (expand_seeds #68 allow-list honesty — never trim-launder into a certified authorization pin).
+    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set. Blank/whitespace/surrounding-padded selector.representationId → incomplete_representation_identity; blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity; blank/whitespace/surrounding-padded answer_revision_id → incomplete_answer_revision_identity (W3 #264/#279 — never trim-launder into a certified sealed catalog hit). Blank/whitespace/surrounding-padded allowed_fragment_ids → incomplete_allowed_fragment_identity (expand_seeds #68 allow-list honesty — never trim-launder into a certified authorization pin).
 
 Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
     inputSchema: {
@@ -666,7 +666,7 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
         selector: {
           type: 'object',
           description:
-            'FragmentSelector with kind (tokens|image) and representationId. Unsupported kinds refuse.',
+            'FragmentSelector with kind (tokens|image) and non-blank unpadded representationId. Blank/whitespace/surrounding-padded representationId → incomplete_representation_identity (never trim-launder). Unsupported kinds refuse.',
         },
         packet_id: {
           type: 'string',
@@ -797,7 +797,7 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
   },
   {
     name: 'create_evidence_packet',
-    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace or surrounding-padded claim_text → padded_claim_text (same honesty as selectPassage #314 / resolve_seeds text — never trim-launder into a certified sealed claim). Optional operator_class blank/padded → padded_operator_class (never trim-launder into a sealed class label). Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet). Optional binding snippet blank/padded → padded_binding_snippet; optional binding seed blank/padded → incomplete_binding_seed_identity (never trim-launder into a sealed packet).
+    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace or surrounding-padded claim_text → padded_claim_text (same honesty as selectPassage #314 / resolve_seeds text — never trim-launder into a certified sealed claim). Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet). Optional binding snippet blank/padded → padded_binding_snippet; optional binding seed blank/padded → incomplete_binding_seed_identity (never trim-launder into a sealed packet).
 
 Scope comes from the authenticated API. Pass idempotency_key to settle once under retries.
 
@@ -812,8 +812,7 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
         },
         operator_class: {
           type: 'string',
-          description:
-            'Optional non-blank unpadded operator class label (default select_passage). Blank/whitespace/surrounding-padded → padded_operator_class (never trim-launder).',
+          description: 'Optional operator class label (default select_passage).',
         },
         bindings: {
           type: 'array',
