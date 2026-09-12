@@ -1215,7 +1215,7 @@ Credits: 1. HTTP: GET /api/v2/context/metric-definitions`,
   },
   {
     name: 'claim_structure_tier',
-    description: `Compute the claim tier ceiling from assertion structure and definition resolution (C1b). Does not persist.
+    description: `Compute the claim tier ceiling from assertion structure and definition resolution (C1b). Does not persist. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified claim-structure-tier replay pin; same honesty as settle/number_inventory/resolve_seeds/create_claim_relation/expand_seeds/create_metric_definition #92/#112/#114/#115/#116/#117/#117). Lean formal_check source trailing newlines are out of scope for this tool.
 
 Credits: 1. HTTP: POST /api/v2/context/claim-structure/tier`,
     inputSchema: {
@@ -1230,7 +1230,11 @@ Credits: 1. HTTP: POST /api/v2/context/claim-structure/tier`,
           type: ['object', 'null'],
           description: 'Ambiguity with candidates when definition is unresolved',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When set: non-blank unpadded. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a certified claim-structure-tier replay).',
+        },
       },
       required: ['assertion'],
     },

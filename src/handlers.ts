@@ -767,18 +767,19 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * find_contradictions / assess_meaning / formal_eligibility / query_context /
  * change-impact / formal_check / formal_resolution_state / resolve_fragment_uses /
  * number_inventory / resolve_seeds / create_claim_relation / expand_seeds /
- * create_metric_definition replay pin — refuse before HTTP (same identityComplete
- * honesty as required open_operation_root / reserve_operation idempotency_key
- * after #83/#88). Shared by settle_operation (#92), link_operation_consumer (#94),
- * record/resolve_operation_attempt (#95), publish_context_workflow /
- * run_saved_workflow (#97), create_evidence_packet (#98), get_provider_cost
- * (#99), create/checkpoint_research_run (#100), compare_evaluations (#101),
- * assess_support (#102), find_contradictions (#104), compare_assertions (#105),
- * assess_meaning (#103), get_change_impact (#106), formal_eligibility (#107),
- * query_context (#108), formal_check (#110), resolve_fragment_uses (#111),
- * number_inventory (#112), formal_resolution_state (#113), resolve_seeds (#114),
- * create_claim_relation (#115), expand_seeds (#116), and create_metric_definition
- * (C1). Omit when not a string. Does not trim or rewrite formal_check Lean source
+ * create_metric_definition / claim_structure_tier replay pin — refuse before
+ * HTTP (same identityComplete honesty as required open_operation_root /
+ * reserve_operation idempotency_key after #83/#88). Shared by settle_operation
+ * (#92), link_operation_consumer (#94), record/resolve_operation_attempt (#95),
+ * publish_context_workflow / run_saved_workflow (#97), create_evidence_packet
+ * (#98), get_provider_cost (#99), create/checkpoint_research_run (#100),
+ * compare_evaluations (#101), assess_support (#102), find_contradictions (#104),
+ * compare_assertions (#105), assess_meaning (#103), get_change_impact (#106),
+ * formal_eligibility (#107), query_context (#108), formal_check (#110),
+ * resolve_fragment_uses (#111), number_inventory (#112), formal_resolution_state
+ * (#113), resolve_seeds (#114), create_claim_relation (#115), expand_seeds
+ * (#116), create_metric_definition (#117), and claim_structure_tier (C1/W3).
+ * Omit when not a string. Does not trim or rewrite formal_check Lean source
  * trailing newlines.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
@@ -793,7 +794,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check/formal_resolution_state/resolve_fragment_uses/number_inventory/resolve_seeds/create_claim_relation/expand_seeds/create_metric_definition replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check/formal_resolution_state/resolve_fragment_uses/number_inventory/resolve_seeds/create_claim_relation/expand_seeds/create_metric_definition/claim_structure_tier replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -2312,6 +2313,10 @@ export const handlers: Record<string, ToolHandler> = {
     if (!args?.assertion || typeof args.assertion !== 'object' || Array.isArray(args.assertion)) {
       throw new ToolFailure('invalid_argument', 'assertion object is required');
     }
+    // C1/W3 after #92/#112/#114: optional padded idempotency_key never certifies a
+    // claim-structure-tier replay pin (same helper as settle/number_inventory).
+    // formal_check Lean source trailing newlines remain untouched.
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.claimStructureTier({
         assertion: args.assertion as Record<string, unknown>,

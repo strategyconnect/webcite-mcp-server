@@ -1377,6 +1377,13 @@ export interface ClaimStructureTierOptions {
   assertion: Record<string, unknown>;
   definition?: Record<string, unknown> | null;
   ambiguity?: Record<string, unknown> | null;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92/#112/#114/#115/#116/#117 honesty shared with
+   * settle / number_inventory / resolve_seeds / create_claim_relation /
+   * expand_seeds / create_metric_definition). Does not touch formal_check Lean
+   * source trailing newlines.
+   */
   idempotency_key?: string;
 }
 
