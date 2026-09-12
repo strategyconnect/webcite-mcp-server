@@ -2151,6 +2151,164 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'create_evidence_packet surrounding-padded binding snippet → padded_binding_snippet',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+              snippet: ' revenue grew ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_binding_snippet');
+      assert.equal(res.result.structuredContent.details?.field, 'snippet');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet whitespace-only binding snippet → padded_binding_snippet',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+              snippet: '   ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_binding_snippet');
+      assert.equal(res.result.structuredContent.details?.field, 'snippet');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet equal-pad binding snippet → padded_binding_snippet (never seal)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+              snippet: ' quote ',
+            },
+            {
+              source_version_id: 'sv2',
+              source_unit_id: 'u2',
+              representation_id: 'rep2',
+              snippet: '  quote  ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_binding_snippet');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet surrounding-padded binding seed → incomplete_binding_seed_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+              seed: ' seed-1 ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_binding_seed_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'seed');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet whitespace-only binding seed → incomplete_binding_seed_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+              seed: '\n',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_binding_seed_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'seed');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('assess_support posts claim hashes and returns tier-capped judgment', async () => {
     const text = await call('assess_support', {
       claim_revision_id: 'claim-r1',
