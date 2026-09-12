@@ -797,7 +797,7 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
   },
   {
     name: 'create_evidence_packet',
-    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet).
+    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace or surrounding-padded claim_text → padded_claim_text (same honesty as selectPassage #314 / resolve_seeds text — never trim-launder into a certified sealed claim). Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet).
 
 Scope comes from the authenticated API. Pass idempotency_key to settle once under retries.
 
@@ -807,7 +807,8 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
       properties: {
         claim_text: {
           type: 'string',
-          description: 'Claim text frozen into the packet assertions.',
+          description:
+            'Non-blank unpadded claim text frozen into the packet assertions. Blank/whitespace/surrounding-padded → padded_claim_text (never trim-launder).',
         },
         operator_class: {
           type: 'string',
@@ -852,7 +853,7 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
   },
   {
     name: 'assess_support',
-    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
+    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded claim_hash → incomplete_claim_hash_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
 
 Scope comes from the authenticated API.
 
@@ -867,7 +868,8 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
         },
         claim_hash: {
           type: 'string',
-          description: 'Hash of the claim text checked against the evidence group.',
+          description:
+            'Non-blank unpadded hash of the claim text checked against the evidence group. Blank/whitespace/surrounding-padded → incomplete_claim_hash_identity (never trim-launder).',
         },
         evidence_group_revision_id: {
           type: 'string',

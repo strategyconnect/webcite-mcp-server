@@ -1953,6 +1953,91 @@ test('every tool round-trips through the real server against the API', async (t)
   });
 
   await t.test(
+    'create_evidence_packet surrounding-padded claim_text → padded_claim_text',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: ' Revenue grew 18%. ',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_claim_text');
+      assert.equal(res.result.structuredContent.details?.field, 'claim_text');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet whitespace-only claim_text → padded_claim_text',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: '   ',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_claim_text');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet equal-pad claim_text → padded_claim_text (never seal)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          // Equal pad of the happy-path claim — must not trim-launder into the
+          // same certified sealed packet as clean "Revenue grew 18%.".
+          claim_text: ' Revenue grew 18%. ',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+          idempotency_key: 'create-pad',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_claim_text');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'create_evidence_packet surrounding-padded source_version_id → incomplete_binding_identity',
     async () => {
       const before = seen.length;
@@ -2104,6 +2189,85 @@ test('every tool round-trips through the real server against the API', async (t)
         'incomplete_claim_revision_identity',
       );
       assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_support surrounding-padded claim_hash → incomplete_claim_hash_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: ' hash-1 ',
+          evidence_group_revision_id: 'eg-r1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_hash_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'claim_hash');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_support whitespace-only claim_hash → incomplete_claim_hash_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: '   ',
+          evidence_group_revision_id: 'eg-r1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_hash_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_support equal-pad claim_hash → incomplete_claim_hash_identity (never assess)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: ' hash-1 ',
+          evidence_group_revision_id: 'eg-r1',
+          proposed: 'supports',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_hash_identity',
+      );
+      // Equal pads must not trim-launder into the same certified assessment as
+      // a clean hash-1 hit (happy-path fixture above still posts hash-1).
       assert.equal(
         seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
         undefined,
