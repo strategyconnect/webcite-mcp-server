@@ -1134,6 +1134,32 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
     },
   },
   {
+    name: 'get_operation',
+    description: `Read one EvidenceOperation the caller owns (I4), including settlement fields.
+
+Credits: 1. HTTP: GET /api/v2/context/operations/:operationId`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        operation_id: { type: 'string' },
+      },
+      required: ['operation_id'],
+    },
+  },
+  {
+    name: 'get_operation_availability',
+    description: `Read root budget availability as the ledger sees it (I4). Clients must not re-derive this weakly.
+
+Credits: 1. HTTP: GET /api/v2/context/operations/:operationId/availability`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        operation_id: { type: 'string' },
+      },
+      required: ['operation_id'],
+    },
+  },
+  {
     name: 'formal_resolution_state',
     description: `Classify negative formal/search states without collapsing them (P4).
 
@@ -1317,6 +1343,9 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v2/context/learning/placeholder': 'learning_placeholder',
   'POST /api/v2/context/format/certify': 'format_certify',
   'POST /api/v2/context/research-runs/:runId/reserve': 'reserve_research_budget',
+  'GET /api/v2/context/operations/:operationId': 'get_operation',
+  'GET /api/v2/context/operations/:operationId/availability':
+    'get_operation_availability',
   'POST /api/v2/context/formal/resolution-state': 'formal_resolution_state',
   'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',

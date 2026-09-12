@@ -422,6 +422,43 @@ function startStub(options = {}) {
         return;
       }
 
+      const operationMatch = url.pathname.match(
+        /^\/api\/v2\/context\/operations\/([^/]+)(?:\/(availability))?$/,
+      );
+      if (operationMatch) {
+        const operationId = operationMatch[1];
+        const action = operationMatch[2];
+        if (action === 'availability') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              availability: {
+                maxCredits: 100,
+                maxTokens: 1_000_000,
+                settledCredits: 10,
+                outstandingCredits: 5,
+                outstandingTokens: 0,
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            operation: {
+              id: operationId,
+              kind: 'research_run',
+              rootOperationId: null,
+              maxCredits: 100,
+            },
+            engine: 'context_graph',
+          }),
+        );
+        return;
+      }
+
       if (url.pathname === '/api/v2/context/resolve-seeds' && body) {
         try {
           const parsed = JSON.parse(body);
@@ -899,6 +936,18 @@ test('every tool round-trips through the real server against the API', async (t)
       '/api/v2/context/research-runs/11111111-1111-1111-1111-111111111111/reserve',
     );
     assert.match(reserved, /Operation:\*\* child-op-1/);
+
+    const described = await call('get_operation', { operation_id: 'op-root-1' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-root-1');
+    assert.match(described, /Id:\*\* op-root-1/);
+    assert.match(described, /Kind:\*\* research_run/);
+
+    const availability = await call('get_operation_availability', {
+      operation_id: 'op-root-1',
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-root-1/availability');
+    assert.match(availability, /Max credits:\*\* 100/);
+    assert.match(availability, /Outstanding credits:\*\* 5/);
 
     const state = await call('formal_resolution_state', {
       proof_search_failed: true,

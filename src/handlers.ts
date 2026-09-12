@@ -33,6 +33,8 @@ import {
   formatLearningPlaceholder,
   formatFormatCertify,
   formatReserveResearchBudget,
+  formatGetOperation,
+  formatGetOperationAvailability,
   formatFormalResolutionState,
   formatFormalRevenueBridge,
   formatClaimStructureTier,
@@ -87,6 +89,8 @@ import {
   validateLearningPlaceholder,
   validateFormatCertify,
   validateReserveResearchBudget,
+  validateGetOperation,
+  validateGetOperationAvailability,
   validateFormalResolutionState,
   validateFormalRevenueBridge,
   validateClaimStructureTier,
@@ -1010,6 +1014,29 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateReserveResearchBudget(raw);
     return ok(
       formatReserveResearchBudget(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_operation: async (args, client) => {
+    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
+      throw new ToolFailure('invalid_argument', 'operation_id is required');
+    }
+    const raw = await wrapApi(client.getOperation({ operation_id: args.operation_id }));
+    const validated = validateGetOperation(raw);
+    return ok(formatGetOperation(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  get_operation_availability: async (args, client) => {
+    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
+      throw new ToolFailure('invalid_argument', 'operation_id is required');
+    }
+    const raw = await wrapApi(
+      client.getOperationAvailability({ operation_id: args.operation_id }),
+    );
+    const validated = validateGetOperationAvailability(raw);
+    return ok(
+      formatGetOperationAvailability(validated),
       validated as unknown as Record<string, unknown>,
     );
   },

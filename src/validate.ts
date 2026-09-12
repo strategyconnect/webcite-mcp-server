@@ -27,6 +27,8 @@ import type {
   LearningPlaceholderResponse,
   FormatCertifyResponse,
   ReserveResearchBudgetResponse,
+  GetOperationResponse,
+  GetOperationAvailabilityResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
   ClaimStructureTierResponse,
@@ -470,6 +472,45 @@ export function validateReserveResearchBudget(
   return {
     operationId: requireString(root, 'operationId', 'ReserveResearchBudget'),
     replay: root.replay === true,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateGetOperation(raw: unknown): GetOperationResponse {
+  const root = requireObject(raw, 'GetOperation');
+  const operation = requireObject(root.operation, 'GetOperation.operation');
+  return {
+    operation,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateGetOperationAvailability(
+  raw: unknown,
+): GetOperationAvailabilityResponse {
+  const root = requireObject(raw, 'GetOperationAvailability');
+  const availability = requireObject(
+    root.availability,
+    'GetOperationAvailability.availability',
+  );
+  const num = (key: string) => {
+    const value = availability[key];
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        `GetOperationAvailability.availability.${key} must be a number`,
+      );
+    }
+    return value;
+  };
+  return {
+    availability: {
+      maxCredits: num('maxCredits'),
+      maxTokens: num('maxTokens'),
+      settledCredits: num('settledCredits'),
+      outstandingCredits: num('outstandingCredits'),
+      outstandingTokens: num('outstandingTokens'),
+    },
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
