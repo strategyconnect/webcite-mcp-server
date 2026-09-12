@@ -555,6 +555,11 @@ export interface CreateEvidencePacketOptions {
     snippet?: string;
     seed?: string;
   }>;
+  /**
+   * Optional non-blank unpadded idempotency key. Blank/whitespace/surrounding-
+   * padded → incomplete_operation_idempotency_identity (never trim-launder into
+   * a sealed packet replay; same honesty as settle/link #92/#94).
+   */
   idempotency_key?: string;
 }
 

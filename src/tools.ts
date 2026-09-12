@@ -797,9 +797,9 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
   },
   {
     name: 'create_evidence_packet',
-    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace or surrounding-padded claim_text → padded_claim_text (same honesty as selectPassage #314 / resolve_seeds text — never trim-launder into a certified sealed claim). Optional operator_class blank/padded → padded_operator_class (never trim-launder into a sealed class label). Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet). Optional binding snippet blank/padded → padded_binding_snippet; optional binding seed blank/padded → incomplete_binding_seed_identity (never trim-launder into a sealed packet).
+    description: `Create a sealed evidence packet from authorized source bindings. The server builds and seals the packet — clients cannot supply a certified payload. Blank/whitespace or surrounding-padded claim_text → padded_claim_text (same honesty as selectPassage #314 / resolve_seeds text — never trim-launder into a certified sealed claim). Optional operator_class blank/padded → padded_operator_class (never trim-launder into a sealed class label). Blank/whitespace/surrounding-padded binding ids (source_version_id / source_unit_id / representation_id) → incomplete_binding_identity (W3 #264/#279 pad honesty — never trim-launder into a certified sealed packet). Optional binding snippet blank/padded → padded_binding_snippet; optional binding seed blank/padded → incomplete_binding_seed_identity (never trim-launder into a sealed packet). Optional idempotency_key blank/padded → incomplete_operation_idempotency_identity (never trim-launder into a sealed packet replay; same honesty as settle/link #92/#94).
 
-Scope comes from the authenticated API. Pass idempotency_key to settle once under retries.
+Scope comes from the authenticated API. Pass a non-blank unpadded idempotency_key to settle once under retries.
 
 Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
     inputSchema: {
@@ -854,7 +854,8 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
         },
         idempotency_key: {
           type: 'string',
-          description: 'Logical idempotency key so retries settle once.',
+          description:
+            'Optional non-blank unpadded idempotency key so retries settle once. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
         },
       },
       required: ['claim_text', 'bindings'],
