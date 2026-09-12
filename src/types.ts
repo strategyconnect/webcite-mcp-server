@@ -465,6 +465,10 @@ export interface ChangeImpactOptions {
    * Blank/whitespace/padded entries → incomplete_changed_ids (never invent / never strip).
    */
   changed_ids?: string[];
+  /**
+   * Dependency edges. Blank/whitespace/padded source_id/consumer_id →
+   * incomplete_dependency_graph (#285; never trim into certified match).
+   */
   links?: Array<{ source_id: string; consumer_id: string }>;
   observed_at_ms?: number | null;
   window?: { start_ms: number; end_ms: number };

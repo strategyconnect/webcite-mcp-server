@@ -373,13 +373,24 @@ export function validateChangeImpact(raw: unknown): ChangeImpactResponse {
         },
       );
     }
+    // Backend #285: blank/whitespace/padded link endpoints must never certify as complete.
+    if (unresolvedReasons.includes('incomplete_dependency_graph')) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        'ChangeImpact.packet_impact.unresolved includes incomplete_dependency_graph',
+        {
+          actionable:
+            'HTTP should have refused with change_impact_incomplete:incomplete_dependency_graph; do not invent certified no-impact from padded/blank link endpoints.',
+        },
+      );
+    }
     if (coverage === 'unknown') {
       throw new ToolFailure(
         'invalid_api_output',
         'ChangeImpact.packet_impact.coverage unknown must not be accepted as success',
         {
           actionable:
-            'HTTP should have refused with change_impact_incomplete (e.g. incomplete_changed_ids); do not invent certified no-impact.',
+            'HTTP should have refused with change_impact_incomplete (e.g. incomplete_changed_ids / incomplete_dependency_graph); do not invent certified no-impact.',
         },
       );
     }
