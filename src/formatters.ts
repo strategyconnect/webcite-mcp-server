@@ -42,6 +42,7 @@ import type {
   ResolveOperationAttemptResponse,
   LinkOperationConsumerResponse,
   GetConsumerUsageResponse,
+  GetProviderCostResponse,
   ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
@@ -815,6 +816,10 @@ export function formatLinkOperationConsumer(
 
 export function formatGetConsumerUsage(result: GetConsumerUsageResponse): string {
   return `# Consumer Usage\n\n**Operations:** ${result.usage.operationIds.length}\n**Known credits:** ${result.usage.knownCredits ?? 'unknown'}\n**Completeness:** ${result.usage.completeness}`;
+}
+
+export function formatGetProviderCost(result: GetProviderCostResponse): string {
+  return `# Provider Cost\n\n**Attempts:** ${result.cost.attemptIds.length}\n**Known cost:** ${result.cost.knownCost ?? 'unknown'}\n**Currency:** ${result.cost.currency ?? 'none'}\n**Completeness:** ${result.cost.completeness}\n**Unknown attempts:** ${result.cost.unknownAttemptIds.length}`;
 }
 
 export function formatProofsApplies(result: ProofsAppliesResponse): string {

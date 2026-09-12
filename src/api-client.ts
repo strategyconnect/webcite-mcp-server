@@ -75,6 +75,8 @@ import type {
   LinkOperationConsumerResponse,
   GetConsumerUsageOptions,
   GetConsumerUsageResponse,
+  GetProviderCostOptions,
+  GetProviderCostResponse,
   ProofsAppliesOptions,
   ProofsAppliesResponse,
   FormalResolutionStateOptions,
@@ -779,6 +781,17 @@ export class WebCiteApiClient {
     return this.request(
       `/api/v2/context/usage/consumer?${params.toString()}`,
       { method: 'GET' },
+    );
+  }
+
+  async getProviderCost(
+    options: GetProviderCostOptions,
+  ): Promise<GetProviderCostResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/usage/provider-cost',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
     );
   }
 

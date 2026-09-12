@@ -1320,6 +1320,24 @@ Credits: 1. HTTP: GET /api/v2/context/usage/consumer`,
     },
   },
   {
+    name: 'get_provider_cost',
+    description: `Provider spend for operations, measured on attempts — never derived from customer credits (I4).
+
+Credits: 1. HTTP: POST /api/v2/context/usage/provider-cost`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        operation_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['operation_ids'],
+    },
+  },
+  {
     name: 'formal_resolution_state',
     description: `Classify negative formal/search states without collapsing them (P4).
 
@@ -1537,6 +1555,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/attempts/:attemptId/resolve': 'resolve_operation_attempt',
   'POST /api/v2/context/operations/:operationId/consumers': 'link_operation_consumer',
   'GET /api/v2/context/usage/consumer': 'get_consumer_usage',
+  'POST /api/v2/context/usage/provider-cost': 'get_provider_cost',
   'POST /api/v2/context/formal/resolution-state': 'formal_resolution_state',
   'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',

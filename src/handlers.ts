@@ -43,6 +43,7 @@ import {
   formatResolveOperationAttempt,
   formatLinkOperationConsumer,
   formatGetConsumerUsage,
+  formatGetProviderCost,
   formatProofsApplies,
   formatFormalResolutionState,
   formatFormalRevenueBridge,
@@ -108,6 +109,7 @@ import {
   validateResolveOperationAttempt,
   validateLinkOperationConsumer,
   validateGetConsumerUsage,
+  validateGetProviderCost,
   validateProofsApplies,
   validateFormalResolutionState,
   validateFormalRevenueBridge,
@@ -1286,6 +1288,30 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateGetConsumerUsage(raw);
     return ok(
       formatGetConsumerUsage(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_provider_cost: async (args, client) => {
+    if (!Array.isArray(args?.operation_ids) || args.operation_ids.length === 0) {
+      throw new ToolFailure('invalid_argument', 'operation_ids array is required');
+    }
+    if (args.operation_ids.some((id) => typeof id !== 'string' || !id.trim())) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'operation_ids must be non-empty strings',
+      );
+    }
+    const raw = await wrapApi(
+      client.getProviderCost({
+        operation_ids: args.operation_ids as string[],
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateGetProviderCost(raw);
+    return ok(
+      formatGetProviderCost(validated),
       validated as unknown as Record<string, unknown>,
     );
   },
