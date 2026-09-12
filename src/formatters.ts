@@ -36,6 +36,8 @@ import type {
   OpenOperationRootResponse,
   GetOperationResponse,
   GetOperationAvailabilityResponse,
+  SettleOperationResponse,
+  ReleaseOperationResponse,
   ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
@@ -671,7 +673,16 @@ export function formatListMetricDefinitions(
 }
 
 export function formatCreateResearchRun(result: CreateResearchRunResponse): string {
-  return `# Research Run\n\n**Id:** ${result.run.id}\n**Revision:** ${result.run.checkpointRevision}\n**Phase:** ${result.run.phase}`;
+  const parts = [
+    `# Research Run\n`,
+    `**Id:** ${result.run.id}`,
+    `**Revision:** ${result.run.checkpointRevision}`,
+    `**Phase:** ${result.run.phase}`,
+  ];
+  if (typeof result.opened_root === 'boolean') {
+    parts.push(`**Opened root:** ${result.opened_root ? 'yes' : 'no'}`);
+  }
+  return parts.join('\n');
 }
 
 export function formatGetResearchRun(result: GetResearchRunResponse): string {
@@ -746,6 +757,22 @@ export function formatGetOperationAvailability(
 ): string {
   const a = result.availability;
   return `# Operation Availability\n\n**Max credits:** ${a.maxCredits}\n**Settled:** ${a.settledCredits}\n**Outstanding credits:** ${a.outstandingCredits}\n**Outstanding tokens:** ${a.outstandingTokens}`;
+}
+
+export function formatSettleOperation(result: SettleOperationResponse): string {
+  const id =
+    typeof result.operation.id === 'string' ? result.operation.id : '(unknown)';
+  const state =
+    typeof result.operation.state === 'string' ? result.operation.state : '(unknown)';
+  return `# Settle Operation\n\n**Id:** ${id}\n**State:** ${state}`;
+}
+
+export function formatReleaseOperation(result: ReleaseOperationResponse): string {
+  const id =
+    typeof result.operation.id === 'string' ? result.operation.id : '(unknown)';
+  const state =
+    typeof result.operation.state === 'string' ? result.operation.state : '(unknown)';
+  return `# Release Operation\n\n**Id:** ${id}\n**State:** ${state}`;
 }
 
 export function formatProofsApplies(result: ProofsAppliesResponse): string {

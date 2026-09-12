@@ -63,6 +63,10 @@ import type {
   GetOperationResponse,
   GetOperationAvailabilityOptions,
   GetOperationAvailabilityResponse,
+  SettleOperationOptions,
+  SettleOperationResponse,
+  ReleaseOperationOptions,
+  ReleaseOperationResponse,
   ProofsAppliesOptions,
   ProofsAppliesResponse,
   FormalResolutionStateOptions,
@@ -678,6 +682,29 @@ export class WebCiteApiClient {
     return this.request(
       `/api/v2/context/operations/${encodeURIComponent(options.operation_id)}/availability`,
       { method: 'GET' },
+    );
+  }
+
+  async settleOperation(
+    options: SettleOperationOptions,
+  ): Promise<SettleOperationResponse> {
+    const { operation_id, idempotency_key, settled_credits } = options;
+    return this.request(
+      `/api/v2/context/operations/${encodeURIComponent(operation_id)}/settle`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ settled_credits }),
+      },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async releaseOperation(
+    options: ReleaseOperationOptions,
+  ): Promise<ReleaseOperationResponse> {
+    return this.request(
+      `/api/v2/context/operations/${encodeURIComponent(options.operation_id)}/release`,
+      { method: 'POST', body: JSON.stringify({}) },
     );
   }
 

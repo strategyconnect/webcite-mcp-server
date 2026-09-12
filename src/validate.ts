@@ -31,6 +31,8 @@ import type {
   OpenOperationRootResponse,
   GetOperationResponse,
   GetOperationAvailabilityResponse,
+  SettleOperationResponse,
+  ReleaseOperationResponse,
   ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
@@ -375,6 +377,7 @@ export function validateCreateResearchRun(raw: unknown): CreateResearchRunRespon
   const root = requireObject(raw, 'CreateResearchRun');
   return {
     run: requireResearchRun(root.run, 'CreateResearchRun.run'),
+    opened_root: typeof root.opened_root === 'boolean' ? root.opened_root : undefined,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
@@ -540,6 +543,24 @@ export function validateGetOperationAvailability(
       outstandingCredits: num('outstandingCredits'),
       outstandingTokens: num('outstandingTokens'),
     },
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateSettleOperation(raw: unknown): SettleOperationResponse {
+  const root = requireObject(raw, 'SettleOperation');
+  const operation = requireObject(root.operation, 'SettleOperation.operation');
+  return {
+    operation,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateReleaseOperation(raw: unknown): ReleaseOperationResponse {
+  const root = requireObject(raw, 'ReleaseOperation');
+  const operation = requireObject(root.operation, 'ReleaseOperation.operation');
+  return {
+    operation,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

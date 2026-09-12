@@ -456,7 +456,7 @@ function startStub(options = {}) {
       }
 
       const operationMatch = url.pathname.match(
-        /^\/api\/v2\/context\/operations\/([^/]+)(?:\/(availability))?$/,
+        /^\/api\/v2\/context\/operations\/([^/]+)(?:\/(availability|settle|release))?$/,
       );
       if (operationMatch) {
         const operationId = operationMatch[1];
@@ -471,6 +471,36 @@ function startStub(options = {}) {
                 settledCredits: 10,
                 outstandingCredits: 5,
                 outstandingTokens: 0,
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        if (action === 'settle') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              operation: {
+                id: operationId,
+                kind: 'parse',
+                state: 'settled',
+                settledCredits: 2,
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        if (action === 'release') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              operation: {
+                id: operationId,
+                kind: 'parse',
+                state: 'released',
+                settledCredits: 0,
               },
               engine: 'context_graph',
             }),
@@ -1006,6 +1036,17 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-root-1/availability');
     assert.match(availability, /Max credits:\*\* 100/);
     assert.match(availability, /Outstanding credits:\*\* 5/);
+
+    const settled = await call('settle_operation', {
+      operation_id: 'op-child-1',
+      settled_credits: 2,
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-child-1/settle');
+    assert.match(settled, /State:\*\* settled/);
+
+    const released = await call('release_operation', { operation_id: 'op-child-2' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/operations/op-child-2/release');
+    assert.match(released, /State:\*\* released/);
 
     const proof = await call('proofs_applies', {
       status: 'proved',

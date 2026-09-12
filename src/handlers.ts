@@ -37,6 +37,8 @@ import {
   formatOpenOperationRoot,
   formatGetOperation,
   formatGetOperationAvailability,
+  formatSettleOperation,
+  formatReleaseOperation,
   formatProofsApplies,
   formatFormalResolutionState,
   formatFormalRevenueBridge,
@@ -96,6 +98,8 @@ import {
   validateOpenOperationRoot,
   validateGetOperation,
   validateGetOperationAvailability,
+  validateSettleOperation,
+  validateReleaseOperation,
   validateProofsApplies,
   validateFormalResolutionState,
   validateFormalRevenueBridge,
@@ -832,6 +836,10 @@ export const handlers: Record<string, ToolHandler> = {
           typeof args?.root_operation_id === 'string' || args?.root_operation_id === null
             ? (args.root_operation_id as string | null)
             : undefined,
+        root_idempotency_key:
+          typeof args?.root_idempotency_key === 'string'
+            ? args.root_idempotency_key
+            : undefined,
         open_requirement_ids: Array.isArray(args?.open_requirement_ids)
           ? (args.open_requirement_ids as string[])
           : undefined,
@@ -1103,6 +1111,45 @@ export const handlers: Record<string, ToolHandler> = {
     const validated = validateGetOperationAvailability(raw);
     return ok(
       formatGetOperationAvailability(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  settle_operation: async (args, client) => {
+    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
+      throw new ToolFailure('invalid_argument', 'operation_id is required');
+    }
+    if (args?.settled_credits !== null && typeof args?.settled_credits !== 'number') {
+      throw new ToolFailure(
+        'invalid_argument',
+        'settled_credits must be a number or null',
+      );
+    }
+    const raw = await wrapApi(
+      client.settleOperation({
+        operation_id: args.operation_id,
+        settled_credits: args.settled_credits as number | null,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateSettleOperation(raw);
+    return ok(
+      formatSettleOperation(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  release_operation: async (args, client) => {
+    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
+      throw new ToolFailure('invalid_argument', 'operation_id is required');
+    }
+    const raw = await wrapApi(
+      client.releaseOperation({ operation_id: args.operation_id }),
+    );
+    const validated = validateReleaseOperation(raw);
+    return ok(
+      formatReleaseOperation(validated),
       validated as unknown as Record<string, unknown>,
     );
   },
