@@ -159,8 +159,16 @@ function requireString(args: Args, key: string): string {
 }
 
 /**
- * Backend #268: wait subjectId / subjectRevisionId must be non-blank.
- * Equal blanks must never look like a certified wake subject match.
+ * Backend #268/#281: non-blank, non-padded wake identity.
+ * Surrounding-whitespace ids (id !== trim) never wake — same honesty as W2 #276 / W3 #279.
+ */
+function wakeIdentityComplete(id: string): boolean {
+  return typeof id === 'string' && id.trim().length > 0 && id === id.trim();
+}
+
+/**
+ * Backend #268/#281: wait subjectId / subjectRevisionId must be non-blank/unpadded.
+ * Equal blanks/pads must never look like a certified wake subject match.
  * null/undefined wait is fine (not waiting).
  */
 function assertWakeSubjectComplete(wait: unknown, label: string): void {
@@ -169,20 +177,20 @@ function assertWakeSubjectComplete(wait: unknown, label: string): void {
     throw new ToolFailure('invalid_argument', `${label} must be an object or null`, {
       details: { reason: 'incomplete_wake_subject_identity' },
       actionable:
-        'Pass wait:null or a WaitCondition with non-blank subjectId and subjectRevisionId.',
+        'Pass wait:null or a WaitCondition with non-blank unpadded subjectId and subjectRevisionId.',
     });
   }
   const w = wait as Record<string, unknown>;
   for (const key of ['subjectId', 'subjectRevisionId'] as const) {
     const value = w[key];
-    if (typeof value !== 'string' || !value.trim()) {
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
       throw new ToolFailure(
         'invalid_argument',
-        `${label}.${key} is incomplete (blank/whitespace)`,
+        `${label}.${key} is incomplete (blank/whitespace/padded)`,
         {
           details: { reason: 'incomplete_wake_subject_identity', field: key },
           actionable:
-            'Blank/whitespace wake subject identity never matches; do not invent subject ids.',
+            'Blank/whitespace/padded wake subject identity never matches; do not invent subject ids.',
         },
       );
     }
@@ -190,8 +198,8 @@ function assertWakeSubjectComplete(wait: unknown, label: string): void {
 }
 
 /**
- * Backend #277: when wait is set, scope.tenantId must be non-blank.
- * Equal blank tenants must never look like a certified wake tenant match.
+ * Backend #277/#281: when wait is set, scope.tenantId must be non-blank/unpadded.
+ * Equal blank/padded tenants must never look like a certified wake tenant match.
  */
 function assertWakeTenantComplete(run: ResearchRunPayload, label: string): void {
   if (run.wait === null || run.wait === undefined) return;
@@ -200,14 +208,14 @@ function assertWakeTenantComplete(run: ResearchRunPayload, label: string): void 
     scope && typeof scope === 'object' && !Array.isArray(scope)
       ? (scope as Record<string, unknown>).tenantId
       : undefined;
-  if (typeof tenantId !== 'string' || !tenantId.trim()) {
+  if (typeof tenantId !== 'string' || !wakeIdentityComplete(tenantId)) {
     throw new ToolFailure(
       'invalid_argument',
-      `${label}.scope.tenantId is incomplete (blank/whitespace)`,
+      `${label}.scope.tenantId is incomplete (blank/whitespace/padded)`,
       {
         details: { reason: 'incomplete_wake_tenant_identity', field: 'tenantId' },
         actionable:
-          'Blank/whitespace wake tenant identity never matches; do not invent tenant ids.',
+          'Blank/whitespace/padded wake tenant identity never matches; do not invent tenant ids.',
       },
     );
   }

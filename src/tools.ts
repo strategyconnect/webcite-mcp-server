@@ -717,7 +717,7 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
   },
   {
     name: 'get_change_impact',
-    description: `Inspect freshness and/or packet change impact (W3). Pass answer_revision_id for sealed-answer freshness, and/or changed_ids (+ optional links/packet_id/window) for packet dependency impact. Blank/whitespace changed_ids → incomplete_changed_ids; incomplete sealed-packet or dependency graphs fail closed as change_impact_incomplete — never silent empty "no impact". Historical answer content stays sealed.
+    description: `Inspect freshness and/or packet change impact (W3). Pass answer_revision_id for sealed-answer freshness, and/or changed_ids (+ optional links/packet_id/window) for packet dependency impact. Blank/whitespace/padded changed_ids → incomplete_changed_ids; incomplete sealed-packet or dependency graphs fail closed as change_impact_incomplete — never silent empty "no impact". Historical answer content stays sealed.
 
 Credits: 1. HTTP: POST /api/v2/context/change-impact`,
     inputSchema: {
@@ -735,10 +735,10 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
         changed_ids: {
           type: 'array',
           description:
-            'Changed source/node ids for packet dependency impact. Blank/whitespace entries → incomplete_changed_ids (never stripped into certified empty impact).',
+            'Changed source/node ids for packet dependency impact. Blank/whitespace/padded entries → incomplete_changed_ids (never stripped into certified empty impact).',
           items: {
             type: 'string',
-            description: 'Non-blank root id; blank/whitespace → incomplete_changed_ids.',
+            description: 'Non-blank unpadded root id; blank/whitespace/padded → incomplete_changed_ids.',
           },
         },
         links: {
@@ -886,7 +886,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank raw/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank raw/non-null blank normalized_decimal/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -918,8 +918,16 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
                 description:
                   'Alias of fragment_id; blank/whitespace/padded → missing_occurrence_identity.',
               },
-              normalized_decimal: { type: ['string', 'null'] },
-              normalizedDecimal: { type: ['string', 'null'] },
+              normalized_decimal: {
+                type: ['string', 'null'],
+                description:
+                  'Optional magnitude; non-null blank/whitespace → blank_normalized_decimal. null allowed.',
+              },
+              normalizedDecimal: {
+                type: ['string', 'null'],
+                description:
+                  'Alias of normalized_decimal; non-null blank/whitespace → blank_normalized_decimal.',
+              },
               interpretation: {
                 type: 'string',
                 enum: [
@@ -1215,7 +1223,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank (whitespace → incomplete_wake_subject_identity) and scope.tenantId must be non-blank (whitespace → incomplete_wake_tenant_identity; equal blanks never wake). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
+    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank/unpadded (whitespace/pad → incomplete_wake_subject_identity) and scope.tenantId must be non-blank/unpadded (whitespace/pad → incomplete_wake_tenant_identity; equal blanks/pads never wake). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
@@ -1226,7 +1234,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
         run: {
           type: 'object',
           description:
-            'Full ResearchRun payload. Optional wait requires non-blank subjectId + subjectRevisionId (blank/whitespace → incomplete_wake_subject_identity) and non-blank scope.tenantId (blank/whitespace → incomplete_wake_tenant_identity).',
+            'Full ResearchRun payload. Optional wait requires non-blank unpadded subjectId + subjectRevisionId (blank/whitespace/padded → incomplete_wake_subject_identity) and non-blank unpadded scope.tenantId (blank/whitespace/padded → incomplete_wake_tenant_identity).',
         },
         idempotency_key: { type: 'string' },
       },
