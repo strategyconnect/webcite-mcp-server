@@ -37,7 +37,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `claim_structure_tier` | `POST /api/v2/context/claim-structure/tier` | assertion (+ definition/ambiguity) | tier 1\|2\|3 | auth / missing assertion | 0 | — |
 | `claim_structure_resolve_definition` | `POST /api/v2/context/claim-structure/resolve-definition` | metric, knowledge_as_of, effective_at, catalog | kind + result | auth / missing fields | 0 | definition revision / ambiguity |
 | `formalize_claim_relation` | `POST /api/v2/context/claim-relations/formalize` | predicate, argument_ids, arguments_resolved | relation + formalized | unrecognised → formalized:false | 0 | — |
-| `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget | run | auth | 0 | research scope |
+| `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget (+ optional root) | run (+ opened_root when auto) | auth | 0 | research scope |
 | `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404 | 0 | run id |
 | `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale | 0 | checkpoint CAS |
 | `resolve_seeds` | `POST /api/v2/context/resolve-seeds` | text, filters?, index? (omit → SQL catalog) | candidates + leading_resolver + index_source | auth | 0 | ClaimScope seeds |
@@ -50,6 +50,8 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `open_operation_root` | `POST /api/v2/context/operations/open-root` | idempotency_key, kind, max_credits, max_tokens, deadline_ms | root operation | auth / invalid budget | 0 | evidence operation |
 | `get_operation` | `GET /api/v2/context/operations/:operationId` | operation_id | operation row | 404 | 0 | evidence operation |
 | `get_operation_availability` | `GET /api/v2/context/operations/:operationId/availability` | operation_id | root budget availability | 404 | 0 | root operation |
+| `settle_operation` | `POST /api/v2/context/operations/:operationId/settle` | operation_id, settled_credits (number\|null) | operation | already settled → conflict | 0 | evidence operation |
+| `release_operation` | `POST /api/v2/context/operations/:operationId/release` | operation_id | operation | dispatched → conflict | 0 | evidence operation |
 | `formal_resolution_state` | `POST /api/v2/context/formal/resolution-state` | proof/search flags | state | auth | 0 | — |
 | `formal_revenue_bridge` | `POST /api/v2/context/formal/revenue-bridge` | total + components | discharged/refused | scope mismatch refuses | 0 | exact decimals |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |

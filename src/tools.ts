@@ -965,7 +965,7 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
   },
   {
     name: 'create_research_run',
-    description: `Create a durable research run checkpoint (C3). Scope comes from the API key.
+    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs`,
     inputSchema: {
@@ -986,6 +986,10 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs`,
           required: ['max_credits', 'max_tokens', 'deadline_ms'],
         },
         root_operation_id: { type: ['string', 'null'] },
+        root_idempotency_key: {
+          type: 'string',
+          description: 'Idempotency key when auto-opening a root budget',
+        },
         open_requirement_ids: { type: 'array', items: { type: 'string' } },
         max_steps: { type: 'number' },
         idempotency_key: { type: 'string' },
@@ -1210,6 +1214,37 @@ Credits: 1. HTTP: GET /api/v2/context/operations/:operationId/availability`,
     },
   },
   {
+    name: 'settle_operation',
+    description: `Settle a reserved EvidenceOperation once (I4). Pass settled_credits null to mark reconciliation_required without inventing an amount.
+
+Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/settle`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        operation_id: { type: 'string' },
+        settled_credits: {
+          type: ['number', 'null'],
+          description: 'Credits to settle, or null for reconciliation_required',
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['operation_id', 'settled_credits'],
+    },
+  },
+  {
+    name: 'release_operation',
+    description: `Release an undispatched reservation and return credits to the account (I4). Dispatched operations cannot be released.
+
+Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/release`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        operation_id: { type: 'string' },
+      },
+      required: ['operation_id'],
+    },
+  },
+  {
     name: 'formal_resolution_state',
     description: `Classify negative formal/search states without collapsing them (P4).
 
@@ -1421,6 +1456,8 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v2/context/operations/:operationId': 'get_operation',
   'GET /api/v2/context/operations/:operationId/availability':
     'get_operation_availability',
+  'POST /api/v2/context/operations/:operationId/settle': 'settle_operation',
+  'POST /api/v2/context/operations/:operationId/release': 'release_operation',
   'POST /api/v2/context/formal/resolution-state': 'formal_resolution_state',
   'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',

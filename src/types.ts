@@ -615,6 +615,7 @@ export interface CreateResearchRunOptions {
     deadline_ms: number;
   };
   root_operation_id?: string | null;
+  root_idempotency_key?: string;
   open_requirement_ids?: string[];
   max_steps?: number;
   idempotency_key?: string;
@@ -630,6 +631,7 @@ export interface ResearchRunPayload {
 
 export interface CreateResearchRunResponse {
   run: ResearchRunPayload;
+  opened_root?: boolean;
   engine?: string;
 }
 
@@ -792,6 +794,26 @@ export interface GetOperationAvailabilityResponse {
     outstandingCredits: number;
     outstandingTokens: number;
   };
+  engine?: string;
+}
+
+export interface SettleOperationOptions {
+  operation_id: string;
+  settled_credits: number | null;
+  idempotency_key?: string;
+}
+
+export interface SettleOperationResponse {
+  operation: Record<string, unknown>;
+  engine?: string;
+}
+
+export interface ReleaseOperationOptions {
+  operation_id: string;
+}
+
+export interface ReleaseOperationResponse {
+  operation: Record<string, unknown>;
   engine?: string;
 }
 
