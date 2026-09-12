@@ -1446,7 +1446,7 @@ Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
   },
   {
     name: 'expand_seeds',
-    description: `Bounded authorized seed expansion (C2). Unauthorized intermediates cannot be traversed; hops are capped at 2. Blank/whitespace/surrounding-padded seeds, edge from/to, or allowed ids fail closed (incomplete_expand_seed_identity — equal pads never trim-launder into a certified authorized expansion; same honesty as resolve_seeds #311 / W3 #264/#279).
+    description: `Bounded authorized seed expansion (C2). Unauthorized intermediates cannot be traversed; hops are capped at 2. Blank/whitespace/surrounding-padded seeds, edge from/to, or allowed ids fail closed (incomplete_expand_seed_identity — equal pads never trim-launder into a certified authorized expansion; same honesty as resolve_seeds #311 / W3 #264/#279). Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified expand-seeds replay pin; same honesty as settle/resolve_seeds #92/#114).
 
 Credits: 1. HTTP: POST /api/v2/context/expand-seeds`,
     inputSchema: {
@@ -1479,7 +1479,11 @@ Credits: 1. HTTP: POST /api/v2/context/expand-seeds`,
             'Allowed node ids. Blank/whitespace/surrounding-padded → incomplete_expand_seed_identity (never trim-launder).',
         },
         hops: { type: 'number', description: 'Requested hops; kernel caps at 2' },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into an expand-seeds replay pin).',
+        },
       },
       required: ['seeds', 'edges', 'allowed'],
     },

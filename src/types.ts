@@ -1029,6 +1029,10 @@ export interface ExpandSeedsOptions {
   /** Allowed node ids. Blank/whitespace/surrounding-padded → incomplete_expand_seed_identity. */
   allowed: string[];
   hops?: number;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 
