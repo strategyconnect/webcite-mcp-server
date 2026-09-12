@@ -625,7 +625,7 @@ Credits: 1. HTTP: POST /api/v2/context/query`,
   },
   {
     name: 'compare_assertions',
-    description: `Compare two claim scopes. Returns same, different, or unknown — unknown is never treated as contradiction.
+    description: `Compare two claim scopes. Returns same, different, or unknown — unknown is never treated as contradiction. Blank/whitespace/surrounding-padded ClaimScope string fields on left/right fail closed (padded_compare_filter; same honesty as resolve_seeds #311 / query_context #307 — equal pads never certify same/different and must not trim-launder).
 
 Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
     inputSchema: {
@@ -633,12 +633,14 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
       properties: {
         left: {
           type: 'object',
-          description: 'Left claim scope.',
+          description:
+            'Left claim scope. Blank/whitespace/surrounding-padded string fields → padded_compare_filter (never trim-launder).',
           properties: claimScopeProperties,
         },
         right: {
           type: 'object',
-          description: 'Right claim scope.',
+          description:
+            'Right claim scope. Blank/whitespace/surrounding-padded string fields → padded_compare_filter (never trim-launder).',
           properties: claimScopeProperties,
         },
         idempotency_key: {
