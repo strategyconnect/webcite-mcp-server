@@ -695,6 +695,39 @@ function assertEvidenceOperationIdComplete(operationId: unknown): asserts operat
 }
 
 /**
+ * C3/I4 open_operation_root: blank/whitespace/surrounding-padded
+ * idempotency_key / kind must never trim-launder into a certified root open
+ * or replay (same identityComplete rule as root_idempotency_key on
+ * create_research_run / operation_id #264/#279).
+ */
+function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'idempotency_key, kind, max_credits, max_tokens, and deadline_ms are required',
+    );
+  }
+  for (const key of ['idempotency_key', 'kind'] as const) {
+    const value = (args as Record<string, unknown>)[key];
+    const reason =
+      key === 'idempotency_key'
+        ? 'incomplete_operation_idempotency_identity'
+        : 'incomplete_operation_kind_identity';
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason, field: key },
+          actionable:
+            `Blank/whitespace/padded ${key} never certifies an operation root open/replay; do not invent or trim-launder a root identity.`,
+        },
+      );
+    }
+  }
+}
+
+/**
  * C3/I4 EvidenceAttempt path ids: blank/whitespace/surrounding-padded
  * attempt_id must never trim-launder into a certified resolve hit.
  */
@@ -2358,9 +2391,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   open_operation_root: async (args, client) => {
+    // C3/I4: padded idempotency_key / kind never certify a root open/replay.
+    assertOpenOperationRootIdentityComplete(args);
     if (
-      typeof args?.idempotency_key !== 'string' ||
-      typeof args?.kind !== 'string' ||
       typeof args?.max_credits !== 'number' ||
       typeof args?.max_tokens !== 'number' ||
       typeof args?.deadline_ms !== 'number'
@@ -2372,8 +2405,8 @@ export const handlers: Record<string, ToolHandler> = {
     }
     const raw = await wrapApi(
       client.openOperationRoot({
-        idempotency_key: args.idempotency_key,
-        kind: args.kind,
+        idempotency_key: args.idempotency_key as string,
+        kind: args.kind as string,
         max_credits: args.max_credits,
         max_tokens: args.max_tokens,
         deadline_ms: args.deadline_ms,
