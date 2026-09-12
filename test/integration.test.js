@@ -5282,6 +5282,149 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'reserve_research_budget surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_research_budget',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          idempotency_key: ' ik-1 ',
+          kind: 'search',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/reserve')),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified reserve',
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_research_budget whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_research_budget',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          idempotency_key: '   ',
+          kind: 'search',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_research_budget surrounding-padded kind → incomplete_operation_kind_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_research_budget',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          idempotency_key: 'ik-1',
+          kind: ' search ',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_kind_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'kind');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_research_budget equal-pad kind → incomplete_operation_kind_identity (never reserve)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_research_budget',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          idempotency_key: 'ik-1',
+          kind: '  parse  ',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_kind_identity',
+      );
+      // Equal pads must not trim-launder into the same certified reserve as
+      // happy-path kind "parse".
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #83 open_operation_root kind pad must stay fail-closed.
+  await t.test(
+    'open_operation_root surrounding-padded kind still → incomplete_operation_kind_identity (#83 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'open_operation_root',
+        arguments: {
+          idempotency_key: 'root-key-1',
+          kind: ' research_run ',
+          max_credits: 50,
+          max_tokens: 1000,
+          deadline_ms: 60000,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_kind_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/operations/open-root'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_operation surrounding-padded operation_id → incomplete_operation_identity',
     async () => {
       const before = seen.length;

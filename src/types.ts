@@ -1026,8 +1026,11 @@ export interface FormatCertifyResponse {
 }
 
 export interface ReserveResearchBudgetOptions {
+  /** Non-blank unpadded research run id; blank/padded → incomplete_research_run_identity. */
   run_id: string;
+  /** Non-blank unpadded replay key; blank/padded → incomplete_operation_idempotency_identity (#83 honesty). */
   idempotency_key: string;
+  /** Non-blank unpadded kind; blank/padded → incomplete_operation_kind_identity (#83 honesty). */
   kind: string;
   credits: number;
   tokens?: number;

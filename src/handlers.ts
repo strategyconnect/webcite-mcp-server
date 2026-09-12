@@ -695,17 +695,19 @@ function assertEvidenceOperationIdComplete(operationId: unknown): asserts operat
 }
 
 /**
- * C3/I4 open_operation_root: blank/whitespace/surrounding-padded
- * idempotency_key / kind must never trim-launder into a certified root open
- * or replay (same identityComplete rule as root_idempotency_key on
- * create_research_run / operation_id #264/#279).
+ * C3/I4: blank/whitespace/surrounding-padded idempotency_key / kind must never
+ * trim-launder into a certified operation open/reserve/replay (same
+ * identityComplete rule as root_idempotency_key on create_research_run /
+ * operation_id #264/#279). Shared by open_operation_root (#83) and
+ * reserve_research_budget.
  */
-function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
+function assertOperationIdempotencyKindComplete(
+  args: Args | undefined,
+  missingRequiredMessage: string,
+  actionableCertify: string,
+): void {
   if (!args || typeof args !== 'object' || Array.isArray(args)) {
-    throw new ToolFailure(
-      'invalid_argument',
-      'idempotency_key, kind, max_credits, max_tokens, and deadline_ms are required',
-    );
+    throw new ToolFailure('invalid_argument', missingRequiredMessage);
   }
   for (const key of ['idempotency_key', 'kind'] as const) {
     const value = (args as Record<string, unknown>)[key];
@@ -719,12 +721,19 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
         `${key} is incomplete (blank/whitespace/padded)`,
         {
           details: { reason, field: key },
-          actionable:
-            `Blank/whitespace/padded ${key} never certifies an operation root open/replay; do not invent or trim-launder a root identity.`,
+          actionable: `Blank/whitespace/padded ${key} never certifies ${actionableCertify}; do not invent or trim-launder a root identity.`,
         },
       );
     }
   }
+}
+
+function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
+  assertOperationIdempotencyKindComplete(
+    args,
+    'idempotency_key, kind, max_credits, max_tokens, and deadline_ms are required',
+    'an operation root open/replay',
+  );
 }
 
 /**
@@ -2430,11 +2439,14 @@ export const handlers: Record<string, ToolHandler> = {
     // C3: refuse padded/blank run_id before HTTP — never trim-launder into a
     // certified reserve against another run.
     assertResearchRunIdComplete(args?.run_id);
-    if (
-      typeof args?.idempotency_key !== 'string' ||
-      typeof args?.kind !== 'string' ||
-      typeof args?.credits !== 'number'
-    ) {
+    // C3/I4 after #83: padded idempotency_key / kind never certify a budget
+    // reserve replay (same honesty as open_operation_root).
+    assertOperationIdempotencyKindComplete(
+      args,
+      'run_id, idempotency_key, kind, and credits are required',
+      'a research-budget reserve/replay',
+    );
+    if (typeof args?.credits !== 'number') {
       throw new ToolFailure(
         'invalid_argument',
         'run_id, idempotency_key, kind, and credits are required',
@@ -2443,8 +2455,8 @@ export const handlers: Record<string, ToolHandler> = {
     const raw = await wrapApi(
       client.reserveResearchBudget({
         run_id: args.run_id,
-        idempotency_key: args.idempotency_key,
-        kind: args.kind,
+        idempotency_key: args.idempotency_key as string,
+        kind: args.kind as string,
         credits: args.credits,
         tokens: typeof args?.tokens === 'number' ? args.tokens : undefined,
       }),
