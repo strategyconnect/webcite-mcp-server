@@ -1314,13 +1314,17 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
   },
   {
     name: 'resolve_seeds',
-    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback. Omit index to use the SQL metric-definition catalog. Blank/whitespace or surrounding-padded ClaimScope filters fail closed as padded_resolve_filter (backend #311) — equal pads never pin a scope_tuple and must not fall through to bare_term; never trim-launder filters.
+    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback. Omit index to use the SQL metric-definition catalog. Blank/whitespace/surrounding-padded text fails closed as padded_resolve_text (#311/#314 surface — never trim-launder into certified seeds). Blank/whitespace or surrounding-padded ClaimScope filters fail closed as padded_resolve_filter (backend #311) — equal pads never pin a scope_tuple and must not fall through to bare_term; never trim-launder filters.
 
 Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        text: { type: 'string' },
+        text: {
+          type: 'string',
+          description:
+            'Natural-language resolve text. Non-blank unpadded; blank/whitespace/surrounding-padded → padded_resolve_text (never trim-launder).',
+        },
         filters: {
           type: 'object',
           description:

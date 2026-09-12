@@ -206,6 +206,26 @@ function assertSelectTextComplete(text: unknown): asserts text is string {
 }
 
 /**
+ * Backend #311/#314 surface: blank/whitespace or surrounding-padded
+ * resolve_seeds text never certifies a seed hit — refuse before HTTP so equal
+ * pads cannot trim-launder into the same candidate as a clean query (same
+ * honesty as query_context selectPassage text).
+ */
+function assertResolveSeedsTextComplete(text: unknown): asserts text is string {
+  if (typeof text !== 'string' || !selectTextComplete(text)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'text is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'padded_resolve_text', field: 'text' },
+        actionable:
+          'Blank/whitespace/padded resolve text never certifies seeds; do not invent or trim-launder topical seeds.',
+      },
+    );
+  }
+}
+
+/**
  * Backend #311: blank/whitespace or surrounding-padded resolve_seeds filters are
  * dishonest constraints — never ignore them into a bare_term seed, and never
  * equal-pad-pin against a padded index scope. Refuse before HTTP.
@@ -1853,14 +1873,15 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   resolve_seeds: async (args, client) => {
-    if (typeof args?.text !== 'string') {
-      throw new ToolFailure('invalid_argument', 'text is required');
-    }
+    // Backend #311/#314: refuse padded/blank resolve text before HTTP — never
+    // trim-launder into certified seed candidates.
+    const text = args?.text;
+    assertResolveSeedsTextComplete(text);
     if (args?.index !== undefined && !Array.isArray(args.index)) {
       throw new ToolFailure('invalid_argument', 'index must be an array when provided');
     }
     const filters =
-      args.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
+      args?.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
         ? (args.filters as Record<string, unknown>)
         : undefined;
     // Backend #311: refuse padded/blank filters before HTTP — never trim-launder
@@ -1868,9 +1889,9 @@ export const handlers: Record<string, ToolHandler> = {
     assertResolveSeedsFiltersComplete(filters);
     const raw = await wrapApi(
       client.resolveSeeds({
-        text: args.text,
+        text,
         filters: filters as Record<string, string | null | undefined> | undefined,
-        index: Array.isArray(args.index)
+        index: Array.isArray(args?.index)
           ? (args.index as ResolveSeedsOptions['index'])
           : undefined,
         idempotency_key:
