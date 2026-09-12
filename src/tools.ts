@@ -649,7 +649,7 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
   },
   {
     name: 'resolve_fragment_uses',
-    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set.
+    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set. Blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity; blank/whitespace/surrounding-padded answer_revision_id → incomplete_answer_revision_identity (W3 #264/#279 — never trim-launder into a certified sealed catalog hit).
 
 Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
     inputSchema: {
@@ -663,12 +663,12 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
         packet_id: {
           type: 'string',
           description:
-            'Sealed evidence packet id — catalog loaded server-side. Mutually exclusive with answer_revision_id; omit client catalog rows.',
+            'Non-blank unpadded sealed evidence packet id — catalog loaded server-side. Mutually exclusive with answer_revision_id; omit client catalog rows. Blank/whitespace/surrounding-padded → incomplete_packet_identity (never trim-launder).',
         },
         answer_revision_id: {
           type: 'string',
           description:
-            'Sealed answer revision id — evidence catalog loaded server-side. Mutually exclusive with packet_id; omit client catalog rows.',
+            'Non-blank unpadded sealed answer revision id — evidence catalog loaded server-side. Mutually exclusive with packet_id; omit client catalog rows. Blank/whitespace/surrounding-padded → incomplete_answer_revision_identity (never trim-launder).',
         },
         fragments: {
           type: 'array',

@@ -901,10 +901,38 @@ export const handlers: Record<string, ToolHandler> = {
     if (args.fragments !== undefined && !Array.isArray(args.fragments)) {
       throw new ToolFailure('invalid_argument', 'fragments must be an array when provided');
     }
-    const packetId =
-      typeof args?.packet_id === 'string' ? args.packet_id.trim() : '';
-    const answerRevisionId =
-      typeof args?.answer_revision_id === 'string' ? args.answer_revision_id.trim() : '';
+    // W3 #264/#279 pad honesty (same as get_change_impact): never trim-launder
+    // sealed packet_id / answer_revision_id into a certified catalog hit.
+    let packetId: string | undefined;
+    if (typeof args?.packet_id === 'string') {
+      if (!wakeIdentityComplete(args.packet_id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          'packet_id is incomplete (blank/whitespace/padded)',
+          {
+            details: { reason: 'incomplete_packet_identity', field: 'packet_id' },
+            actionable:
+              'Blank/whitespace/padded packet_id never certifies a sealed catalog; do not invent or trim-launder a packet hit.',
+          },
+        );
+      }
+      packetId = args.packet_id;
+    }
+    let answerRevisionId: string | undefined;
+    if (typeof args?.answer_revision_id === 'string') {
+      if (!wakeIdentityComplete(args.answer_revision_id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          'answer_revision_id is incomplete (blank/whitespace/padded)',
+          {
+            details: { reason: 'incomplete_answer_revision_identity', field: 'answer_revision_id' },
+            actionable:
+              'Blank/whitespace/padded answer_revision_id never certifies a sealed catalog; do not invent or trim-launder a sealed answer hit.',
+          },
+        );
+      }
+      answerRevisionId = args.answer_revision_id;
+    }
     if (packetId && answerRevisionId) {
       throw new ToolFailure(
         'invalid_argument',

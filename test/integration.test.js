@@ -2681,6 +2681,99 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.match(res.result.content[0].text, /mutually exclusive/);
   });
 
+  await t.test(
+    'resolve_fragment_uses surrounding-padded packet_id → incomplete_packet_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          packet_id: ' packet-sealed-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_packet_identity');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified sealed catalog hit.
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses whitespace-only packet_id → incomplete_packet_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          packet_id: '  ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_packet_identity');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses surrounding-padded answer_revision_id → incomplete_answer_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          answer_revision_id: ' answer-sealed-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_answer_revision_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses whitespace-only answer_revision_id → incomplete_answer_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          answer_revision_id: '\t',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_answer_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('number_inventory missing occurrences → invalid_argument', async () => {
     const res = await rpc('tools/call', {
       name: 'number_inventory',
