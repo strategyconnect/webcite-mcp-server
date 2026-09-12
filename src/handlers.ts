@@ -825,14 +825,40 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_answer: async (args, client) => {
-    const revisionId = requireString(args, 'revision_id');
+    // W3 #264/#279 pad honesty (same as get_change_impact / resolve_fragment_uses):
+    // never trim-launder revision_id into a certified sealed-answer lookup.
+    const revisionId = args?.revision_id;
+    if (typeof revisionId !== 'string' || !wakeIdentityComplete(revisionId)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'revision_id is incomplete (blank/whitespace/padded)',
+        {
+          details: { reason: 'incomplete_answer_revision_identity', field: 'revision_id' },
+          actionable:
+            'Blank/whitespace/padded revision_id never certifies a sealed answer; do not invent or trim-launder a revision hit.',
+        },
+      );
+    }
     const raw = await wrapApi(client.getAnswer(revisionId));
     const validated = validateResolvedAnswer(raw);
     return ok(formatResolvedAnswer(validated), validated as unknown as Record<string, unknown>);
   },
 
   get_evidence_packet: async (args, client) => {
-    const packetId = requireString(args, 'packet_id');
+    // W3 #264/#279 pad honesty: never trim-launder packet_id into a certified
+    // sealed-packet lookup (same identityComplete rule as change-impact / fragment uses).
+    const packetId = args?.packet_id;
+    if (typeof packetId !== 'string' || !wakeIdentityComplete(packetId)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'packet_id is incomplete (blank/whitespace/padded)',
+        {
+          details: { reason: 'incomplete_packet_identity', field: 'packet_id' },
+          actionable:
+            'Blank/whitespace/padded packet_id never certifies a sealed packet; do not invent or trim-launder a packet hit.',
+        },
+      );
+    }
     const raw = await wrapApi(client.getEvidencePacket(packetId));
     const validated = validateResolvedPacket(raw);
     return ok(formatResolvedPacket(validated), validated as unknown as Record<string, unknown>);

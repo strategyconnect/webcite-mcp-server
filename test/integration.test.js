@@ -2774,6 +2774,91 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+  await t.test(
+    'get_answer surrounding-padded revision_id → incomplete_answer_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_answer',
+        arguments: { revision_id: ' answer-v1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_answer_revision_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      // Must refuse before HTTP — never trim-launder into a certified sealed answer.
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path || '').startsWith('/api/v2/answers/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_answer whitespace-only revision_id → incomplete_answer_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_answer',
+        arguments: { revision_id: '  ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_answer_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path || '').startsWith('/api/v2/answers/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_evidence_packet surrounding-padded packet_id → incomplete_packet_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_evidence_packet',
+        arguments: { packet_id: ' packet-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_packet_identity');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/evidence-packets/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_evidence_packet whitespace-only packet_id → incomplete_packet_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_evidence_packet',
+        arguments: { packet_id: '\t' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_packet_identity');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/evidence-packets/')),
+        undefined,
+      );
+    },
+  );
+
   await t.test('number_inventory missing occurrences → invalid_argument', async () => {
     const res = await rpc('tools/call', {
       name: 'number_inventory',
