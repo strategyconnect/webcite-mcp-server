@@ -167,6 +167,41 @@ function wakeIdentityComplete(id: string): boolean {
 }
 
 /**
+ * Backend #311: non-blank, non-padded ClaimScope filter text required to certify a
+ * known scope pin. Surrounding whitespace (value !== trim) must not count as known —
+ * equal pads must not look like a certified metric/period/entity match (same honesty
+ * as W2 lookupNumber filter pads after #307).
+ */
+function seedFilterComplete(value: string): boolean {
+  return value.trim().length > 0 && value === value.trim();
+}
+
+/**
+ * Backend #311: blank/whitespace or surrounding-padded resolve_seeds filters are
+ * dishonest constraints — never ignore them into a bare_term seed, and never
+ * equal-pad-pin against a padded index scope. Refuse before HTTP.
+ */
+function assertResolveSeedsFiltersComplete(
+  filters: Record<string, unknown> | undefined,
+): void {
+  if (!filters) return;
+  for (const [key, value] of Object.entries(filters)) {
+    if (value == null || value === '' || value === 'unknown') continue;
+    if (typeof value !== 'string' || !seedFilterComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `filters.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'padded_resolve_filter', field: key },
+          actionable:
+            'Blank/whitespace/padded ClaimScope filters never pin seeds; do not invent or trim-launder a scope_tuple.',
+        },
+      );
+    }
+  }
+}
+
+/**
  * Backend #268/#281: wait subjectId / subjectRevisionId must be non-blank/unpadded.
  * Equal blanks/pads must never look like a certified wake subject match.
  * null/undefined wait is fine (not waiting).
@@ -1332,13 +1367,17 @@ export const handlers: Record<string, ToolHandler> = {
     if (args?.index !== undefined && !Array.isArray(args.index)) {
       throw new ToolFailure('invalid_argument', 'index must be an array when provided');
     }
+    const filters =
+      args.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
+        ? (args.filters as Record<string, unknown>)
+        : undefined;
+    // Backend #311: refuse padded/blank filters before HTTP — never trim-launder
+    // into a certified scope_tuple or fall through to bare_term.
+    assertResolveSeedsFiltersComplete(filters);
     const raw = await wrapApi(
       client.resolveSeeds({
         text: args.text,
-        filters:
-          args.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
-            ? (args.filters as Record<string, string | null | undefined>)
-            : undefined,
+        filters: filters as Record<string, string | null | undefined> | undefined,
         index: Array.isArray(args.index)
           ? (args.index as ResolveSeedsOptions['index'])
           : undefined,

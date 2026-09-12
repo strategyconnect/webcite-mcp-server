@@ -869,6 +869,10 @@ export interface CheckpointResearchRunResponse {
 
 export interface ResolveSeedsOptions {
   text: string;
+  /**
+   * Optional ClaimScope filters. Blank/whitespace or surrounding-padded values →
+   * padded_resolve_filter (backend #311); never trim-launder into a certified pin.
+   */
   filters?: Record<string, string | null | undefined>;
   /** Inline vocabulary. Omit to load from the SQL metric-definition catalog. */
   index?: Array<{
