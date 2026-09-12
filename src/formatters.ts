@@ -27,6 +27,7 @@ import type {
   ListMetricDefinitionsResponse,
   CreateResearchRunResponse,
   GetResearchRunResponse,
+  ListResearchRunsResponse,
   CheckpointResearchRunResponse,
   ResolveSeedsResponse,
   ExpandSeedsResponse,
@@ -767,6 +768,10 @@ export function formatCreateResearchRun(result: CreateResearchRunResponse): stri
 
 export function formatGetResearchRun(result: GetResearchRunResponse): string {
   return formatCreateResearchRun(result);
+}
+
+export function formatListResearchRuns(result: ListResearchRunsResponse): string {
+  return `# Research Runs\n\n**Count:** ${result.runs.length}`;
 }
 
 export function formatCheckpointResearchRun(

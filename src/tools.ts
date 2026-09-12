@@ -1204,6 +1204,16 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
     },
   },
   {
+    name: 'list_research_runs',
+    description: `List durable research runs for the authenticated tenant only (C3). Never invents foreign-tenant rows; empty when none. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a list.
+
+Credits: 1. HTTP: GET /api/v2/context/research-runs`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
     name: 'checkpoint_research_run',
     description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
@@ -1774,6 +1784,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/claim-structure/resolve-definition':
     'claim_structure_resolve_definition',
   'POST /api/v2/context/research-runs': 'create_research_run',
+  'GET /api/v2/context/research-runs': 'list_research_runs',
   'GET /api/v2/context/research-runs/:runId': 'get_research_run',
   'POST /api/v2/context/research-runs/:runId/checkpoints': 'checkpoint_research_run',
   'POST /api/v2/context/resolve-seeds': 'resolve_seeds',
