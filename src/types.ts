@@ -1068,6 +1068,13 @@ export interface CertifyPrivateUploadResponse {
   engine?: string;
 }
 
+export interface CertifyRetrieveFlagResponse {
+  ok: boolean;
+  enabled: boolean;
+  default_off: boolean;
+  engine?: string;
+}
+
 export interface SavedWorkflowPayload {
   id: string;
   revision: string;

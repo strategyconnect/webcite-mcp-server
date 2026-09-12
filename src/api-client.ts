@@ -94,6 +94,7 @@ import type {
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   CertifyPrivateUploadResponse,
+  CertifyRetrieveFlagResponse,
   EvaluationCaseResponse,
   EvaluationCompareResponse,
   EvaluationDescribeResponse,
@@ -872,6 +873,10 @@ export class WebCiteApiClient {
     return this.request('/api/v2/context/private-upload/certify', {
       method: 'GET',
     });
+  }
+
+  async certifyRetrieveFlag(): Promise<CertifyRetrieveFlagResponse> {
+    return this.request('/api/v2/context/retrieve/flag', { method: 'GET' });
   }
 
   async publishContextWorkflow(

@@ -47,6 +47,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `learning_placeholder` | `GET /api/v2/context/learning/placeholder` | criterion? | checkpoint + authoritative:false | auth | 0 | — |
 | `format_certify` | `POST /api/v2/context/format/certify` | kind (spreadsheet\|office\|text\|image\|container\|media), expected[], found[], media: decode_finished? | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
 | `certify_private_upload` | `GET /api/v2/context/private-upload/certify` | — | ok + mode \| not_run reason | missing config → ok:false | 0 | env evidence storage |
+| `certify_retrieve_flag` | `GET /api/v2/context/retrieve/flag` | — | ok + enabled + default_off | always ok (default off) | 0 | CONTEXT_GRAPH_RETRIEVE |
 | `reserve_research_budget` | `POST /api/v2/context/research-runs/:runId/reserve` | run_id, idempotency_key, kind, credits | operationId + replay | missing root refuses | 0 | research run |
 | `open_operation_root` | `POST /api/v2/context/operations/open-root` | idempotency_key, kind, max_credits, max_tokens, deadline_ms | root operation | auth / invalid budget | 0 | evidence operation |
 | `reserve_operation` | `POST /api/v2/context/operations/reserve` | idempotency_key, kind, credits, root_operation_id? | operation + replay | auth / insufficient budget | 0 | evidence operation |

@@ -53,6 +53,7 @@ import type {
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   CertifyPrivateUploadResponse,
+  CertifyRetrieveFlagResponse,
   ExtractedDoc,
   ExtractedFigure,
   FigureProvenance,
@@ -895,4 +896,16 @@ export function formatCertifyPrivateUpload(
   if (result.mode) lines.push(`**Mode:** ${result.mode}`);
   if (result.reason) lines.push(`**Reason:** ${result.reason}`);
   return lines.join('\n');
+}
+
+export function formatCertifyRetrieveFlag(
+  result: CertifyRetrieveFlagResponse,
+): string {
+  return [
+    `# Retrieve Flag Certify`,
+    ``,
+    `**Ok:** ${result.ok ? 'yes' : 'no'}`,
+    `**Enabled:** ${result.enabled ? 'yes' : 'no'}`,
+    `**Default off:** ${result.default_off ? 'yes' : 'no'}`,
+  ].join('\n');
 }
