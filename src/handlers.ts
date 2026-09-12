@@ -556,6 +556,32 @@ function assertEvidenceAttemptIdComplete(attemptId: unknown): asserts attemptId 
   }
 }
 
+/**
+ * C3/I4 consumer link/usage ids: blank/whitespace/surrounding-padded
+ * consumer_kind / consumer_id must never trim-launder into a certified
+ * consumer link or usage aggregate (same identityComplete rule as
+ * operation_id #264/#279).
+ */
+function assertEvidenceConsumerIdentityComplete(args: {
+  consumer_kind?: unknown;
+  consumer_id?: unknown;
+}): void {
+  for (const key of ['consumer_kind', 'consumer_id'] as const) {
+    const value = args[key];
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_consumer_identity', field: key },
+          actionable:
+            'Blank/whitespace/padded consumer identity never certifies a consumer link or usage hit; do not invent or trim-launder.',
+        },
+      );
+    }
+  }
+}
+
 
 /**
  * Backend createRunSchema / researchScopeSchema use evidenceId: blank or
@@ -2154,20 +2180,20 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   link_operation_consumer: async (args, client) => {
-    // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
-    // into a certified consumer link.
+    // C3/I4: refuse padded/blank operation_id and consumer identity before HTTP —
+    // never trim-launder into a certified consumer link.
     assertEvidenceOperationIdComplete(args?.operation_id);
-    if (typeof args?.consumer_kind !== 'string' || typeof args?.consumer_id !== 'string') {
-      throw new ToolFailure(
-        'invalid_argument',
-        'operation_id, consumer_kind, and consumer_id are required',
-      );
-    }
+    const consumerKind = args?.consumer_kind;
+    const consumerId = args?.consumer_id;
+    assertEvidenceConsumerIdentityComplete({
+      consumer_kind: consumerKind,
+      consumer_id: consumerId,
+    });
     const raw = await wrapApi(
       client.linkOperationConsumer({
         operation_id: args.operation_id,
-        consumer_kind: args.consumer_kind,
-        consumer_id: args.consumer_id,
+        consumer_kind: consumerKind as string,
+        consumer_id: consumerId as string,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),
@@ -2180,16 +2206,18 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_consumer_usage: async (args, client) => {
-    if (typeof args?.consumer_kind !== 'string' || typeof args?.consumer_id !== 'string') {
-      throw new ToolFailure(
-        'invalid_argument',
-        'consumer_kind and consumer_id are required',
-      );
-    }
+    // C3/I4: refuse padded/blank consumer identity before HTTP — never
+    // trim-launder into a certified usage aggregate.
+    const consumerKind = args?.consumer_kind;
+    const consumerId = args?.consumer_id;
+    assertEvidenceConsumerIdentityComplete({
+      consumer_kind: consumerKind,
+      consumer_id: consumerId,
+    });
     const raw = await wrapApi(
       client.getConsumerUsage({
-        consumer_kind: args.consumer_kind,
-        consumer_id: args.consumer_id,
+        consumer_kind: consumerKind as string,
+        consumer_id: consumerId as string,
       }),
     );
     const validated = validateGetConsumerUsage(raw);
