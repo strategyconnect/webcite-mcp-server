@@ -3719,6 +3719,89 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'create_research_run surrounding-padded snapshot_id → incomplete_create_research_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_research_run',
+        arguments: {
+          objective: 'trace ARR',
+          snapshot_id: ' snap-1 ',
+          workflow_version: 'wf-1',
+          budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details.reason,
+        'incomplete_create_research_identity',
+      );
+      assert.equal(res.result.structuredContent.details.field, 'snapshot_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_research_run trailing-padded workflow_version → incomplete_create_research_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_research_run',
+        arguments: {
+          objective: 'trace ARR',
+          snapshot_id: 'snap-1',
+          workflow_version: 'wf-1 ',
+          budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details.reason,
+        'incomplete_create_research_identity',
+      );
+      assert.equal(res.result.structuredContent.details.field, 'workflow_version');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_research_run padded deal_id → incomplete_create_research_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_research_run',
+        arguments: {
+          objective: 'trace ARR',
+          snapshot_id: 'snap-1',
+          workflow_version: 'wf-1',
+          deal_id: ' deal-1 ',
+          budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details.reason,
+        'incomplete_create_research_identity',
+      );
+      assert.equal(res.result.structuredContent.details.field, 'deal_id');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_research_run padded progress openRequirementIds → incomplete_loop_requirement_identity',
     async () => {
       const res = await rpc('tools/call', {

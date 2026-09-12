@@ -473,6 +473,67 @@ function assertLoopProgressComplete(run: ResearchRunPayload, label: string): voi
   );
 }
 
+
+/**
+ * Backend createRunSchema / researchScopeSchema use evidenceId: blank or
+ * surrounding-padded snapshot/workflow/deal/session/root identities never
+ * certify a research run (same id-pad honesty as wake #281 / eligibleNote #297 /
+ * loopStop #304). Equal pads must not trim-launder into a sealed create.
+ */
+function assertCreateResearchIdentityComplete(args: Args | undefined): void {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return;
+  const required = ['snapshot_id', 'workflow_version'] as const;
+  for (const key of required) {
+    const value = (args as Record<string, unknown>)[key];
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `create_research_run.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_create_research_identity', field: key },
+          actionable:
+            'Pass non-blank unpadded snapshot_id and workflow_version; blank/padded ids never certify a research create.',
+        },
+      );
+    }
+  }
+  for (const key of ['deal_id', 'session_id', 'root_idempotency_key'] as const) {
+    if (!Object.prototype.hasOwnProperty.call(args, key)) continue;
+    const value = (args as Record<string, unknown>)[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `create_research_run.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'incomplete_create_research_identity', field: key },
+          actionable:
+            'Omit or pass non-blank unpadded deal/session/root identities; blank/padded ids never certify a research scope.',
+        },
+      );
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(args, 'root_operation_id')) {
+    const value = (args as Record<string, unknown>).root_operation_id;
+    if (value === undefined || value === null) {
+      // null means auto-open root — allowed
+    } else if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'create_research_run.root_operation_id is incomplete (blank/whitespace/padded)',
+        {
+          details: {
+            reason: 'incomplete_create_research_identity',
+            field: 'root_operation_id',
+          },
+          actionable:
+            'Pass null to auto-open, or a non-blank unpadded root_operation_id; pads never certify a shared root.',
+        },
+      );
+    }
+  }
+}
+
 function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
@@ -1323,6 +1384,9 @@ export const handlers: Record<string, ToolHandler> = {
         'objective, snapshot_id, workflow_version, and budget are required',
       );
     }
+    // Backend evidenceId / ResearchScope (#281/#297): padded create identities
+    // never certify a run — refuse before HTTP (never trim-launder).
+    assertCreateResearchIdentityComplete(args);
     // Backend #304: padded open requirement ids never certify a loop stop.
     assertRequirementIdListComplete(
       args?.open_requirement_ids,
