@@ -762,11 +762,12 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
 /**
  * C3/I4 + W3 optional idempotency_key: when present as string,
  * blank/whitespace/surrounding-padded never certifies a settle/link/attempt/
- * workflow publish-or-run replay pin — refuse before HTTP (same identityComplete
- * honesty as required open_operation_root / reserve_operation idempotency_key
- * after #83/#88). Shared by settle_operation (#92), link_operation_consumer (#94),
- * record_operation_attempt / resolve_operation_attempt (#95), and
- * publish_context_workflow / run_saved_workflow. Omit when not a string.
+ * workflow publish-or-run / provider-cost replay pin — refuse before HTTP (same
+ * identityComplete honesty as required open_operation_root / reserve_operation
+ * idempotency_key after #83/#88). Shared by settle_operation (#92),
+ * link_operation_consumer (#94), record_operation_attempt /
+ * resolve_operation_attempt (#95), publish_context_workflow /
+ * run_saved_workflow (#97), and get_provider_cost. Omit when not a string.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -780,7 +781,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -2981,6 +2982,9 @@ export const handlers: Record<string, ToolHandler> = {
         );
       }
     }
+    // C3/I4 after #92/#95/#97: optional padded idempotency_key never certifies
+    // a provider-cost replay pin (same helper as settle/attempt/workflow).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.getProviderCost({
         operation_ids: args.operation_ids as string[],

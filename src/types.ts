@@ -1234,6 +1234,10 @@ export interface GetConsumerUsageResponse {
 export interface GetProviderCostOptions {
   /** Non-blank unpadded entries; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_ids: string[];
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 

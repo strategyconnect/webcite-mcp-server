@@ -1825,7 +1825,7 @@ Credits: 1. HTTP: GET /api/v2/context/usage/consumer`,
   },
   {
     name: 'get_provider_cost',
-    description: `Provider spend for operations, measured on attempts — never derived from customer credits (I4). Blank/whitespace/surrounding-padded operation_ids → incomplete_operation_identity (never trim-launder).
+    description: `Provider spend for operations, measured on attempts — never derived from customer credits (I4). Blank/whitespace/surrounding-padded operation_ids → incomplete_operation_identity; blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified provider-cost aggregate or replay pin).
 
 Credits: 1. HTTP: POST /api/v2/context/usage/provider-cost`,
     inputSchema: {
@@ -1842,7 +1842,11 @@ Credits: 1. HTTP: POST /api/v2/context/usage/provider-cost`,
           description:
             'Non-blank unpadded operation ids. Blank/whitespace/surrounding-padded entries → incomplete_operation_identity (never trim-launder).',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a provider-cost replay pin).',
+        },
       },
       required: ['operation_ids'],
     },
