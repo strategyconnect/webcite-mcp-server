@@ -28,6 +28,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `get_change_impact` | `POST /api/v2/context/change-impact` | answer_revision_id | freshness observation | integrity | 0 | answer sources |
 | `create_evidence_packet` | `POST /api/v2/context/evidence-packets` | claim_text + bindings | packet_id + hashes | auth / missing binding | 0 | sealed server-built packet |
 | `assess_support` | `POST /api/v2/context/assess-support` | claim_revision_id, claim_hash, evidence_group_revision_id, tier? | SupportResult (tier-capped) | auth / missing ids | 0 | claim + claim hashes |
+| `number_inventory` | `POST /api/v2/context/numbers/inventory` | occurrences[] (recognition_state required) | counts + coverage + occurrences | incomplete → `number_inventory_incomplete` | 0 | occurrence id (not magnitude) |
 | `find_contradictions` | `POST /api/v2/context/contradictions` | claims[] | count + pairs | auth / <2 claims | 0 | intervals + values |
 | `formal_eligibility` | `POST /api/v2/context/formal/eligibility` | decimal/unit/scale/basis_reviewed/recognition | eligible + scaling_ok | auth / invalid recognition | 0 | — |
 | `formal_check` | `POST /api/v2/context/formal/check` | source (+ optional toolchain/digest) | status + toolchain + digests | auth / missing source | 0 | Lean template text |
