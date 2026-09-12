@@ -572,15 +572,16 @@ function validateNumberInventoryOccurrence(
       `${label}.normalized_decimal must be string|null`,
     );
   }
-  // Backend #278/#282: non-null blank/whitespace or padded magnitude is incomplete.
-  if (typeof decimal === 'string' && (!decimal.trim() || decimal !== decimal.trim())) {
+  // Backend #278/#282: non-null blank/whitespace or surrounding-padded decimal
+  // is not a certified magnitude (" 12.5 " must not certify as 12.5 after trim).
+  if (typeof decimal === 'string' && !occurrenceIdentityComplete(decimal)) {
     throw new ToolFailure(
       'invalid_api_output',
-      `${label}.normalized_decimal is incomplete (blank/whitespace)`,
+      `${label}.normalized_decimal is incomplete (blank/padded)`,
       {
         details: { reason: 'blank_normalized_decimal' },
         actionable:
-          'Blank/whitespace or surrounding-padded normalized_decimal is incomplete (blank_normalized_decimal); do not invent a magnitude. null is allowed (no claimed magnitude).',
+          'Blank/whitespace or surrounding-padded normalized_decimal is incomplete (blank_normalized_decimal); do not invent or strip a magnitude. null is allowed (no claimed magnitude).',
       },
     );
   }

@@ -886,7 +886,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank raw/non-null blank normalized_decimal/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank raw/non-null blank or surrounding-padded normalized_decimal/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -921,12 +921,12 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
               normalized_decimal: {
                 type: ['string', 'null'],
                 description:
-                  'Optional magnitude; non-null blank/whitespace → blank_normalized_decimal. null allowed.',
+                  'Optional magnitude; non-null blank/whitespace or surrounding-padded → blank_normalized_decimal. null allowed.',
               },
               normalizedDecimal: {
                 type: ['string', 'null'],
                 description:
-                  'Alias of normalized_decimal; non-null blank/whitespace → blank_normalized_decimal.',
+                  'Alias of normalized_decimal; non-null blank/padded → blank_normalized_decimal.',
               },
               interpretation: {
                 type: 'string',
