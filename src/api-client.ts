@@ -433,10 +433,10 @@ export class WebCiteApiClient {
   }
 
   async getChangeImpact(options: ChangeImpactOptions): Promise<ChangeImpactResponse> {
-    const { idempotency_key, answer_revision_id } = options;
+    const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/change-impact',
-      { method: 'POST', body: JSON.stringify({ answer_revision_id }) },
+      { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );
   }

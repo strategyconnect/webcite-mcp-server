@@ -608,21 +608,40 @@ export function formatResolveFragmentUses(result: ResolveFragmentUsesResponse): 
 }
 
 export function formatChangeImpact(result: ChangeImpactResponse): string {
-  const f = result.freshness;
   const parts: string[] = [];
   parts.push(`# Change Impact\n`);
-  parts.push(`**Answer revision:** ${result.answer_revision_id}`);
-  parts.push(`**Coverage:** ${f.coverage}`);
-  if (f.observation) parts.push(`**Observation:** ${f.observation}`);
-  parts.push(`**Affected claims:** ${f.claimRevisionIds.length}`);
-  f.claimRevisionIds.forEach((id) => parts.push(`- ${id}`));
-  if (f.unresolvedSourceVersionIds.length) {
-    parts.push(`\n**Unresolved sources:**`);
-    f.unresolvedSourceVersionIds.forEach((id) => parts.push(`- ${id}`));
+  if (result.answer_revision_id) {
+    parts.push(`**Answer revision:** ${result.answer_revision_id}`);
   }
-  if (f.reasons.length) {
-    parts.push(`\n**Reasons:**`);
-    f.reasons.forEach((r) => parts.push(`- ${r}`));
+  if (result.packet_id) {
+    parts.push(`**Packet:** ${result.packet_id}`);
+  }
+  if (result.freshness) {
+    const f = result.freshness;
+    parts.push(`**Freshness coverage:** ${f.coverage}`);
+    if (f.observation) parts.push(`**Observation:** ${f.observation}`);
+    parts.push(`**Affected claims:** ${f.claimRevisionIds.length}`);
+    f.claimRevisionIds.forEach((id) => parts.push(`- ${id}`));
+    if (f.unresolvedSourceVersionIds.length) {
+      parts.push(`\n**Unresolved sources:**`);
+      f.unresolvedSourceVersionIds.forEach((id) => parts.push(`- ${id}`));
+    }
+    if (f.reasons.length) {
+      parts.push(`\n**Reasons:**`);
+      f.reasons.forEach((r) => parts.push(`- ${r}`));
+    }
+  }
+  if (result.packet_impact) {
+    const p = result.packet_impact;
+    parts.push(`**Packet impact coverage:** ${p.coverage}`);
+    parts.push(`**Affected consumers:** ${p.affectedConsumerIds.length}`);
+    p.affectedConsumerIds.forEach((id) => parts.push(`- ${id}`));
+    if (p.inWindow !== null) {
+      parts.push(`**In window:** ${p.inWindow ? 'yes' : 'no'}`);
+    }
+    if (p.unresolved.length) {
+      parts.push(`**Unresolved:** ${p.unresolved.join(', ')}`);
+    }
   }
   return parts.join('\n');
 }

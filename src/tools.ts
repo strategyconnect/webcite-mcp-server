@@ -717,7 +717,7 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
   },
   {
     name: 'get_change_impact',
-    description: `Inspect freshness/change impact for an immutable answer revision. Historical answer content stays sealed; this returns observational coverage only.
+    description: `Inspect freshness and/or packet change impact (W3). Pass answer_revision_id for sealed-answer freshness, and/or changed_ids (+ optional links/packet_id/window) for packet dependency impact. Incomplete sealed-packet or dependency graphs fail closed as change_impact_incomplete — never silent empty "no impact". Historical answer content stays sealed.
 
 Credits: 1. HTTP: POST /api/v2/context/change-impact`,
     inputSchema: {
@@ -725,14 +725,49 @@ Credits: 1. HTTP: POST /api/v2/context/change-impact`,
       properties: {
         answer_revision_id: {
           type: 'string',
-          description: 'Answer revision to inspect for source change impact.',
+          description: 'Answer revision to inspect for source freshness/change impact.',
+        },
+        packet_id: {
+          type: 'string',
+          description:
+            'Optional sealed packet id. When set with changed_ids, missing packets fail closed (change_impact_incomplete).',
+        },
+        changed_ids: {
+          type: 'array',
+          description: 'Changed source/node ids for packet dependency impact (requires non-empty array).',
+          items: { type: 'string' },
+        },
+        links: {
+          type: 'array',
+          description:
+            'Dependency links (source_id → consumer_id). Omit or incomplete endpoints fail closed — never certified empty impact.',
+          items: {
+            type: 'object',
+            properties: {
+              source_id: { type: 'string' },
+              consumer_id: { type: 'string' },
+            },
+            required: ['source_id', 'consumer_id'],
+          },
+        },
+        observed_at_ms: {
+          type: ['number', 'null'],
+          description: 'Observation time for optional impact window (null is unresolved).',
+        },
+        window: {
+          type: 'object',
+          description: 'Half-open observation window { start_ms, end_ms }.',
+          properties: {
+            start_ms: { type: 'number' },
+            end_ms: { type: 'number' },
+          },
+          required: ['start_ms', 'end_ms'],
         },
         idempotency_key: {
           type: 'string',
           description: 'Logical idempotency key. Not a scope field.',
         },
       },
-      required: ['answer_revision_id'],
     },
   },
   {
