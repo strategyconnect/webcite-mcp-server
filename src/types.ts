@@ -537,6 +537,11 @@ export interface CreateEvidencePacketOptions {
    * padded_claim_text (#314 honesty; never trim-launder into a sealed assertion).
    */
   claim_text: string;
+  /**
+   * Optional operator class label. Blank/whitespace/surrounding-padded →
+   * padded_operator_class (never trim-launder into a sealed class; same honesty
+   * as claim_text #76 / binding snippet #81). Restores #85 after #86 squash.
+   */
   operator_class?: string;
   /**
    * Binding ids must be non-blank unpadded; blank/padded → incomplete_binding_identity (#264/#279).

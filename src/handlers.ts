@@ -246,6 +246,29 @@ function assertClaimTextComplete(text: unknown): asserts text is string {
 }
 
 /**
+ * W3 create_evidence_packet: optional operator_class, when present as string,
+ * blank/whitespace or surrounding-padded never seals into a certified operator
+ * class — refuse before HTTP so equal pads cannot trim-launder into the same
+ * sealed class as clean text (same honesty as claim_text #76 / binding snippet #81).
+ * Restores #85 after #86 squash clobber.
+ */
+function assertOptionalOperatorClassComplete(operatorClass: unknown): void {
+  // Optional: omit when not a string (same gate shape as binding snippet #81).
+  if (typeof operatorClass !== 'string') return;
+  if (!selectTextComplete(operatorClass)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'operator_class is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'padded_operator_class', field: 'operator_class' },
+        actionable:
+          'Blank/whitespace/padded operator_class never seals an evidence packet; omit operator_class or pass non-blank unpadded text.',
+      },
+    );
+  }
+}
+
+/**
  * C3 create_research_run: blank/whitespace or surrounding-padded objective
  * never certifies a research run purpose — refuse before HTTP so equal pads
  * cannot trim-launder into the same durable objective as clean text (same
@@ -1712,6 +1735,9 @@ export const handlers: Record<string, ToolHandler> = {
     // W3: refuse padded/blank claim_text before HTTP — never trim-launder into
     // a certified sealed packet assertion (same honesty as selectPassage #314).
     assertClaimTextComplete(args?.claim_text);
+    // W3: optional operator_class pads never seal into a certified class label
+    // (restores #85 after #86 squash clobber).
+    assertOptionalOperatorClassComplete(args?.operator_class);
     const claimText = args.claim_text;
     const bindings = args?.bindings;
     if (!Array.isArray(bindings) || bindings.length === 0) {
