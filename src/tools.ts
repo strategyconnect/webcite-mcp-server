@@ -1093,16 +1093,26 @@ Credits: 1. HTTP: POST /api/v2/context/formal/check`,
   },
   {
     name: 'create_claim_relation',
-    description: `Persist a formalized claim relation (C1). Unrecognised predicates are refused.
+    description: `Persist a formalized claim relation (C1). Unrecognised predicates are refused. Blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity; blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog relation).
 
 Credits: 1. HTTP: POST /api/v2/context/claim-relations`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         predicate: { type: 'string' },
-        argument_ids: { type: 'array', items: { type: 'string' }, minItems: 1 },
+        argument_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          description:
+            'Non-blank unpadded argument ids. Blank/whitespace/surrounding-padded → incomplete_claim_argument_identity (never trim-launder).',
+        },
         arguments_resolved: { type: 'boolean' },
-        claim_revision_id: { type: ['string', 'null'] },
+        claim_revision_id: {
+          type: ['string', 'null'],
+          description:
+            'Optional non-blank unpadded claim revision id. Blank/whitespace/surrounding-padded → incomplete_claim_revision_identity (never trim-launder).',
+        },
         idempotency_key: { type: 'string' },
       },
       required: ['predicate', 'argument_ids', 'arguments_resolved'],
@@ -1110,14 +1120,18 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations`,
   },
   {
     name: 'list_claim_relations',
-    description: `List persisted claim relations for the authenticated tenant (C1).
+    description: `List persisted claim relations for the authenticated tenant (C1). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog filter).
 
 Credits: 1. HTTP: GET /api/v2/context/claim-relations`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         predicate: { type: 'string' },
-        claim_revision_id: { type: 'string' },
+        claim_revision_id: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded claim revision id filter. Blank/whitespace/surrounding-padded → incomplete_claim_revision_identity (never trim-launder).',
+        },
       },
     },
   },
@@ -1196,14 +1210,20 @@ Credits: 1. HTTP: POST /api/v2/context/claim-structure/resolve-definition`,
   },
   {
     name: 'formalize_claim_relation',
-    description: `Dry-run formalize a claim relation without persisting (C1). Unrecognised predicates or unresolved args return formalized:false.
+    description: `Dry-run formalize a claim relation without persisting (C1). Unrecognised predicates or unresolved args return formalized:false. Blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity (never trim-launder into a certified formalize).
 
 Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         predicate: { type: 'string' },
-        argument_ids: { type: 'array', items: { type: 'string' }, minItems: 1 },
+        argument_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          description:
+            'Non-blank unpadded argument ids. Blank/whitespace/surrounding-padded → incomplete_claim_argument_identity (never trim-launder).',
+        },
         arguments_resolved: { type: 'boolean' },
         idempotency_key: { type: 'string' },
       },

@@ -734,8 +734,10 @@ export interface FormalCheckResponse {
 
 export interface CreateClaimRelationOptions {
   predicate: string;
+  /** Non-blank unpadded; blank/padded → incomplete_claim_argument_identity. */
   argument_ids: string[];
   arguments_resolved: boolean;
+  /** Non-blank unpadded when set; blank/padded → incomplete_claim_revision_identity. */
   claim_revision_id?: string | null;
   idempotency_key?: string;
 }
@@ -754,6 +756,7 @@ export interface CreateClaimRelationResponse {
 
 export interface ListClaimRelationsOptions {
   predicate?: string;
+  /** Non-blank unpadded when set; blank/padded → incomplete_claim_revision_identity. */
   claim_revision_id?: string;
 }
 
@@ -1254,6 +1257,7 @@ export interface ClaimStructureResolveDefinitionResponse {
 
 export interface FormalizeClaimRelationOptions {
   predicate: string;
+  /** Non-blank unpadded; blank/padded → incomplete_claim_argument_identity. */
   argument_ids: string[];
   arguments_resolved: boolean;
   idempotency_key?: string;

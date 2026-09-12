@@ -763,6 +763,62 @@ function assertExpandSeedGraphComplete(args: {
   }
 }
 
+/**
+ * C1 claim-relation argument / claim_revision ids: blank/whitespace/surrounding-
+ * padded argument_ids or claim_revision_id must never trim-launder into a
+ * certified catalog create/list/formalize (same identityComplete honesty as
+ * expand_seeds #68 / assess_support claim ids / W3 #264/#279).
+ */
+function assertClaimRelationArgumentIdsComplete(argumentIds: unknown): asserts argumentIds is string[] {
+  const reason = 'incomplete_claim_argument_identity';
+  const actionable =
+    'Blank/whitespace/padded claim-relation argument_ids never certify a relation; do not invent or trim-launder argument hits.';
+  if (!Array.isArray(argumentIds) || argumentIds.length === 0) {
+    throw new ToolFailure('invalid_argument', 'argument_ids must be a non-empty array', {
+      details: { reason, field: 'argument_ids' },
+      actionable,
+    });
+  }
+  for (let i = 0; i < argumentIds.length; i++) {
+    const id = argumentIds[i];
+    if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `argument_ids[${i}] is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason, field: 'argument_ids', index: i },
+          actionable,
+        },
+      );
+    }
+  }
+}
+
+function assertOptionalClaimRevisionIdComplete(
+  value: unknown,
+): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'claim_revision_id is incomplete (blank/whitespace/padded)',
+      {
+        details: {
+          reason: 'incomplete_claim_revision_identity',
+          field: 'claim_revision_id',
+        },
+        actionable:
+          'Blank/whitespace/padded claim_revision_id never certifies a claim-relation hit; do not invent or trim-launder a revision hit.',
+      },
+    );
+  }
+  return value;
+}
 
 /**
  * Backend createRunSchema / researchScopeSchema use evidenceId: blank or
@@ -1668,21 +1724,24 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   create_claim_relation: async (args, client) => {
-    if (typeof args?.predicate !== 'string' || !Array.isArray(args?.argument_ids)) {
+    if (typeof args?.predicate !== 'string') {
       throw new ToolFailure('invalid_argument', 'predicate and argument_ids are required');
     }
     if (typeof args?.arguments_resolved !== 'boolean') {
       throw new ToolFailure('invalid_argument', 'arguments_resolved is required');
     }
+    // C1: never trim-launder padded argument_ids / claim_revision_id into a
+    // certified persisted claim relation.
+    assertClaimRelationArgumentIdsComplete(args?.argument_ids);
+    const claimRevisionId = assertOptionalClaimRevisionIdComplete(
+      args?.claim_revision_id,
+    );
     const raw = await wrapApi(
       client.createClaimRelation({
         predicate: args.predicate,
-        argument_ids: args.argument_ids as string[],
+        argument_ids: args.argument_ids,
         arguments_resolved: args.arguments_resolved,
-        claim_revision_id:
-          typeof args?.claim_revision_id === 'string' || args?.claim_revision_id === null
-            ? (args.claim_revision_id as string | null)
-            : undefined,
+        claim_revision_id: claimRevisionId,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),
@@ -1695,11 +1754,29 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   list_claim_relations: async (args, client) => {
+    // C1: padded optional claim_revision_id never trim-launders into a catalog filter.
+    let claimRevisionId: string | undefined;
+    if (typeof args?.claim_revision_id === 'string') {
+      if (!wakeIdentityComplete(args.claim_revision_id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          'claim_revision_id is incomplete (blank/whitespace/padded)',
+          {
+            details: {
+              reason: 'incomplete_claim_revision_identity',
+              field: 'claim_revision_id',
+            },
+            actionable:
+              'Blank/whitespace/padded claim_revision_id never certifies a claim-relation hit; do not invent or trim-launder a revision hit.',
+          },
+        );
+      }
+      claimRevisionId = args.claim_revision_id;
+    }
     const raw = await wrapApi(
       client.listClaimRelations({
         predicate: typeof args?.predicate === 'string' ? args.predicate : undefined,
-        claim_revision_id:
-          typeof args?.claim_revision_id === 'string' ? args.claim_revision_id : undefined,
+        claim_revision_id: claimRevisionId,
       }),
     );
     const validated = validateListClaimRelations(raw);
@@ -1806,16 +1883,18 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   formalize_claim_relation: async (args, client) => {
-    if (typeof args?.predicate !== 'string' || !Array.isArray(args?.argument_ids)) {
+    if (typeof args?.predicate !== 'string') {
       throw new ToolFailure('invalid_argument', 'predicate and argument_ids are required');
     }
     if (typeof args?.arguments_resolved !== 'boolean') {
       throw new ToolFailure('invalid_argument', 'arguments_resolved is required');
     }
+    // C1: never trim-launder padded argument_ids into a certified formalize dry-run.
+    assertClaimRelationArgumentIdsComplete(args?.argument_ids);
     const raw = await wrapApi(
       client.formalizeClaimRelation({
         predicate: args.predicate,
-        argument_ids: args.argument_ids as string[],
+        argument_ids: args.argument_ids,
         arguments_resolved: args.arguments_resolved,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,

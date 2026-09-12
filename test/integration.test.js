@@ -2279,6 +2279,176 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(listed, /Count:\*\* 1/);
   });
 
+  await t.test(
+    'create_claim_relation surrounding-padded argument_ids → incomplete_claim_argument_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: [' a ', 'b'],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_argument_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'argument_ids');
+      assert.equal(res.result.structuredContent.details?.index, 0);
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified relation',
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation equal-pad argument_ids → incomplete_claim_argument_identity (never create)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: [' a ', ' a '],
+          arguments_resolved: true,
+          claim_revision_id: 'claim-1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_argument_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation whitespace-only argument_ids → incomplete_claim_argument_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['   '],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_argument_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation surrounding-padded claim_revision_id → incomplete_claim_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+          claim_revision_id: ' claim-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_revision_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'claim_revision_id');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'list_claim_relations surrounding-padded claim_revision_id → incomplete_claim_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'list_claim_relations',
+        arguments: { claim_revision_id: ' claim-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formalize_claim_relation surrounding-padded argument_ids → incomplete_claim_argument_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formalize_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['a', ' b '],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_argument_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.index, 1);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => r.path === '/api/v2/context/claim-relations/formalize'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #69 resolve_seeds padded_resolve_text must stay fail-closed.
+  await t.test(
+    'resolve_seeds surrounding-padded text still → padded_resolve_text (#69 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: { text: ' revenue ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_text');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('create_metric_definition and list_metric_definitions hit catalog routes', async () => {
     const created = await call('create_metric_definition', {
       definition: { revisionId: 'def-1-r1', metric: 'total_revenue' },
