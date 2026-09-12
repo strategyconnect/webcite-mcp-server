@@ -1215,7 +1215,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
+    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. When run.wait is set, subjectId and subjectRevisionId must be non-blank (whitespace → incomplete_wake_subject_identity; equal blanks never wake). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
@@ -1223,7 +1223,11 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
       properties: {
         run_id: { type: 'string' },
         expected_revision: { type: 'number' },
-        run: { type: 'object', description: 'Full ResearchRun payload' },
+        run: {
+          type: 'object',
+          description:
+            'Full ResearchRun payload. Optional wait requires non-blank subjectId + subjectRevisionId (blank/whitespace → incomplete_wake_subject_identity).',
+        },
         idempotency_key: { type: 'string' },
       },
       required: ['run_id', 'expected_revision', 'run'],

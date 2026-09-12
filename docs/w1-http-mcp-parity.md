@@ -42,7 +42,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget (+ optional root) | run (+ opened_root when auto) | auth; `CONTEXT_GRAPH_RESEARCH` off → refuse | 0 | research scope |
 | `list_research_runs` | `GET /api/v2/context/research-runs` | — (tenant from API key) | runs[] | flag off → refuse; empty when none | 0 | tenant catalog; `CONTEXT_GRAPH_RESEARCH` |
 | `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404; flag off → refuse | 0 | run id; `CONTEXT_GRAPH_RESEARCH` |
-| `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale; flag off → refuse | 0 | checkpoint CAS; `CONTEXT_GRAPH_RESEARCH` |
+| `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run (wait subjectId/subjectRevisionId non-blank) | run | 409 stale; blank/whitespace wait subject → `incomplete_wake_subject_identity`; flag off → refuse | 0 | checkpoint CAS; `CONTEXT_GRAPH_RESEARCH` |
 | `resolve_seeds` | `POST /api/v2/context/resolve-seeds` | text, filters?, index? (omit → SQL catalog) | candidates + leading_resolver + index_source | auth | 0 | ClaimScope seeds |
 | `expand_seeds` | `POST /api/v2/context/expand-seeds` | seeds, edges, allowed, hops? | expanded seed ids (≤2 hops) | auth | 0 | authorized graph ids |
 | `learning_judge` | `POST /api/v2/context/learning/judge` | verdict, attempts, hard_failures? | action | auth | 0 | — |
@@ -75,4 +75,4 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 - Unknown MCP tool / malformed envelope → protocol error; API/business failures → `isError: true`.
 - `private_gold_denied: true` is intentional for A_EVAL_CATALOG transport; gold stays off the wire.
 - Engine rollback: turn off `CONTEXT_GRAPH_RETRIEVE`; sealed revisions remain readable via v2 resolve routes.
-- C3 research HTTP/MCP stays dark until `CONTEXT_GRAPH_RESEARCH=1|true` (default off); create/list/get/checkpoint/reserve refuse fail-closed.
+- C3 research HTTP/MCP stays dark until `CONTEXT_GRAPH_RESEARCH=1|true` (default off); create/list/get/checkpoint/reserve refuse fail-closed. Blank/whitespace wait `subjectId`/`subjectRevisionId` never wake (incomplete_wake_subject_identity).

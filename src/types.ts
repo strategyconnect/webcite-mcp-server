@@ -761,11 +761,22 @@ export interface CreateResearchRunOptions {
   idempotency_key?: string;
 }
 
+export interface ResearchWaitCondition {
+  kind: 'source_ready' | 'review_recorded' | string;
+  /** Non-blank; whitespace → incomplete_wake_subject_identity (backend #268). */
+  subjectId: string;
+  /** Non-blank; whitespace → incomplete_wake_subject_identity (backend #268). */
+  subjectRevisionId: string;
+  expiresAtMs: number;
+}
+
 export interface ResearchRunPayload {
   id: string;
   checkpointRevision: number;
   objective: string;
   phase: string;
+  /** When set, subjectId + subjectRevisionId must be non-blank. */
+  wait?: ResearchWaitCondition | null;
   [key: string]: unknown;
 }
 
