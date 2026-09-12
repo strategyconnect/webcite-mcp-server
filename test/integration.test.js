@@ -4116,6 +4116,78 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(listed, /Count:\*\* 1/);
   });
 
+  await t.test(
+    'create_metric_definition surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_metric_definition',
+        arguments: {
+          definition: { revisionId: 'def-pad-1', metric: 'total_revenue' },
+          idempotency_key: ' metric-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/metric-definitions'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_metric_definition whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_metric_definition',
+        arguments: {
+          definition: { revisionId: 'def-pad-2', metric: 'total_revenue' },
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/metric-definitions'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_metric_definition equal-pad idempotency_key → incomplete_operation_idempotency_identity (never create)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_metric_definition',
+        arguments: {
+          definition: { revisionId: 'def-pad-3', metric: 'total_revenue' },
+          idempotency_key: ' metric-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/metric-definitions'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('claim_structure and formalize tools hit C1 routes', async () => {
     const tier = await call('claim_structure_tier', {
       assertion: { text: 'ARR is $10m', scope: { metric: 'ARR' } },
@@ -6006,6 +6078,138 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       );
       assert.equal(
         seen.slice(before).find((r) => r.path === '/api/v2/context/formal/check'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'number_inventory surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#112 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'occ-1',
+              raw: '10',
+              fragment_id: 'frag-a',
+              normalized_decimal: '10',
+              interpretation: 'unknown',
+              method: 'native',
+              recognition_state: 'read',
+            },
+          ],
+          idempotency_key: ' inv-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#111 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          idempotency_key: ' frag-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_seeds surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#114 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          idempotency_key: ' resolve-seeds-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#115 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+          idempotency_key: ' rel-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'expand_seeds surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#116 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'expand_seeds',
+        arguments: {
+          seeds: ['a'],
+          edges: [{ from: 'a', to: 'b' }],
+          allowed: ['a', 'b'],
+          idempotency_key: ' expand-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/expand-seeds'),
         undefined,
       );
     },

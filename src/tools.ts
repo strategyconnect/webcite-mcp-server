@@ -1189,7 +1189,7 @@ Credits: 1. HTTP: GET /api/v2/context/claim-relations`,
   },
   {
     name: 'create_metric_definition',
-    description: `Persist an immutable metric definition revision (C1c).
+    description: `Persist an immutable metric definition revision (C1c). Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified metric-definition create/replay pin; same honesty as settle/number_inventory #92/#112). Lean formal_check source trailing newlines are out of scope for this tool.
 
 Credits: 1. HTTP: POST /api/v2/context/metric-definitions`,
     inputSchema: {
