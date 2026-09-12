@@ -513,9 +513,40 @@ export const handlers: Record<string, ToolHandler> = {
     if (args.fragments !== undefined && !Array.isArray(args.fragments)) {
       throw new ToolFailure('invalid_argument', 'fragments must be an array when provided');
     }
+    const packetId =
+      typeof args?.packet_id === 'string' ? args.packet_id.trim() : '';
+    const answerRevisionId =
+      typeof args?.answer_revision_id === 'string' ? args.answer_revision_id.trim() : '';
+    if (packetId && answerRevisionId) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'packet_id and answer_revision_id are mutually exclusive',
+        {
+          actionable: 'Pass exactly one of packet_id or answer_revision_id for a sealed catalog.',
+        },
+      );
+    }
+    const hasClientRows =
+      (Array.isArray(args.fragments) && args.fragments.length > 0) ||
+      (Array.isArray(args.groups) && args.groups.length > 0) ||
+      (Array.isArray(args.links) && args.links.length > 0) ||
+      (Array.isArray(args.allowed_fragment_ids) && args.allowed_fragment_ids.length > 0) ||
+      (Array.isArray(args.consumers) && args.consumers.length > 0);
+    if ((packetId || answerRevisionId) && hasClientRows) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'sealed_catalog_rejects_client_rows: omit fragments/groups/links when packet_id or answer_revision_id is set',
+        {
+          actionable:
+            'Omit fragments, groups, links, consumers, and allowed_fragment_ids when using a sealed id.',
+        },
+      );
+    }
     const raw = await wrapApi(
       client.resolveFragmentUses({
         selector: args.selector as Record<string, unknown>,
+        ...(packetId ? { packet_id: packetId } : {}),
+        ...(answerRevisionId ? { answer_revision_id: answerRevisionId } : {}),
         fragments: Array.isArray(args.fragments) ? args.fragments : undefined,
         groups: Array.isArray(args.groups) ? args.groups : undefined,
         links: Array.isArray(args.links) ? args.links : undefined,

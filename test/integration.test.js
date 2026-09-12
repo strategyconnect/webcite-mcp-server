@@ -425,7 +425,7 @@ function startStub(options = {}) {
         }
       }
 
-      // Dynamic resolve_fragment_uses refuse for unsupported selector kinds
+      // Dynamic resolve_fragment_uses refuse for unsupported selector kinds / sealed echo
       if (url.pathname === '/api/v2/context/fragments/resolve-uses' && body) {
         try {
           const parsed = JSON.parse(body);
@@ -438,6 +438,32 @@ function startStub(options = {}) {
                 matches: [],
                 nextCursor: null,
                 engine: 'context_graph',
+              }),
+            );
+            return;
+          }
+          if (parsed?.packet_id || parsed?.answer_revision_id) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                status: 'ok',
+                matches: [
+                  {
+                    matchKind: 'contains',
+                    fragmentId: 'passage',
+                    groupIds: ['g1'],
+                    linkIds: ['link-1'],
+                    consumerIds: [],
+                    useAge: 'current',
+                    semanticSupport: false,
+                  },
+                ],
+                nextCursor: null,
+                engine: 'context_graph',
+                ...(parsed.packet_id ? { packet_id: parsed.packet_id } : {}),
+                ...(parsed.answer_revision_id
+                  ? { answer_revision_id: parsed.answer_revision_id }
+                  : {}),
               }),
             );
             return;
@@ -924,6 +950,42 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /passage/);
     assert.match(text, /contains/);
     assert.match(text, /semanticSupport=false/);
+  });
+
+  await t.test('resolve_fragment_uses posts sealed packet_id without client catalog', async () => {
+    const text = await call('resolve_fragment_uses', {
+      selector: {
+        kind: 'tokens',
+        representationId: 'rep-1',
+        first: 12,
+        lastExclusive: 13,
+      },
+      packet_id: 'packet-sealed-1',
+      idempotency_key: 'frag-sealed-1',
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/fragments/resolve-uses');
+    assert.equal(req.body.packet_id, 'packet-sealed-1');
+    assert.equal(req.body.fragments, undefined);
+    assert.equal(req.idempotencyKey, 'frag-sealed-1');
+    assert.match(text, /Packet ID:\*\* packet-sealed-1/);
+    assert.match(text, /semanticSupport=false/);
+  });
+
+  await t.test('resolve_fragment_uses posts sealed answer_revision_id', async () => {
+    const text = await call('resolve_fragment_uses', {
+      selector: {
+        kind: 'tokens',
+        representationId: 'rep-1',
+        first: 12,
+        lastExclusive: 13,
+      },
+      answer_revision_id: 'answer-sealed-1',
+    });
+    const req = seen.at(-1);
+    assert.equal(req.body.answer_revision_id, 'answer-sealed-1');
+    assert.equal(req.body.packet_id, undefined);
+    assert.match(text, /Answer revision:\*\* answer-sealed-1/);
   });
 
   await t.test('create_evidence_packet posts context inputs and returns packet id', async () => {
@@ -1539,6 +1601,34 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.isError, true);
     assert.match(res.result.content[0].text, /invalid_argument/);
     assert.equal(res.result.structuredContent.code, 'invalid_argument');
+  });
+
+  await t.test('resolve_fragment_uses sealed id + client rows → invalid_argument', async () => {
+    const res = await rpc('tools/call', {
+      name: 'resolve_fragment_uses',
+      arguments: {
+        selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+        packet_id: 'packet-sealed-1',
+        fragments: [{ id: 'sneak' }],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'invalid_argument');
+    assert.match(res.result.content[0].text, /sealed_catalog_rejects_client_rows/);
+  });
+
+  await t.test('resolve_fragment_uses packet_id + answer_revision_id → invalid_argument', async () => {
+    const res = await rpc('tools/call', {
+      name: 'resolve_fragment_uses',
+      arguments: {
+        selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+        packet_id: 'packet-1',
+        answer_revision_id: 'answer-1',
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'invalid_argument');
+    assert.match(res.result.content[0].text, /mutually exclusive/);
   });
 
   await t.test('invalid API output → isError invalid_api_output', async () => {

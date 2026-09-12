@@ -583,6 +583,10 @@ export function formatResolveFragmentUses(result: ResolveFragmentUsesResponse): 
   const parts: string[] = [];
   parts.push(`# Fragment Uses\n`);
   parts.push(`**Status:** ${result.status}`);
+  if (result.packet_id) parts.push(`**Packet ID:** ${result.packet_id}`);
+  if (result.answer_revision_id) {
+    parts.push(`**Answer revision:** ${result.answer_revision_id}`);
+  }
   if (result.status === 'refuse') {
     parts.push(`Successful refuse — no invented uses.`);
     if (result.reason) parts.push(`**Reason:** ${result.reason}`);

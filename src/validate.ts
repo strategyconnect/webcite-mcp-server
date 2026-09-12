@@ -274,6 +274,9 @@ export function validateResolveFragmentUses(raw: unknown): ResolveFragmentUsesRe
     matches,
     nextCursor,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
+    packet_id: typeof root.packet_id === 'string' ? root.packet_id : undefined,
+    answer_revision_id:
+      typeof root.answer_revision_id === 'string' ? root.answer_revision_id : undefined,
   };
 }
 

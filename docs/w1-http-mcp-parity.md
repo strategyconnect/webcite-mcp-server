@@ -24,7 +24,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `get_evidence_packet` | `GET /api/v2/evidence-packets/:id` | packetId | `ResolvedPacket` + numbered_refs | A_PACKET_REVISION integrity | 0 | packet id + contentHash |
 | `query_context` | `POST /api/v2/context/query` | text, source_texts/ids, filters | refs + plan + presentation | `refuse` ≠ HTTP error | 0 | sourceVersionId / nodeId |
 | `compare_assertions` | `POST /api/v2/context/compare-assertions` | left/right ClaimScope | `same\|different\|unknown` | auth | 0 | scopes only |
-| `resolve_fragment_uses` | `POST /api/v2/context/fragments/resolve-uses` | selector, fragments?/groups?/links?/consumers?, cursor, limit | matches + matchKind + ids; `semanticSupport:false` | refuse ≠ invent; unsupported kind | 0 | representationId + authorized catalog |
+| `resolve_fragment_uses` | `POST /api/v2/context/fragments/resolve-uses` | selector; optional `packet_id` xor `answer_revision_id`; else fragments?/groups?/links?/consumers?; cursor, limit | matches + matchKind + ids; `semanticSupport:false`; echoes sealed id | refuse ≠ invent; unsupported kind; sealed id + client rows → `invalid_argument` | 0 | representationId + sealed packet/answer or authorized catalog |
 | `get_change_impact` | `POST /api/v2/context/change-impact` | answer_revision_id | freshness observation | integrity | 0 | answer sources |
 | `create_evidence_packet` | `POST /api/v2/context/evidence-packets` | claim_text + bindings | packet_id + hashes | auth / missing binding | 0 | sealed server-built packet |
 | `assess_support` | `POST /api/v2/context/assess-support` | claim_revision_id, claim_hash, evidence_group_revision_id, tier? | SupportResult (tier-capped) | auth / missing ids | 0 | claim + claim hashes |

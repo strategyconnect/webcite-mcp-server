@@ -645,7 +645,7 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
   },
   {
     name: 'resolve_fragment_uses',
-    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure.
+    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set.
 
 Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
     inputSchema: {
@@ -656,30 +656,45 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
           description:
             'FragmentSelector with kind (tokens|image) and representationId. Unsupported kinds refuse.',
         },
+        packet_id: {
+          type: 'string',
+          description:
+            'Sealed evidence packet id — catalog loaded server-side. Mutually exclusive with answer_revision_id; omit client catalog rows.',
+        },
+        answer_revision_id: {
+          type: 'string',
+          description:
+            'Sealed answer revision id — evidence catalog loaded server-side. Mutually exclusive with packet_id; omit client catalog rows.',
+        },
         fragments: {
           type: 'array',
-          description: 'Optional authorized SourceFragment catalog (empty → no matches).',
+          description:
+            'Optional authorized SourceFragment catalog (empty → no matches). Forbidden when packet_id or answer_revision_id is set.',
           items: { type: 'object' },
         },
         groups: {
           type: 'array',
-          description: 'Optional EvidenceGroup rows for groupIds on matches.',
+          description:
+            'Optional EvidenceGroup rows for groupIds on matches. Forbidden when a sealed id is set.',
           items: { type: 'object' },
         },
         links: {
           type: 'array',
-          description: 'Optional EvidenceLink rows for linkIds on matches.',
+          description:
+            'Optional EvidenceLink rows for linkIds on matches. Forbidden when a sealed id is set.',
           items: { type: 'object' },
         },
         consumers: {
           type: 'array',
-          description: 'Optional consumer rows (fragment_id/consumer_id/use_age).',
+          description:
+            'Optional consumer rows (fragment_id/consumer_id/use_age). Forbidden when a sealed id is set.',
           items: { type: 'object' },
         },
         allowed_fragment_ids: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional authorization allow-list; fragments outside are ignored.',
+          description:
+            'Optional authorization allow-list; fragments outside are ignored. Forbidden when a sealed id is set.',
         },
         cursor: {
           type: 'string',
