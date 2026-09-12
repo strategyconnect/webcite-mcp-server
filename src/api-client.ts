@@ -37,6 +37,14 @@ import type {
   CreateMetricDefinitionResponse,
   ListMetricDefinitionsOptions,
   ListMetricDefinitionsResponse,
+  CreateResearchRunOptions,
+  CreateResearchRunResponse,
+  GetResearchRunOptions,
+  GetResearchRunResponse,
+  CheckpointResearchRunOptions,
+  CheckpointResearchRunResponse,
+  ResolveSeedsOptions,
+  ResolveSeedsResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -474,6 +482,44 @@ export class WebCiteApiClient {
     return this.request(
       `/api/v2/context/metric-definitions${q ? `?${q}` : ''}`,
       { method: 'GET' },
+    );
+  }
+
+  async createResearchRun(
+    options: CreateResearchRunOptions,
+  ): Promise<CreateResearchRunResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/research-runs',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async getResearchRun(options: GetResearchRunOptions): Promise<GetResearchRunResponse> {
+    return this.request(
+      `/api/v2/context/research-runs/${encodeURIComponent(options.run_id)}`,
+      { method: 'GET' },
+    );
+  }
+
+  async checkpointResearchRun(
+    options: CheckpointResearchRunOptions,
+  ): Promise<CheckpointResearchRunResponse> {
+    const { run_id, idempotency_key, ...body } = options;
+    return this.request(
+      `/api/v2/context/research-runs/${encodeURIComponent(run_id)}/checkpoints`,
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async resolveSeeds(options: ResolveSeedsOptions): Promise<ResolveSeedsResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/resolve-seeds',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
     );
   }
 
