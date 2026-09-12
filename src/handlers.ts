@@ -494,6 +494,44 @@ function assertResearchRunIdComplete(runId: unknown): asserts runId is string {
 }
 
 /**
+ * C3/I4 EvidenceOperation path ids: blank/whitespace/surrounding-padded
+ * operation_id must never trim-launder into a certified get/settle/release/
+ * attempt hit (same identityComplete rule as research run_id #264/#279).
+ */
+function assertEvidenceOperationIdComplete(operationId: unknown): asserts operationId is string {
+  if (typeof operationId !== 'string' || !wakeIdentityComplete(operationId)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'operation_id is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'incomplete_operation_identity', field: 'operation_id' },
+        actionable:
+          'Blank/whitespace/padded operation_id never certifies an evidence-operation hit; do not invent or trim-launder an operation lookup.',
+      },
+    );
+  }
+}
+
+/**
+ * C3/I4 EvidenceAttempt path ids: blank/whitespace/surrounding-padded
+ * attempt_id must never trim-launder into a certified resolve hit.
+ */
+function assertEvidenceAttemptIdComplete(attemptId: unknown): asserts attemptId is string {
+  if (typeof attemptId !== 'string' || !wakeIdentityComplete(attemptId)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'attempt_id is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'incomplete_attempt_identity', field: 'attempt_id' },
+        actionable:
+          'Blank/whitespace/padded attempt_id never certifies an evidence-attempt hit; do not invent or trim-launder an attempt lookup.',
+      },
+    );
+  }
+}
+
+
+/**
  * Backend createRunSchema / researchScopeSchema use evidenceId: blank or
  * surrounding-padded snapshot/workflow/deal/session/root identities never
  * certify a research run (same id-pad honesty as wake #281 / eligibleNote #297 /
@@ -1892,10 +1930,25 @@ export const handlers: Record<string, ToolHandler> = {
         kind: args.kind,
         credits: args.credits,
         tokens: typeof args?.tokens === 'number' ? args.tokens : undefined,
-        root_operation_id:
-          typeof args?.root_operation_id === 'string'
-            ? args.root_operation_id
-            : null,
+        root_operation_id: (() => {
+          if (typeof args?.root_operation_id !== 'string') return null;
+          // Same evidenceId pad honesty as create_research_run.root_operation_id.
+          if (!wakeIdentityComplete(args.root_operation_id)) {
+            throw new ToolFailure(
+              'invalid_argument',
+              'root_operation_id is incomplete (blank/whitespace/padded)',
+              {
+                details: {
+                  reason: 'incomplete_operation_identity',
+                  field: 'root_operation_id',
+                },
+                actionable:
+                  'Blank/whitespace/padded root_operation_id never certifies a shared root; pass null to omit or a non-blank unpadded id.',
+              },
+            );
+          }
+          return args.root_operation_id;
+        })(),
       }),
     );
     const validated = validateReserveOperation(raw);
@@ -1906,18 +1959,18 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_operation: async (args, client) => {
-    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
-      throw new ToolFailure('invalid_argument', 'operation_id is required');
-    }
+    // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
+    // into a certified EvidenceOperation lookup.
+    assertEvidenceOperationIdComplete(args?.operation_id);
     const raw = await wrapApi(client.getOperation({ operation_id: args.operation_id }));
     const validated = validateGetOperation(raw);
     return ok(formatGetOperation(validated), validated as unknown as Record<string, unknown>);
   },
 
   get_operation_availability: async (args, client) => {
-    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
-      throw new ToolFailure('invalid_argument', 'operation_id is required');
-    }
+    // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
+    // into a certified availability lookup.
+    assertEvidenceOperationIdComplete(args?.operation_id);
     const raw = await wrapApi(
       client.getOperationAvailability({ operation_id: args.operation_id }),
     );
@@ -1929,9 +1982,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   settle_operation: async (args, client) => {
-    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
-      throw new ToolFailure('invalid_argument', 'operation_id is required');
-    }
+    // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
+    // into a certified settle target.
+    assertEvidenceOperationIdComplete(args?.operation_id);
     if (args?.settled_credits !== null && typeof args?.settled_credits !== 'number') {
       throw new ToolFailure(
         'invalid_argument',
@@ -1954,9 +2007,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   release_operation: async (args, client) => {
-    if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
-      throw new ToolFailure('invalid_argument', 'operation_id is required');
-    }
+    // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
+    // into a certified release target.
+    assertEvidenceOperationIdComplete(args?.operation_id);
     const raw = await wrapApi(
       client.releaseOperation({ operation_id: args.operation_id }),
     );
@@ -1968,11 +2021,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   record_operation_attempt: async (args, client) => {
-    if (
-      typeof args?.operation_id !== 'string' ||
-      !args.operation_id.trim() ||
-      typeof args?.provider !== 'string'
-    ) {
+    // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
+    // into a certified attempt record target.
+    assertEvidenceOperationIdComplete(args?.operation_id);
+    if (typeof args?.provider !== 'string') {
       throw new ToolFailure('invalid_argument', 'operation_id and provider are required');
     }
     const raw = await wrapApi(
@@ -2000,9 +2052,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   resolve_operation_attempt: async (args, client) => {
-    if (typeof args?.attempt_id !== 'string' || !args.attempt_id.trim()) {
-      throw new ToolFailure('invalid_argument', 'attempt_id is required');
-    }
+    // C3/I4: refuse padded/blank attempt_id before HTTP — never trim-launder
+    // into a certified attempt resolve.
+    assertEvidenceAttemptIdComplete(args?.attempt_id);
     if (
       args?.state !== 'succeeded' &&
       args?.state !== 'failed' &&
@@ -2049,11 +2101,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   link_operation_consumer: async (args, client) => {
-    if (
-      typeof args?.operation_id !== 'string' ||
-      typeof args?.consumer_kind !== 'string' ||
-      typeof args?.consumer_id !== 'string'
-    ) {
+    // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
+    // into a certified consumer link.
+    assertEvidenceOperationIdComplete(args?.operation_id);
+    if (typeof args?.consumer_kind !== 'string' || typeof args?.consumer_id !== 'string') {
       throw new ToolFailure(
         'invalid_argument',
         'operation_id, consumer_kind, and consumer_id are required',
@@ -2099,11 +2150,24 @@ export const handlers: Record<string, ToolHandler> = {
     if (!Array.isArray(args?.operation_ids) || args.operation_ids.length === 0) {
       throw new ToolFailure('invalid_argument', 'operation_ids array is required');
     }
-    if (args.operation_ids.some((id) => typeof id !== 'string' || !id.trim())) {
-      throw new ToolFailure(
-        'invalid_argument',
-        'operation_ids must be non-empty strings',
-      );
+    // C3/I4: refuse blank/padded operation_ids before HTTP — never trim-launder
+    // into a certified provider-cost aggregate.
+    for (const [i, id] of (args.operation_ids as unknown[]).entries()) {
+      if (typeof id !== 'string' || !wakeIdentityComplete(id)) {
+        throw new ToolFailure(
+          'invalid_argument',
+          `operation_ids[${i}] is incomplete (blank/whitespace/padded)`,
+          {
+            details: {
+              reason: 'incomplete_operation_identity',
+              field: 'operation_ids',
+              index: i,
+            },
+            actionable:
+              'Blank/whitespace/padded operation_ids never certify provider cost; do not invent or trim-launder an operation match.',
+          },
+        );
+      }
     }
     const raw = await wrapApi(
       client.getProviderCost({

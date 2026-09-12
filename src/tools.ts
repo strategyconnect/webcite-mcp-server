@@ -1474,7 +1474,7 @@ Credits: 1. HTTP: POST /api/v2/context/operations/open-root`,
   },
   {
     name: 'reserve_operation',
-    description: `Reserve credits for one logical EvidenceOperation call (I4). Optional root_operation_id holds against a shared root budget without requiring a research run.
+    description: `Reserve credits for one logical EvidenceOperation call (I4). Optional root_operation_id holds against a shared root budget without requiring a research run. Blank/whitespace/surrounding-padded root_operation_id → incomplete_operation_identity (never trim-launder into a certified shared root).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/reserve`,
     inputSchema: {
@@ -1484,46 +1484,62 @@ Credits: 1. HTTP: POST /api/v2/context/operations/reserve`,
         kind: { type: 'string' },
         credits: { type: 'number' },
         tokens: { type: 'number' },
-        root_operation_id: { type: 'string' },
+        root_operation_id: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded root EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
+        },
       },
       required: ['idempotency_key', 'kind', 'credits'],
     },
   },
   {
     name: 'get_operation',
-    description: `Read one EvidenceOperation the caller owns (I4), including settlement fields.
+    description: `Read one EvidenceOperation the caller owns (I4), including settlement fields. Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder into a certified operation lookup).
 
 Credits: 1. HTTP: GET /api/v2/context/operations/:operationId`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        operation_id: { type: 'string' },
+        operation_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
+        },
       },
       required: ['operation_id'],
     },
   },
   {
     name: 'get_operation_availability',
-    description: `Read root budget availability as the ledger sees it (I4). Clients must not re-derive this weakly.
+    description: `Read root budget availability as the ledger sees it (I4). Clients must not re-derive this weakly. Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
 
 Credits: 1. HTTP: GET /api/v2/context/operations/:operationId/availability`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        operation_id: { type: 'string' },
+        operation_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
+        },
       },
       required: ['operation_id'],
     },
   },
   {
     name: 'settle_operation',
-    description: `Settle a reserved EvidenceOperation once (I4). Pass settled_credits null to mark reconciliation_required without inventing an amount.
+    description: `Settle a reserved EvidenceOperation once (I4). Pass settled_credits null to mark reconciliation_required without inventing an amount. Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/settle`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        operation_id: { type: 'string' },
+        operation_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
+        },
         settled_credits: {
           type: ['number', 'null'],
           description: 'Credits to settle, or null for reconciliation_required',
@@ -1535,26 +1551,34 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/settle`,
   },
   {
     name: 'release_operation',
-    description: `Release an undispatched reservation and return credits to the account (I4). Dispatched operations cannot be released.
+    description: `Release an undispatched reservation and return credits to the account (I4). Dispatched operations cannot be released. Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/release`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        operation_id: { type: 'string' },
+        operation_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
+        },
       },
       required: ['operation_id'],
     },
   },
   {
     name: 'record_operation_attempt',
-    description: `Persist an EvidenceAttempt BEFORE dispatch so a lost outcome stays attributable (I4).
+    description: `Persist an EvidenceAttempt BEFORE dispatch so a lost outcome stays attributable (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        operation_id: { type: 'string' },
+        operation_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
+        },
         provider: { type: 'string' },
         model: { type: ['string', 'null'] },
         provider_idempotency_key: { type: ['string', 'null'] },
@@ -1565,13 +1589,17 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
   },
   {
     name: 'resolve_operation_attempt',
-    description: `Resolve one attempt outcome (I4). Missing price stays unknown, never zero.
+    description: `Resolve one attempt outcome (I4). Missing price stays unknown, never zero. Blank/whitespace/surrounding-padded attempt_id → incomplete_attempt_identity (never trim-launder into a certified attempt resolve).
 
 Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        attempt_id: { type: 'string' },
+        attempt_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded EvidenceAttempt id. Blank/whitespace/surrounding-padded → incomplete_attempt_identity (never trim-launder).',
+        },
         state: {
           type: 'string',
           enum: ['succeeded', 'failed', 'outcome_unknown'],
@@ -1593,13 +1621,17 @@ Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
   },
   {
     name: 'link_operation_consumer',
-    description: `Link a consumer to an operation without re-charging the provider (I4).
+    description: `Link a consumer to an operation without re-charging the provider (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/consumers`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        operation_id: { type: 'string' },
+        operation_id: {
+          type: 'string',
+          description:
+            'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
+        },
         consumer_kind: { type: 'string' },
         consumer_id: { type: 'string' },
         idempotency_key: { type: 'string' },
@@ -1623,7 +1655,7 @@ Credits: 1. HTTP: GET /api/v2/context/usage/consumer`,
   },
   {
     name: 'get_provider_cost',
-    description: `Provider spend for operations, measured on attempts — never derived from customer credits (I4).
+    description: `Provider spend for operations, measured on attempts — never derived from customer credits (I4). Blank/whitespace/surrounding-padded operation_ids → incomplete_operation_identity (never trim-launder).
 
 Credits: 1. HTTP: POST /api/v2/context/usage/provider-cost`,
     inputSchema: {
@@ -1631,8 +1663,14 @@ Credits: 1. HTTP: POST /api/v2/context/usage/provider-cost`,
       properties: {
         operation_ids: {
           type: 'array',
-          items: { type: 'string' },
+          items: {
+            type: 'string',
+            description:
+              'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity.',
+          },
           minItems: 1,
+          description:
+            'Non-blank unpadded operation ids. Blank/whitespace/surrounding-padded entries → incomplete_operation_identity (never trim-launder).',
         },
         idempotency_key: { type: 'string' },
       },

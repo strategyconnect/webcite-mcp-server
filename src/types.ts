@@ -1013,6 +1013,7 @@ export interface ReserveOperationOptions {
   kind: string;
   credits: number;
   tokens?: number;
+  /** When string: non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   root_operation_id?: string | null;
 }
 
@@ -1023,6 +1024,7 @@ export interface ReserveOperationResponse {
 }
 
 export interface GetOperationOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
 }
 
@@ -1032,6 +1034,7 @@ export interface GetOperationResponse {
 }
 
 export interface GetOperationAvailabilityOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
 }
 
@@ -1047,6 +1050,7 @@ export interface GetOperationAvailabilityResponse {
 }
 
 export interface SettleOperationOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
   settled_credits: number | null;
   idempotency_key?: string;
@@ -1058,6 +1062,7 @@ export interface SettleOperationResponse {
 }
 
 export interface ReleaseOperationOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
 }
 
@@ -1067,6 +1072,7 @@ export interface ReleaseOperationResponse {
 }
 
 export interface RecordOperationAttemptOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
   provider: string;
   model?: string | null;
@@ -1080,6 +1086,7 @@ export interface RecordOperationAttemptResponse {
 }
 
 export interface ResolveOperationAttemptOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_attempt_identity (#264/#279). */
   attempt_id: string;
   state: 'succeeded' | 'failed' | 'outcome_unknown';
   failure_class?: string | null;
@@ -1098,6 +1105,7 @@ export interface ResolveOperationAttemptResponse {
 }
 
 export interface LinkOperationConsumerOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
   consumer_kind: string;
   consumer_id: string;
@@ -1124,6 +1132,7 @@ export interface GetConsumerUsageResponse {
 }
 
 export interface GetProviderCostOptions {
+  /** Non-blank unpadded entries; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_ids: string[];
   idempotency_key?: string;
 }

@@ -4166,6 +4166,247 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'get_operation surrounding-padded operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_operation',
+        arguments: { operation_id: ' op-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/operations/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_operation whitespace-only operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_operation',
+        arguments: { operation_id: '  ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/operations/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_operation_availability surrounding-padded operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_operation_availability',
+        arguments: { operation_id: ' op-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/availability')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'settle_operation surrounding-padded operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'settle_operation',
+        arguments: { operation_id: ' op-1 ', settled_credits: 1 },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/settle')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'release_operation surrounding-padded operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'release_operation',
+        arguments: { operation_id: ' op-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/release')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'record_operation_attempt surrounding-padded operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: { operation_id: ' op-1 ', provider: 'openai' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt surrounding-padded attempt_id → incomplete_attempt_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: { attempt_id: ' att-1 ', state: 'succeeded' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'link_operation_consumer surrounding-padded operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'link_operation_consumer',
+        arguments: {
+          operation_id: ' op-1 ',
+          consumer_kind: 'research_run',
+          consumer_id: 'run-1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/consumers')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_provider_cost surrounding-padded operation_ids → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_provider_cost',
+        arguments: { operation_ids: [' op-1 '] },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/provider-cost')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_operation surrounding-padded root_operation_id → incomplete_operation_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_operation',
+        arguments: {
+          idempotency_key: 'ik-root',
+          kind: 'parse',
+          credits: 1,
+          root_operation_id: ' root-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/operations/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_research_run padded progress openRequirementIds → incomplete_loop_requirement_identity',
     async () => {
       const res = await rpc('tools/call', {
