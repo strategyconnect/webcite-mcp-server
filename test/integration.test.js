@@ -4350,6 +4350,123 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'resolve_seeds surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          idempotency_key: ' resolve-seeds-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified resolve-seeds replay',
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_seeds whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_seeds equal-pad idempotency_key → incomplete_operation_idempotency_identity (never resolve)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          idempotency_key: ' resolve-seeds-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: resolve text pad refuse must stay fail-closed (#69).
+  await t.test(
+    'resolve_seeds surrounding-padded text still → padded_resolve_text (#69 regression after idempotency)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: { text: ' revenue ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_text');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/resolve-seeds'),
+        undefined,
+      );
+    },
+  );
+
+  // Lean formal_check source trailing newlines must remain untouched by this slice (#110).
+  await t.test(
+    'formal_check padded idempotency still preserves Lean source trailing newline (resolve_seeds slice)',
+    async () => {
+      const before = seen.length;
+      const lean = 'theorem t : True := trivial\n';
+      const res = await rpc('tools/call', {
+        name: 'formal_check',
+        arguments: {
+          source: lean,
+          idempotency_key: ' pad-key ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => String(r.path || '').includes('/formal')),
+        undefined,
+        'must refuse before HTTP — Lean source must not be trim-laundered or posted',
+      );
+    },
+  );
+
   await t.test('expand_seeds posts authorized graph and returns expanded ids', async () => {
     const text = await call('expand_seeds', {
       seeds: ['a'],

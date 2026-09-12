@@ -1402,7 +1402,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
   },
   {
     name: 'resolve_seeds',
-    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback. Omit index to use the SQL metric-definition catalog. Blank/whitespace/surrounding-padded text fails closed as padded_resolve_text (#311/#314 surface — never trim-launder into certified seeds). Blank/whitespace or surrounding-padded ClaimScope filters fail closed as padded_resolve_filter (backend #311) — equal pads never pin a scope_tuple and must not fall through to bare_term; never trim-launder filters.
+    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback. Omit index to use the SQL metric-definition catalog. Blank/whitespace/surrounding-padded text fails closed as padded_resolve_text (#311/#314 surface — never trim-launder into certified seeds). Blank/whitespace or surrounding-padded ClaimScope filters fail closed as padded_resolve_filter (backend #311) — equal pads never pin a scope_tuple and must not fall through to bare_term; never trim-launder filters. Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified resolve-seeds replay; same honesty as settle/compare_assertions #92/#105).
 
 Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
     inputSchema: {
@@ -1431,7 +1431,11 @@ Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
           },
           description: 'Inline vocabulary. Omit to load from the SQL catalog.',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a resolve-seeds replay pin).',
+        },
       },
       required: ['text'],
     },
