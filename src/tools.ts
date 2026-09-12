@@ -1696,7 +1696,7 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
   },
   {
     name: 'resolve_operation_attempt',
-    description: `Resolve one attempt outcome (I4). Missing price stays unknown, never zero. Blank/whitespace/surrounding-padded attempt_id → incomplete_attempt_identity (never trim-launder into a certified attempt resolve).
+    description: `Resolve one attempt outcome (I4). Missing price stays unknown, never zero. Blank/whitespace/surrounding-padded attempt_id → incomplete_attempt_identity; blank/padded string failure_class → incomplete_attempt_failure_class_identity; blank/padded price.amount/currency/priceRevision → incomplete_attempt_price_identity (never trim-launder into a certified attempt resolve, outcome class, or settlement pin).
 
 Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
     inputSchema: {
@@ -1711,14 +1711,32 @@ Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
           type: 'string',
           enum: ['succeeded', 'failed', 'outcome_unknown'],
         },
-        failure_class: { type: ['string', 'null'] },
+        failure_class: {
+          type: ['string', 'null'],
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_attempt_failure_class_identity. null allowed.',
+        },
         measurements: { type: 'object' },
         price: {
           type: ['object', 'null'],
+          description:
+            'Optional. When object: non-blank unpadded amount/currency/priceRevision; blank/padded → incomplete_attempt_price_identity. null omits price (unknown; never invent zero).',
           properties: {
-            amount: { type: 'string' },
-            currency: { type: 'string' },
-            priceRevision: { type: 'string' },
+            amount: {
+              type: 'string',
+              description:
+                'Non-blank unpadded. Blank/whitespace/surrounding-padded → incomplete_attempt_price_identity.',
+            },
+            currency: {
+              type: 'string',
+              description:
+                'Non-blank unpadded. Blank/whitespace/surrounding-padded → incomplete_attempt_price_identity.',
+            },
+            priceRevision: {
+              type: 'string',
+              description:
+                'Non-blank unpadded. Blank/whitespace/surrounding-padded → incomplete_attempt_price_identity.',
+            },
           },
         },
         idempotency_key: { type: 'string' },

@@ -833,6 +833,60 @@ function assertRecordOperationAttemptProviderComplete(args: Args | undefined): v
 }
 
 /**
+ * C3/I4 resolve_operation_attempt: blank/whitespace/surrounding-padded
+ * optional string failure_class and price.amount / currency / priceRevision
+ * must never trim-launder into a certified attempt outcome class or priced
+ * settlement pin (same identityComplete honesty as provider/model #89).
+ * null failure_class / null price remain allowed; omit price to leave cost
+ * unknown (never invent zero).
+ */
+function assertResolveOperationAttemptOutcomeComplete(args: Args | undefined): void {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) {
+    return;
+  }
+  const failureClass = (args as Record<string, unknown>).failure_class;
+  if (typeof failureClass === 'string' && !wakeIdentityComplete(failureClass)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'failure_class is incomplete (blank/whitespace/padded)',
+      {
+        details: {
+          reason: 'incomplete_attempt_failure_class_identity',
+          field: 'failure_class',
+        },
+        actionable:
+          'Blank/whitespace/padded failure_class never certifies an attempt outcome class; omit it, pass null, or pass non-blank unpadded text.',
+      },
+    );
+  }
+  const price = (args as Record<string, unknown>).price;
+  if (price === null || price === undefined) {
+    return;
+  }
+  if (typeof price !== 'object' || Array.isArray(price)) {
+    return;
+  }
+  const priceObj = price as Record<string, unknown>;
+  for (const key of ['amount', 'currency', 'priceRevision'] as const) {
+    const value = priceObj[key];
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `price.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: {
+            reason: 'incomplete_attempt_price_identity',
+            field: `price.${key}`,
+          },
+          actionable:
+            'Blank/whitespace/padded price fields never certify an attempt settlement pin; omit price, pass null, or pass non-blank unpadded amount/currency/priceRevision.',
+        },
+      );
+    }
+  }
+}
+
+/**
  * C3/I4 consumer link/usage ids: blank/whitespace/surrounding-padded
  * consumer_kind / consumer_id must never trim-launder into a certified
  * consumer link or usage aggregate (same identityComplete rule as
@@ -2733,6 +2787,9 @@ export const handlers: Record<string, ToolHandler> = {
         'state must be succeeded|failed|outcome_unknown',
       );
     }
+    // C3/I4 after #89: padded failure_class / price fields never certify an
+    // outcome class or settlement pin (null failure_class / null|omit price ok).
+    assertResolveOperationAttemptOutcomeComplete(args);
     const raw = await wrapApi(
       client.resolveOperationAttempt({
         attempt_id: args.attempt_id,
