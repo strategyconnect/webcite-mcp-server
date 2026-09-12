@@ -774,11 +774,16 @@ export interface FormalEligibilityResponse {
 }
 
 export interface FormalCheckOptions {
+  /** Lean source; passed through unchanged (trailing newlines preserved). */
   source: string;
   toolchain_version?: string;
   checker_digest?: string;
   require_lean?: boolean;
   timeout_ms?: number;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 

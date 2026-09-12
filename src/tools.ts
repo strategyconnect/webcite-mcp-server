@@ -1102,7 +1102,7 @@ Credits: 1. HTTP: POST /api/v2/context/formal/eligibility`,
   },
   {
     name: 'formal_check',
-    description: `Check a bounded Lean certificate (P2). Static gates always run; Lean exec is optional.
+    description: `Check a bounded Lean certificate (P2). Static gates always run; Lean exec is optional. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified formal-check replay pin; same honesty as settle/formal_eligibility #92/#107). Lean source is passed through unchanged — trailing newlines must not be trim-laundered.
 
 Credits: 1. HTTP: POST /api/v2/context/formal/check`,
     inputSchema: {
@@ -1110,13 +1110,18 @@ Credits: 1. HTTP: POST /api/v2/context/formal/check`,
       properties: {
         source: {
           type: 'string',
-          description: 'Lean source text to check (template subset only).',
+          description:
+            'Lean source text to check (template subset only). Passed through unchanged; trailing newlines are preserved.',
         },
         toolchain_version: { type: 'string', description: 'Approved pin, e.g. v4.33.1' },
         checker_digest: { type: 'string' },
         require_lean: { type: 'boolean' },
         timeout_ms: { type: 'number' },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a formal-check replay pin).',
+        },
       },
       required: ['source'],
     },

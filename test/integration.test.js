@@ -3293,6 +3293,151 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'formal_check surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const lean = 'example : remaining 10 4 = 7 := by decide\n';
+      const res = await rpc('tools/call', {
+        name: 'formal_check',
+        arguments: {
+          source: lean,
+          idempotency_key: ' check-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/check'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formal_check whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formal_check',
+        arguments: {
+          source: 'example : remaining 10 4 = 7 := by decide\n',
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/check'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formal_check equal-pad idempotency_key → incomplete_operation_idempotency_identity (never check)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formal_check',
+        arguments: {
+          source: 'example : remaining 10 4 = 7 := by decide\n',
+          idempotency_key: ' check-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/check'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formal_check padded idempotency still preserves Lean source trailing newline (no HTTP)',
+    async () => {
+      const before = seen.length;
+      const lean = 'example : remaining 10 4 = 7 := by decide\n';
+      const res = await rpc('tools/call', {
+        name: 'formal_check',
+        arguments: {
+          source: lean,
+          idempotency_key: ' pad-key ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/check'),
+        undefined,
+        'must refuse before HTTP — Lean source must not be posted or trim-laundered',
+      );
+    },
+  );
+
+  await t.test(
+    'get_change_impact surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#106 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          answer_revision_id: 'answer-v1',
+          idempotency_key: ' chg-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formal_eligibility surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#107 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formal_eligibility',
+        arguments: {
+          basis_reviewed: true,
+          recognition: 'native',
+          idempotency_key: ' elig-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/formal/eligibility'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('create_claim_relation and list_claim_relations hit catalog routes', async () => {
     const created = await call('create_claim_relation', {
       predicate: 'equals',
