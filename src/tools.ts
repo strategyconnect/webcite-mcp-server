@@ -983,7 +983,7 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
   },
   {
     name: 'find_contradictions',
-    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank bounds never invent a contradiction. Blank/whitespace interval endpoints and missing/blank decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value) — never treat an empty pair list as a certified all-clear. Coverage complete means a certified scan.
+    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank/padded bounds never invent a contradiction. Blank/whitespace/surrounding-padded interval endpoints and missing/blank/padded decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value; backend #289) — never trim-launder pads into certified known bounds or magnitudes, and never treat an empty pair list as a certified all-clear. Coverage complete means a certified scan.
 
 Credits: 1. HTTP: POST /api/v2/context/contradictions`,
     inputSchema: {
@@ -993,7 +993,7 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
           type: 'array',
           minItems: 2,
           description:
-            'Interval-valued claims. Blank/whitespace from/to → unknown bounds; missing/blank decimal_value on overlapping/unknown pairs → missing_decimal_value (HTTP refuses).',
+            'Interval-valued claims. Blank/whitespace/surrounding-padded from/to → unknown bounds (#289); missing/blank/padded decimal_value on overlapping/unknown pairs → missing_decimal_value (HTTP refuses; never trim-launder).',
           items: {
             type: 'object',
             properties: {
@@ -1002,11 +1002,13 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
                 properties: {
                   from: {
                     type: ['string', 'null'],
-                    description: 'Inclusive start; blank/whitespace is unknown (never invents a bound).',
+                    description:
+                      'Inclusive start; blank/whitespace/surrounding-padded is unknown (#289; never invents or trim-launders a bound).',
                   },
                   to: {
                     type: ['string', 'null'],
-                    description: 'Exclusive end; blank/whitespace is unknown (never invents a bound).',
+                    description:
+                      'Exclusive end; blank/whitespace/surrounding-padded is unknown (#289; never invents or trim-launders a bound).',
                   },
                 },
                 required: ['from', 'to'],
@@ -1014,7 +1016,7 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
               decimal_value: {
                 type: ['string', 'null'],
                 description:
-                  'Exact decimal text. Null/blank on conflicting or unknown-bound pairs → contradiction_scan_incomplete: missing_decimal_value.',
+                  'Exact decimal text. Null/blank/surrounding-padded on conflicting or unknown-bound pairs → contradiction_scan_incomplete: missing_decimal_value (#289; never trim-launder " 10 " into 10).',
               },
             },
             required: ['interval', 'decimal_value'],
