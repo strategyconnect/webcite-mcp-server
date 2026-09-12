@@ -737,6 +737,10 @@ export interface NumberInventoryOccurrenceInput {
 
 export interface NumberInventoryOptions {
   occurrences: NumberInventoryOccurrenceInput[];
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 
