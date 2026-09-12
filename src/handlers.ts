@@ -721,8 +721,8 @@ function assertEvidenceOperationIdComplete(operationId: unknown): asserts operat
  * C3/I4: blank/whitespace/surrounding-padded idempotency_key / kind must never
  * trim-launder into a certified operation open/reserve/replay (same
  * identityComplete rule as root_idempotency_key on create_research_run /
- * operation_id #264/#279). Shared by open_operation_root (#83) and
- * reserve_research_budget.
+ * operation_id #264/#279). Shared by open_operation_root (#83),
+ * reserve_research_budget (#87), and reserve_operation.
  */
 function assertOperationIdempotencyKindComplete(
   args: Args | undefined,
@@ -744,7 +744,7 @@ function assertOperationIdempotencyKindComplete(
         `${key} is incomplete (blank/whitespace/padded)`,
         {
           details: { reason, field: key },
-          actionable: `Blank/whitespace/padded ${key} never certifies ${actionableCertify}; do not invent or trim-launder a root identity.`,
+          actionable: `Blank/whitespace/padded ${key} never certifies ${actionableCertify}; do not invent or trim-launder a ${key} identity.`,
         },
       );
     }
@@ -2579,11 +2579,14 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   reserve_operation: async (args, client) => {
-    if (
-      typeof args?.idempotency_key !== 'string' ||
-      typeof args?.kind !== 'string' ||
-      typeof args?.credits !== 'number'
-    ) {
+    // C3/I4: padded idempotency_key / kind never certify a reserve/replay
+    // (sibling of open_operation_root #83).
+    assertOperationIdempotencyKindComplete(
+      args,
+      'idempotency_key, kind, and credits are required',
+      'an operation reserve/replay',
+    );
+    if (typeof args?.credits !== 'number') {
       throw new ToolFailure(
         'invalid_argument',
         'idempotency_key, kind, and credits are required',
@@ -2591,8 +2594,8 @@ export const handlers: Record<string, ToolHandler> = {
     }
     const raw = await wrapApi(
       client.reserveOperation({
-        idempotency_key: args.idempotency_key,
-        kind: args.kind,
+        idempotency_key: args.idempotency_key as string,
+        kind: args.kind as string,
         credits: args.credits,
         tokens: typeof args?.tokens === 'number' ? args.tokens : undefined,
         root_operation_id: (() => {

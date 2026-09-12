@@ -1561,14 +1561,22 @@ Credits: 1. HTTP: POST /api/v2/context/operations/open-root`,
   },
   {
     name: 'reserve_operation',
-    description: `Reserve credits for one logical EvidenceOperation call (I4). Optional root_operation_id holds against a shared root budget without requiring a research run. Blank/whitespace/surrounding-padded root_operation_id → incomplete_operation_identity (never trim-launder into a certified shared root).
+    description: `Reserve credits for one logical EvidenceOperation call (I4). Optional root_operation_id holds against a shared root budget without requiring a research run. Blank/whitespace/surrounding-padded idempotency_key → incomplete_operation_idempotency_identity; blank/whitespace/surrounding-padded kind → incomplete_operation_kind_identity (C3/I4 sibling of open_operation_root #83 — never trim-launder into a certified reserve/replay). Blank/whitespace/surrounding-padded root_operation_id → incomplete_operation_identity (never trim-launder into a certified shared root).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/reserve`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        idempotency_key: { type: 'string' },
-        kind: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Non-blank unpadded idempotency key (replay identity). Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
+        kind: {
+          type: 'string',
+          description:
+            'Non-blank unpadded operation kind. Blank/whitespace/surrounding-padded → incomplete_operation_kind_identity (never trim-launder).',
+        },
         credits: { type: 'number' },
         tokens: { type: 'number' },
         root_operation_id: {

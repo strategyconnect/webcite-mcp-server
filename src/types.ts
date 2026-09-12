@@ -1063,8 +1063,11 @@ export interface OpenOperationRootResponse {
   engine?: string;
 }
 
+/** Reserve EvidenceOperation; idempotency_key/kind must be non-blank unpadded. */
 export interface ReserveOperationOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_idempotency_identity. */
   idempotency_key: string;
+  /** Non-blank unpadded; blank/padded → incomplete_operation_kind_identity. */
   kind: string;
   credits: number;
   tokens?: number;
