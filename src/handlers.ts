@@ -34,8 +34,10 @@ import {
   formatLearningPlaceholder,
   formatFormatCertify,
   formatReserveResearchBudget,
+  formatOpenOperationRoot,
   formatGetOperation,
   formatGetOperationAvailability,
+  formatProofsApplies,
   formatFormalResolutionState,
   formatFormalRevenueBridge,
   formatClaimStructureTier,
@@ -91,8 +93,10 @@ import {
   validateLearningPlaceholder,
   validateFormatCertify,
   validateReserveResearchBudget,
+  validateOpenOperationRoot,
   validateGetOperation,
   validateGetOperationAvailability,
+  validateProofsApplies,
   validateFormalResolutionState,
   validateFormalRevenueBridge,
   validateClaimStructureTier,
@@ -1051,6 +1055,35 @@ export const handlers: Record<string, ToolHandler> = {
     );
   },
 
+  open_operation_root: async (args, client) => {
+    if (
+      typeof args?.idempotency_key !== 'string' ||
+      typeof args?.kind !== 'string' ||
+      typeof args?.max_credits !== 'number' ||
+      typeof args?.max_tokens !== 'number' ||
+      typeof args?.deadline_ms !== 'number'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'idempotency_key, kind, max_credits, max_tokens, and deadline_ms are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.openOperationRoot({
+        idempotency_key: args.idempotency_key,
+        kind: args.kind,
+        max_credits: args.max_credits,
+        max_tokens: args.max_tokens,
+        deadline_ms: args.deadline_ms,
+      }),
+    );
+    const validated = validateOpenOperationRoot(raw);
+    return ok(
+      formatOpenOperationRoot(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
   get_operation: async (args, client) => {
     if (typeof args?.operation_id !== 'string' || !args.operation_id.trim()) {
       throw new ToolFailure('invalid_argument', 'operation_id is required');
@@ -1143,6 +1176,35 @@ export const handlers: Record<string, ToolHandler> = {
     const raw = await wrapApi(client.evalCatalog());
     const validated = validateEvalCatalog(raw);
     return ok(formatEvalCatalog(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  proofs_applies: async (args, client) => {
+    if (
+      typeof args?.status !== 'string' ||
+      typeof args?.binding_hash !== 'string' ||
+      typeof args?.toolchain_version !== 'string' ||
+      typeof args?.current_binding_hash !== 'string'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'status, binding_hash, toolchain_version, and current_binding_hash are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.proofsApplies({
+        status: args.status,
+        binding_hash: args.binding_hash,
+        toolchain_version: args.toolchain_version,
+        current_binding_hash: args.current_binding_hash,
+        approved_toolchains: Array.isArray(args?.approved_toolchains)
+          ? (args.approved_toolchains as string[])
+          : undefined,
+        checker_digest:
+          typeof args?.checker_digest === 'string' ? args.checker_digest : undefined,
+      }),
+    );
+    const validated = validateProofsApplies(raw);
+    return ok(formatProofsApplies(validated), validated as unknown as Record<string, unknown>);
   },
 
   publish_context_workflow: async (args, client) => {

@@ -1161,6 +1161,29 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
     },
   },
   {
+    name: 'open_operation_root',
+    description: `Open the run-level root EvidenceOperation whose budget every child shares (I4). Same idempotency key replays the existing root.
+
+Credits: 1. HTTP: POST /api/v2/context/operations/open-root`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        idempotency_key: { type: 'string' },
+        kind: { type: 'string' },
+        max_credits: { type: 'number' },
+        max_tokens: { type: 'number' },
+        deadline_ms: { type: 'number' },
+      },
+      required: [
+        'idempotency_key',
+        'kind',
+        'max_credits',
+        'max_tokens',
+        'deadline_ms',
+      ],
+    },
+  },
+  {
     name: 'get_operation',
     description: `Read one EvidenceOperation the caller owns (I4), including settlement fields.
 
@@ -1231,6 +1254,29 @@ Credits: 1. HTTP: GET /api/v2/context/eval/catalog`,
     inputSchema: {
       type: 'object' as const,
       properties: {},
+    },
+  },
+  {
+    name: 'proofs_applies',
+    description: `Probe whether a proof receipt still binds under the current premise hash and approved toolchains (P3). Does not invent proved status.
+
+Credits: 1. HTTP: GET /api/v2/context/proofs/applies`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        status: { type: 'string' },
+        binding_hash: { type: 'string' },
+        toolchain_version: { type: 'string' },
+        current_binding_hash: { type: 'string' },
+        approved_toolchains: { type: 'array', items: { type: 'string' } },
+        checker_digest: { type: 'string' },
+      },
+      required: [
+        'status',
+        'binding_hash',
+        'toolchain_version',
+        'current_binding_hash',
+      ],
     },
   },
   {
@@ -1371,12 +1417,14 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v2/context/learning/placeholder': 'learning_placeholder',
   'POST /api/v2/context/format/certify': 'format_certify',
   'POST /api/v2/context/research-runs/:runId/reserve': 'reserve_research_budget',
+  'POST /api/v2/context/operations/open-root': 'open_operation_root',
   'GET /api/v2/context/operations/:operationId': 'get_operation',
   'GET /api/v2/context/operations/:operationId/availability':
     'get_operation_availability',
   'POST /api/v2/context/formal/resolution-state': 'formal_resolution_state',
   'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
+  'GET /api/v2/context/proofs/applies': 'proofs_applies',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',
   'POST /api/v2/context/workflows/:revisionId/runs': 'run_saved_workflow',

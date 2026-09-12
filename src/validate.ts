@@ -28,8 +28,10 @@ import type {
   LearningPlaceholderResponse,
   FormatCertifyResponse,
   ReserveResearchBudgetResponse,
+  OpenOperationRootResponse,
   GetOperationResponse,
   GetOperationAvailabilityResponse,
+  ProofsAppliesResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
   ClaimStructureTierResponse,
@@ -492,6 +494,17 @@ export function validateReserveResearchBudget(
   };
 }
 
+export function validateOpenOperationRoot(
+  raw: unknown,
+): OpenOperationRootResponse {
+  const root = requireObject(raw, 'OpenOperationRoot');
+  const operation = requireObject(root.operation, 'OpenOperationRoot.operation');
+  return {
+    operation,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
 export function validateGetOperation(raw: unknown): GetOperationResponse {
   const root = requireObject(raw, 'GetOperation');
   const operation = requireObject(root.operation, 'GetOperation.operation');
@@ -527,6 +540,17 @@ export function validateGetOperationAvailability(
       outstandingCredits: num('outstandingCredits'),
       outstandingTokens: num('outstandingTokens'),
     },
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateProofsApplies(raw: unknown): ProofsAppliesResponse {
+  const root = requireObject(raw, 'ProofsApplies');
+  if (typeof root.applies !== 'boolean') {
+    throw new ToolFailure('invalid_api_output', 'ProofsApplies.applies must be a boolean');
+  }
+  return {
+    applies: root.applies,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

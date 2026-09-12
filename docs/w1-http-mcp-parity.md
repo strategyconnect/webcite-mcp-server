@@ -47,12 +47,14 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `learning_placeholder` | `GET /api/v2/context/learning/placeholder` | criterion? | checkpoint + authoritative:false | auth | 0 | — |
 | `format_certify` | `POST /api/v2/context/format/certify` | kind, expected[], found[] | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
 | `reserve_research_budget` | `POST /api/v2/context/research-runs/:runId/reserve` | run_id, idempotency_key, kind, credits | operationId + replay | missing root refuses | 0 | research run |
+| `open_operation_root` | `POST /api/v2/context/operations/open-root` | idempotency_key, kind, max_credits, max_tokens, deadline_ms | root operation | auth / invalid budget | 0 | evidence operation |
 | `get_operation` | `GET /api/v2/context/operations/:operationId` | operation_id | operation row | 404 | 0 | evidence operation |
 | `get_operation_availability` | `GET /api/v2/context/operations/:operationId/availability` | operation_id | root budget availability | 404 | 0 | root operation |
 | `formal_resolution_state` | `POST /api/v2/context/formal/resolution-state` | proof/search flags | state | auth | 0 | — |
 | `formal_revenue_bridge` | `POST /api/v2/context/formal/revenue-bridge` | total + components | discharged/refused | scope mismatch refuses | 0 | exact decimals |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |
 | `eval_catalog` | `GET /api/v2/context/eval/catalog` | — | suite ids + `private_gold_denied` | auth | 0 | E1 catalog only |
+| `proofs_applies` | `GET /api/v2/context/proofs/applies` | status, binding_hash, toolchain_version, current_binding_hash, approved_toolchains? | applies | auth / missing fields | 0 | binding + toolchain |
 
 ## Notes
 
