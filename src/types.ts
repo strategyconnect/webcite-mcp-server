@@ -369,6 +369,11 @@ export interface NumberedRef {
 }
 
 export interface QueryContextOptions {
+  /**
+   * Natural-language query. Blank/whitespace or surrounding-padded →
+   * padded_select_text (backend #314); never trim-launder into certified
+   * selectPassage topical seeds.
+   */
   text: string;
   source_texts?: string[];
   source_version_ids?: string[];
