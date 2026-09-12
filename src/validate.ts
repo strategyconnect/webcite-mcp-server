@@ -18,6 +18,10 @@ import type {
   ListClaimRelationsResponse,
   CreateMetricDefinitionResponse,
   ListMetricDefinitionsResponse,
+  CreateResearchRunResponse,
+  GetResearchRunResponse,
+  CheckpointResearchRunResponse,
+  ResolveSeedsResponse,
   EvalCatalogResponse,
   ResolvedAnswerResponse,
   ResolvedPacketResponse,
@@ -336,6 +340,59 @@ export function validateListMetricDefinitions(
   }
   return {
     definitions: root.definitions as Record<string, unknown>[],
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+function requireResearchRun(raw: unknown, label: string): CreateResearchRunResponse['run'] {
+  const run = requireObject(raw, label);
+  return {
+    ...run,
+    id: requireString(run, 'id', label),
+    checkpointRevision:
+      typeof run.checkpointRevision === 'number' ? run.checkpointRevision : 0,
+    objective: typeof run.objective === 'string' ? run.objective : '',
+    phase: typeof run.phase === 'string' ? run.phase : 'running',
+  };
+}
+
+export function validateCreateResearchRun(raw: unknown): CreateResearchRunResponse {
+  const root = requireObject(raw, 'CreateResearchRun');
+  return {
+    run: requireResearchRun(root.run, 'CreateResearchRun.run'),
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateGetResearchRun(raw: unknown): GetResearchRunResponse {
+  const root = requireObject(raw, 'GetResearchRun');
+  return {
+    run: requireResearchRun(root.run, 'GetResearchRun.run'),
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateCheckpointResearchRun(
+  raw: unknown,
+): CheckpointResearchRunResponse {
+  const root = requireObject(raw, 'CheckpointResearchRun');
+  return {
+    run: requireResearchRun(root.run, 'CheckpointResearchRun.run'),
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateResolveSeeds(raw: unknown): ResolveSeedsResponse {
+  const root = requireObject(raw, 'ResolveSeeds');
+  if (!Array.isArray(root.candidates)) {
+    throw new ToolFailure('invalid_api_output', 'ResolveSeeds.candidates must be an array');
+  }
+  return {
+    candidates: root.candidates as ResolveSeedsResponse['candidates'],
+    leading_resolver:
+      typeof root.leading_resolver === 'string' || root.leading_resolver === null
+        ? (root.leading_resolver as string | null)
+        : null,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

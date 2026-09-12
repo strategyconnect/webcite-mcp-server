@@ -603,6 +603,79 @@ export interface ListMetricDefinitionsResponse {
   engine?: string;
 }
 
+export interface CreateResearchRunOptions {
+  objective: string;
+  snapshot_id: string;
+  workflow_version: string;
+  deal_id?: string;
+  session_id?: string;
+  budget: {
+    max_credits: number;
+    max_tokens: number;
+    deadline_ms: number;
+  };
+  root_operation_id?: string | null;
+  open_requirement_ids?: string[];
+  max_steps?: number;
+  idempotency_key?: string;
+}
+
+export interface ResearchRunPayload {
+  id: string;
+  checkpointRevision: number;
+  objective: string;
+  phase: string;
+  [key: string]: unknown;
+}
+
+export interface CreateResearchRunResponse {
+  run: ResearchRunPayload;
+  engine?: string;
+}
+
+export interface GetResearchRunOptions {
+  run_id: string;
+}
+
+export interface GetResearchRunResponse {
+  run: ResearchRunPayload;
+  engine?: string;
+}
+
+export interface CheckpointResearchRunOptions {
+  run_id: string;
+  expected_revision: number;
+  run: ResearchRunPayload;
+  idempotency_key?: string;
+}
+
+export interface CheckpointResearchRunResponse {
+  run: ResearchRunPayload;
+  engine?: string;
+}
+
+export interface ResolveSeedsOptions {
+  text: string;
+  filters?: Record<string, string | null | undefined>;
+  index: Array<{
+    id: string;
+    scope: Record<string, string | null | undefined>;
+    terms: string[];
+  }>;
+  idempotency_key?: string;
+}
+
+export interface ResolveSeedsResponse {
+  candidates: Array<{
+    id: string;
+    resolver: string;
+    pinnedFields: string[];
+    scopeStatus: string;
+  }>;
+  leading_resolver: string | null;
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;

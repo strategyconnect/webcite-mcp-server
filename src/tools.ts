@@ -901,6 +901,92 @@ Credits: 1. HTTP: GET /api/v2/context/metric-definitions`,
     },
   },
   {
+    name: 'create_research_run',
+    description: `Create a durable research run checkpoint (C3). Scope comes from the API key.
+
+Credits: 1. HTTP: POST /api/v2/context/research-runs`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        objective: { type: 'string' },
+        snapshot_id: { type: 'string' },
+        workflow_version: { type: 'string' },
+        deal_id: { type: 'string' },
+        session_id: { type: 'string' },
+        budget: {
+          type: 'object',
+          properties: {
+            max_credits: { type: 'number' },
+            max_tokens: { type: 'number' },
+            deadline_ms: { type: 'number' },
+          },
+          required: ['max_credits', 'max_tokens', 'deadline_ms'],
+        },
+        root_operation_id: { type: ['string', 'null'] },
+        open_requirement_ids: { type: 'array', items: { type: 'string' } },
+        max_steps: { type: 'number' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['objective', 'snapshot_id', 'workflow_version', 'budget'],
+    },
+  },
+  {
+    name: 'get_research_run',
+    description: `Load a research run by id (C3).
+
+Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        run_id: { type: 'string' },
+      },
+      required: ['run_id'],
+    },
+  },
+  {
+    name: 'checkpoint_research_run',
+    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict.
+
+Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        run_id: { type: 'string' },
+        expected_revision: { type: 'number' },
+        run: { type: 'object', description: 'Full ResearchRun payload' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['run_id', 'expected_revision', 'run'],
+    },
+  },
+  {
+    name: 'resolve_seeds',
+    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback.
+
+Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        text: { type: 'string' },
+        filters: { type: 'object' },
+        index: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              scope: { type: 'object' },
+              terms: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['id', 'scope', 'terms'],
+          },
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['text', 'index'],
+    },
+  },
+  {
     name: 'eval_catalog',
     description: `List the authorized evaluation suite catalog. Private gold remains denied to non-evaluator callers (private_gold_denied: true).
 
@@ -1034,6 +1120,10 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v2/context/claim-relations': 'list_claim_relations',
   'POST /api/v2/context/metric-definitions': 'create_metric_definition',
   'GET /api/v2/context/metric-definitions': 'list_metric_definitions',
+  'POST /api/v2/context/research-runs': 'create_research_run',
+  'GET /api/v2/context/research-runs/:runId': 'get_research_run',
+  'POST /api/v2/context/research-runs/:runId/checkpoints': 'checkpoint_research_run',
+  'POST /api/v2/context/resolve-seeds': 'resolve_seeds',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

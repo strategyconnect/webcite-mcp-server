@@ -34,6 +34,10 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `list_claim_relations` | `GET /api/v2/context/claim-relations` | predicate?, claim_revision_id? | relations + recognised | auth | 0 | tenant catalog |
 | `create_metric_definition` | `POST /api/v2/context/metric-definitions` | definition | revisionId + contentHash | duplicate revision conflict | 0 | definition revision |
 | `list_metric_definitions` | `GET /api/v2/context/metric-definitions` | metric? | definitions[] | auth | 0 | tenant catalog |
+| `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget | run | auth | 0 | research scope |
+| `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404 | 0 | run id |
+| `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale | 0 | checkpoint CAS |
+| `resolve_seeds` | `POST /api/v2/context/resolve-seeds` | text, filters?, index[] | candidates + leading_resolver | auth | 0 | ClaimScope seeds |
 | `assess_meaning` | `POST /api/v2/context/assess-meaning` | assessment (+ optional known_false_claim) | meaning / authority / falseClaimSupport | auth / collapsed badge refused | 0 | assessment + claim revision ids |
 | `eval_catalog` | `GET /api/v2/context/eval/catalog` | — | suite ids + `private_gold_denied` | auth | 0 | E1 catalog only |
 

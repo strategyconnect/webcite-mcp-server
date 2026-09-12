@@ -263,6 +263,27 @@ const ROUTES = {
     definitions: [{ revisionId: 'def-1-r1', metric: 'total_revenue' }],
     engine: 'context_graph',
   },
+  '/api/v2/context/research-runs': {
+    run: {
+      id: '11111111-1111-1111-1111-111111111111',
+      checkpointRevision: 0,
+      objective: 'trace ARR',
+      phase: 'running',
+    },
+    engine: 'context_graph',
+  },
+  '/api/v2/context/resolve-seeds': {
+    candidates: [
+      {
+        id: 'n1',
+        resolver: 'scope_tuple',
+        pinnedFields: ['entityId', 'metric'],
+        scopeStatus: 'known',
+      },
+    ],
+    leading_resolver: 'scope_tuple',
+    engine: 'context_graph',
+  },
   '/api/v2/context/eval/catalog': {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
@@ -318,6 +339,23 @@ function startStub(options = {}) {
         } catch {
           /* fall through */
         }
+      }
+
+      const researchRunMatch = url.pathname.match(
+        /^\/api\/v2\/context\/research-runs\/([^/]+)(?:\/(checkpoints))?$/,
+      );
+      if (researchRunMatch) {
+        const runId = researchRunMatch[1];
+        const isCheckpoint = researchRunMatch[2] === 'checkpoints';
+        const run = {
+          id: runId,
+          checkpointRevision: isCheckpoint ? 1 : 0,
+          objective: 'trace ARR',
+          phase: 'running',
+        };
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ run, engine: 'context_graph' }));
+        return;
       }
 
       const payload = routes[url.pathname];
@@ -630,6 +668,58 @@ test('every tool round-trips through the real server against the API', async (t)
     const listed = await call('list_metric_definitions', { metric: 'total_revenue' });
     assert.equal(seen.at(-1).path, '/api/v2/context/metric-definitions');
     assert.match(listed, /Count:\*\* 1/);
+  });
+
+  await t.test('research run create/get/checkpoint hit C3 routes', async () => {
+    const created = await call('create_research_run', {
+      objective: 'trace ARR',
+      snapshot_id: 'snap-1',
+      workflow_version: 'wf-1',
+      budget: { max_credits: 10, max_tokens: 1000, deadline_ms: 60_000 },
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/research-runs');
+    assert.match(created, /Phase:\*\* running/);
+
+    const got = await call('get_research_run', {
+      run_id: '11111111-1111-1111-1111-111111111111',
+    });
+    assert.equal(
+      seen.at(-1).path,
+      '/api/v2/context/research-runs/11111111-1111-1111-1111-111111111111',
+    );
+    assert.match(got, /Revision:\*\* 0/);
+
+    const checkpointed = await call('checkpoint_research_run', {
+      run_id: '11111111-1111-1111-1111-111111111111',
+      expected_revision: 0,
+      run: {
+        id: '11111111-1111-1111-1111-111111111111',
+        checkpointRevision: 0,
+        objective: 'trace ARR',
+        phase: 'running',
+      },
+    });
+    assert.equal(
+      seen.at(-1).path,
+      '/api/v2/context/research-runs/11111111-1111-1111-1111-111111111111/checkpoints',
+    );
+    assert.match(checkpointed, /Revision:\*\* 1/);
+  });
+
+  await t.test('resolve_seeds posts index and returns leading resolver', async () => {
+    const text = await call('resolve_seeds', {
+      text: 'acme revenue',
+      filters: { entityId: 'acme', metric: 'total_revenue' },
+      index: [
+        {
+          id: 'n1',
+          scope: { entityId: 'acme', metric: 'total_revenue' },
+          terms: ['revenue'],
+        },
+      ],
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/resolve-seeds');
+    assert.match(text, /Leading resolver:\*\* scope_tuple/);
   });
 
   await t.test('get_evidence_packet and get_change_impact hit v2 routes', async () => {

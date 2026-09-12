@@ -24,6 +24,10 @@ import {
   formatListClaimRelations,
   formatCreateMetricDefinition,
   formatListMetricDefinitions,
+  formatCreateResearchRun,
+  formatGetResearchRun,
+  formatCheckpointResearchRun,
+  formatResolveSeeds,
   formatDocumentAnalysis,
   formatEvalCatalog,
   formatExtractedDoc,
@@ -37,6 +41,8 @@ import {
 import { collectStreamEvents } from './stream.js';
 import type {
   FindContradictionsOptions,
+  ResolveSeedsOptions,
+  ResearchRunPayload,
   AssetRefOptions,
   BatchItem,
   Citation,
@@ -61,6 +67,10 @@ import {
   validateListClaimRelations,
   validateCreateMetricDefinition,
   validateListMetricDefinitions,
+  validateCreateResearchRun,
+  validateGetResearchRun,
+  validateCheckpointResearchRun,
+  validateResolveSeeds,
   validateEvalCatalog,
   validateResolvedAnswer,
   validateResolvedPacket,
@@ -671,6 +681,108 @@ export const handlers: Record<string, ToolHandler> = {
       formatListMetricDefinitions(validated),
       validated as unknown as Record<string, unknown>,
     );
+  },
+
+  create_research_run: async (args, client) => {
+    if (
+      typeof args?.objective !== 'string' ||
+      typeof args?.snapshot_id !== 'string' ||
+      typeof args?.workflow_version !== 'string' ||
+      !args?.budget ||
+      typeof args.budget !== 'object'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'objective, snapshot_id, workflow_version, and budget are required',
+      );
+    }
+    const budget = args.budget as Record<string, unknown>;
+    const raw = await wrapApi(
+      client.createResearchRun({
+        objective: args.objective,
+        snapshot_id: args.snapshot_id,
+        workflow_version: args.workflow_version,
+        deal_id: typeof args?.deal_id === 'string' ? args.deal_id : undefined,
+        session_id: typeof args?.session_id === 'string' ? args.session_id : undefined,
+        budget: {
+          max_credits: Number(budget.max_credits),
+          max_tokens: Number(budget.max_tokens),
+          deadline_ms: Number(budget.deadline_ms),
+        },
+        root_operation_id:
+          typeof args?.root_operation_id === 'string' || args?.root_operation_id === null
+            ? (args.root_operation_id as string | null)
+            : undefined,
+        open_requirement_ids: Array.isArray(args?.open_requirement_ids)
+          ? (args.open_requirement_ids as string[])
+          : undefined,
+        max_steps: typeof args?.max_steps === 'number' ? args.max_steps : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateCreateResearchRun(raw);
+    return ok(
+      formatCreateResearchRun(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  get_research_run: async (args, client) => {
+    if (typeof args?.run_id !== 'string' || !args.run_id.trim()) {
+      throw new ToolFailure('invalid_argument', 'run_id is required');
+    }
+    const raw = await wrapApi(client.getResearchRun({ run_id: args.run_id }));
+    const validated = validateGetResearchRun(raw);
+    return ok(formatGetResearchRun(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  checkpoint_research_run: async (args, client) => {
+    if (
+      typeof args?.run_id !== 'string' ||
+      typeof args?.expected_revision !== 'number' ||
+      !args?.run ||
+      typeof args.run !== 'object'
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'run_id, expected_revision, and run are required',
+      );
+    }
+    const raw = await wrapApi(
+      client.checkpointResearchRun({
+        run_id: args.run_id,
+        expected_revision: args.expected_revision,
+        run: args.run as ResearchRunPayload,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateCheckpointResearchRun(raw);
+    return ok(
+      formatCheckpointResearchRun(validated),
+      validated as unknown as Record<string, unknown>,
+    );
+  },
+
+  resolve_seeds: async (args, client) => {
+    if (typeof args?.text !== 'string' || !Array.isArray(args?.index)) {
+      throw new ToolFailure('invalid_argument', 'text and index are required');
+    }
+    const raw = await wrapApi(
+      client.resolveSeeds({
+        text: args.text,
+        filters:
+          args.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
+            ? (args.filters as Record<string, string | null | undefined>)
+            : undefined,
+        index: args.index as ResolveSeedsOptions['index'],
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateResolveSeeds(raw);
+    return ok(formatResolveSeeds(validated), validated as unknown as Record<string, unknown>);
   },
 
   eval_catalog: async (_args, client) => {

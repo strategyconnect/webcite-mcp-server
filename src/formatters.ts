@@ -23,6 +23,10 @@ import type {
   ListClaimRelationsResponse,
   CreateMetricDefinitionResponse,
   ListMetricDefinitionsResponse,
+  CreateResearchRunResponse,
+  GetResearchRunResponse,
+  CheckpointResearchRunResponse,
+  ResolveSeedsResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -649,6 +653,24 @@ export function formatListMetricDefinitions(
   result: ListMetricDefinitionsResponse,
 ): string {
   return `# Metric Definitions\n\n**Count:** ${result.definitions.length}`;
+}
+
+export function formatCreateResearchRun(result: CreateResearchRunResponse): string {
+  return `# Research Run\n\n**Id:** ${result.run.id}\n**Revision:** ${result.run.checkpointRevision}\n**Phase:** ${result.run.phase}`;
+}
+
+export function formatGetResearchRun(result: GetResearchRunResponse): string {
+  return formatCreateResearchRun(result);
+}
+
+export function formatCheckpointResearchRun(
+  result: CheckpointResearchRunResponse,
+): string {
+  return `# Research Checkpoint\n\n**Id:** ${result.run.id}\n**Revision:** ${result.run.checkpointRevision}\n**Phase:** ${result.run.phase}`;
+}
+
+export function formatResolveSeeds(result: ResolveSeedsResponse): string {
+  return `# Resolve Seeds\n\n**Count:** ${result.candidates.length}\n**Leading resolver:** ${result.leading_resolver ?? 'none'}`;
 }
 
 export function formatEvalCatalog(result: EvalCatalogResponse): string {
