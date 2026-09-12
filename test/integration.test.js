@@ -4745,6 +4745,165 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.match(res.result.content[0].text, /claims/);
   });
 
+  await t.test(
+    'find_contradictions surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'find_contradictions',
+        arguments: {
+          claims: [
+            { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' },
+            { interval: { from: '2024-07-01', to: '2025-01-01' }, decimal_value: '20' },
+          ],
+          idempotency_key: ' contra-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/contradictions'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'find_contradictions whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'find_contradictions',
+        arguments: {
+          claims: [
+            { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' },
+            { interval: { from: '2024-07-01', to: '2025-01-01' }, decimal_value: '20' },
+          ],
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/contradictions'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'find_contradictions equal-pad idempotency_key → incomplete_operation_idempotency_identity (never replay)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'find_contradictions',
+        arguments: {
+          claims: [
+            { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' },
+            { interval: { from: '2024-07-01', to: '2025-01-01' }, decimal_value: '20' },
+          ],
+          idempotency_key: ' contra-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/contradictions'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression: #289 padded decimal still forwarded (never MCP-trim); #98/#101 idemp pads.
+  await t.test(
+    'find_contradictions surrounding-padded decimal still → missing_decimal_value (#289 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'find_contradictions',
+        arguments: {
+          claims: [
+            { interval: { from: '2024-01-01', to: '2025-01-01' }, decimal_value: ' 10 ' },
+            { interval: { from: '2024-01-01', to: '2025-01-01' }, decimal_value: '20' },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /contradiction_scan_incomplete|missing_decimal_value/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/contradictions');
+      assert.ok(req);
+      assert.equal(req.body.claims[0].decimal_value, ' 10 ');
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#98 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+          idempotency_key: ' pkt-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'compare_evaluations surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#101 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_evaluations',
+        arguments: {
+          baseline_run_id: 'base-1',
+          candidate_run_id: 'cand-1',
+          idempotency_key: ' cmp-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evaluations/compare'),
+        undefined,
+      );
+    },
+  );
+
+
   await t.test('number_inventory omits method → incomplete (never invent native)', async () => {
     const before = seen.length;
     const res = await rpc('tools/call', {
