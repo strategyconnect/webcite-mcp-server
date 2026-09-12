@@ -28,6 +28,7 @@ import {
   formatGetResearchRun,
   formatCheckpointResearchRun,
   formatResolveSeeds,
+  formatExpandSeeds,
   formatLearningJudge,
   formatLearningApply,
   formatLearningPlaceholder,
@@ -84,6 +85,7 @@ import {
   validateGetResearchRun,
   validateCheckpointResearchRun,
   validateResolveSeeds,
+  validateExpandSeeds,
   validateLearningJudge,
   validateLearningApply,
   validateLearningPlaceholder,
@@ -901,6 +903,37 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateResolveSeeds(raw);
     return ok(formatResolveSeeds(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  expand_seeds: async (args, client) => {
+    if (
+      !Array.isArray(args?.seeds) ||
+      !Array.isArray(args?.edges) ||
+      !Array.isArray(args?.allowed)
+    ) {
+      throw new ToolFailure(
+        'invalid_argument',
+        'seeds, edges, and allowed are required arrays',
+      );
+    }
+    if (
+      args?.hops !== undefined &&
+      (typeof args.hops !== 'number' || !Number.isFinite(args.hops))
+    ) {
+      throw new ToolFailure('invalid_argument', 'hops must be a finite number when provided');
+    }
+    const raw = await wrapApi(
+      client.expandSeeds({
+        seeds: args.seeds as string[],
+        edges: args.edges as Array<{ from: string; to: string }>,
+        allowed: args.allowed as string[],
+        hops: typeof args?.hops === 'number' ? args.hops : undefined,
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateExpandSeeds(raw);
+    return ok(formatExpandSeeds(validated), validated as unknown as Record<string, unknown>);
   },
 
   learning_judge: async (args, client) => {

@@ -1051,6 +1051,33 @@ Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
     },
   },
   {
+    name: 'expand_seeds',
+    description: `Bounded authorized seed expansion (C2). Unauthorized intermediates cannot be traversed; hops are capped at 2.
+
+Credits: 1. HTTP: POST /api/v2/context/expand-seeds`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        seeds: { type: 'array', items: { type: 'string' }, minItems: 1 },
+        edges: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              from: { type: 'string' },
+              to: { type: 'string' },
+            },
+            required: ['from', 'to'],
+          },
+        },
+        allowed: { type: 'array', items: { type: 'string' } },
+        hops: { type: 'number', description: 'Requested hops; kernel caps at 2' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['seeds', 'edges', 'allowed'],
+    },
+  },
+  {
     name: 'learning_judge',
     description: `E2 judge control: hard failures reject; uncertain may request evidence once.
 
@@ -1338,6 +1365,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v2/context/research-runs/:runId': 'get_research_run',
   'POST /api/v2/context/research-runs/:runId/checkpoints': 'checkpoint_research_run',
   'POST /api/v2/context/resolve-seeds': 'resolve_seeds',
+  'POST /api/v2/context/expand-seeds': 'expand_seeds',
   'POST /api/v2/context/learning/judge': 'learning_judge',
   'POST /api/v2/context/learning/apply': 'learning_apply',
   'GET /api/v2/context/learning/placeholder': 'learning_placeholder',

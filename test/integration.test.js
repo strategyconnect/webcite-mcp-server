@@ -305,6 +305,11 @@ const ROUTES = {
     index_size: 1,
     engine: 'context_graph',
   },
+  '/api/v2/context/expand-seeds': {
+    seeds: ['a', 'b'],
+    hops: 1,
+    engine: 'context_graph',
+  },
   '/api/v2/context/learning/judge': {
     action: 'reject',
     engine: 'context_graph',
@@ -884,6 +889,21 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(seen.at(-1).path, '/api/v2/context/resolve-seeds');
     assert.equal(seen.at(-1).body.index, undefined);
     assert.match(text, /Index source:\*\* catalog/);
+  });
+
+  await t.test('expand_seeds posts authorized graph and returns expanded ids', async () => {
+    const text = await call('expand_seeds', {
+      seeds: ['a'],
+      edges: [
+        { from: 'a', to: 'b' },
+        { from: 'b', to: 'c' },
+      ],
+      allowed: ['a', 'b'],
+      hops: 2,
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/expand-seeds');
+    assert.match(text, /Hops:\*\* 1/);
+    assert.match(text, /Seeds:\*\* a, b/);
   });
 
   await t.test('learning judge/apply/placeholder hit E2 routes', async () => {

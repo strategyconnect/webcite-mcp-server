@@ -679,6 +679,20 @@ export interface ResolveSeedsResponse {
   engine?: string;
 }
 
+export interface ExpandSeedsOptions {
+  seeds: string[];
+  edges: Array<{ from: string; to: string }>;
+  allowed: string[];
+  hops?: number;
+  idempotency_key?: string;
+}
+
+export interface ExpandSeedsResponse {
+  seeds: string[];
+  hops: number;
+  engine?: string;
+}
+
 export interface LearningJudgeOptions {
   hard_failures?: string[];
   verdict: 'pass' | 'fail' | 'uncertain' | 'error';
