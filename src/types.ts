@@ -810,10 +810,14 @@ export interface GetResearchRunResponse {
   engine?: string;
 }
 
-/** Tenant-scoped list; scope comes from the API key (no client tenant override). */
+/**
+ * Tenant-scoped list; scope comes from the API key (no client tenant override).
+ * Backend #288: blank/surrounding-padded tenant ids never certify a list match.
+ */
 export interface ListResearchRunsOptions {}
 
 export interface ListResearchRunsResponse {
+  /** Each run's scope.tenantId must be non-blank/unpadded (#288). */
   runs: ResearchRunPayload[];
   engine?: string;
 }
