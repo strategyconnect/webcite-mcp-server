@@ -427,6 +427,11 @@ export interface CompareAssertionsOptions {
    */
   left: Partial<ClaimScope>;
   right: Partial<ClaimScope>;
+  /**
+   * Optional replay key. When string: blank/whitespace/surrounding-padded →
+   * incomplete_operation_idempotency_identity (never trim-launder into a
+   * certified compare-assertions replay pin; same honesty as #92/#101/#102).
+   */
   idempotency_key?: string;
 }
 
