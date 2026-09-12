@@ -760,6 +760,31 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
 }
 
 /**
+ * C3/I4 settle_operation: optional idempotency_key, when present as string,
+ * blank/whitespace/surrounding-padded never certifies a settle replay pin —
+ * refuse before HTTP (same identityComplete honesty as required
+ * open_operation_root / reserve_operation idempotency_key after #83/#88).
+ * Omit when not a string.
+ */
+function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
+  if (typeof idempotencyKey !== 'string') return;
+  if (!wakeIdentityComplete(idempotencyKey)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'idempotency_key is incomplete (blank/whitespace/padded)',
+      {
+        details: {
+          reason: 'incomplete_operation_idempotency_identity',
+          field: 'idempotency_key',
+        },
+        actionable:
+          'Blank/whitespace/padded idempotency_key never certifies an operation settle/replay; omit idempotency_key or pass a non-blank unpadded key.',
+      },
+    );
+  }
+}
+
+/**
  * C3/I4 EvidenceAttempt path ids: blank/whitespace/surrounding-padded
  * attempt_id must never trim-launder into a certified resolve hit.
  */
@@ -2707,6 +2732,9 @@ export const handlers: Record<string, ToolHandler> = {
     // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
     // into a certified settle target.
     assertEvidenceOperationIdComplete(args?.operation_id);
+    // C3/I4 after #88: optional padded idempotency_key never certifies a settle
+    // replay pin (same honesty as required reserve_operation idempotency).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     if (args?.settled_credits !== null && typeof args?.settled_credits !== 'number') {
       throw new ToolFailure(
         'invalid_argument',

@@ -1624,7 +1624,7 @@ Credits: 1. HTTP: GET /api/v2/context/operations/:operationId/availability`,
   },
   {
     name: 'settle_operation',
-    description: `Settle a reserved EvidenceOperation once (I4). Pass settled_credits null to mark reconciliation_required without inventing an amount. Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
+    description: `Settle a reserved EvidenceOperation once (I4). Pass settled_credits null to mark reconciliation_required without inventing an amount. Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity; blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified settle/replay).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/settle`,
     inputSchema: {
@@ -1639,7 +1639,11 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/settle`,
           type: ['number', 'null'],
           description: 'Credits to settle, or null for reconciliation_required',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded settle replay key. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
       },
       required: ['operation_id', 'settled_credits'],
     },
