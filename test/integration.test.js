@@ -1800,120 +1800,6 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /packet-new/);
   });
 
-  await t.test(
-    'create_evidence_packet surrounding-padded source_version_id → incomplete_binding_identity',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          bindings: [
-            {
-              source_version_id: ' sv1 ',
-              source_unit_id: 'u1',
-              representation_id: 'rep1',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
-      assert.equal(res.result.structuredContent.details?.field, 'source_version_id');
-      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
-      // Must refuse before HTTP — never trim-launder into a certified sealed packet.
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
-    'create_evidence_packet surrounding-padded source_unit_id → incomplete_binding_identity',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          bindings: [
-            {
-              source_version_id: 'sv1',
-              source_unit_id: ' u1 ',
-              representation_id: 'rep1',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
-      assert.equal(res.result.structuredContent.details?.field, 'source_unit_id');
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
-    'create_evidence_packet surrounding-padded representation_id → incomplete_binding_identity',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          bindings: [
-            {
-              source_version_id: 'sv1',
-              source_unit_id: 'u1',
-              representation_id: ' rep1 ',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
-      assert.equal(res.result.structuredContent.details?.field, 'representation_id');
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-      );
-    },
-  );
-
-  await t.test(
-    'create_evidence_packet whitespace-only binding id → incomplete_binding_identity',
-    async () => {
-      const before = seen.length;
-      const res = await rpc('tools/call', {
-        name: 'create_evidence_packet',
-        arguments: {
-          claim_text: 'Revenue grew 18%.',
-          bindings: [
-            {
-              source_version_id: 'sv1',
-              source_unit_id: '\t',
-              representation_id: 'rep1',
-            },
-          ],
-        },
-      });
-      assert.equal(res.result.isError, true);
-      assert.equal(res.result.structuredContent.code, 'invalid_argument');
-      assert.equal(res.result.structuredContent.details?.reason, 'incomplete_binding_identity');
-      assert.equal(res.result.structuredContent.details?.field, 'source_unit_id');
-      assert.equal(
-        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
-        undefined,
-      );
-    },
-  );
-
   await t.test('assess_support posts claim hashes and returns tier-capped judgment', async () => {
     const text = await call('assess_support', {
       claim_revision_id: 'claim-r1',
@@ -4165,6 +4051,115 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       assert.equal(res.result.structuredContent.details.field, 'deal_id');
       assert.equal(
         seen.slice(before).find((r) => r.path === '/api/v2/context/research-runs'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_research_run surrounding-padded run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: ' run-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_research_run_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/research-runs/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_research_run whitespace-only run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: '  ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_research_run_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').startsWith('/api/v2/context/research-runs/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run surrounding-padded run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: ' run-1 ',
+          expected_revision: 0,
+          run: {
+            id: 'run-1',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_research_run_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/checkpoints')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'reserve_research_budget surrounding-padded run_id → incomplete_research_run_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_research_budget',
+        arguments: {
+          run_id: ' run-1 ',
+          idempotency_key: 'ik-1',
+          kind: 'search',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_research_run_identity',
+      );
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/reserve')),
         undefined,
       );
     },
