@@ -2843,6 +2843,196 @@ test('every tool round-trips through the real server against the API', async (t)
   );
 
   await t.test(
+    'create_claim_relation surrounding-padded predicate → incomplete_claim_predicate_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: ' equals ',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_predicate_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'predicate');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation whitespace-only predicate → incomplete_claim_predicate_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: '   ',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_predicate_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation equal-pad predicate → incomplete_claim_predicate_identity (never create)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: '\tequals\t',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_predicate_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'list_claim_relations surrounding-padded predicate → incomplete_claim_predicate_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'list_claim_relations',
+        arguments: { predicate: ' equals ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_predicate_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'predicate');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'list_claim_relations whitespace-only predicate → incomplete_claim_predicate_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'list_claim_relations',
+        arguments: { predicate: '   ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_predicate_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formalize_claim_relation surrounding-padded predicate → incomplete_claim_predicate_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formalize_claim_relation',
+        arguments: {
+          predicate: ' equals ',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_predicate_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'predicate');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => r.path === '/api/v2/context/claim-relations/formalize'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'formalize_claim_relation whitespace-only predicate → incomplete_claim_predicate_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'formalize_claim_relation',
+        arguments: {
+          predicate: '   ',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_predicate_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => r.path === '/api/v2/context/claim-relations/formalize'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #75 list claim_revision_id pad refuse must stay fail-closed.
+  await t.test(
+    'list_claim_relations surrounding-padded claim_revision_id still → incomplete_claim_revision_identity (#75 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'list_claim_relations',
+        arguments: { claim_revision_id: ' claim-1 ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'formalize_claim_relation surrounding-padded argument_ids → incomplete_claim_argument_identity',
     async () => {
       const before = seen.length;

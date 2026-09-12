@@ -1104,13 +1104,17 @@ Credits: 1. HTTP: POST /api/v2/context/formal/check`,
   },
   {
     name: 'create_claim_relation',
-    description: `Persist a formalized claim relation (C1). Unrecognised predicates are refused. Blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity; blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog relation).
+    description: `Persist a formalized claim relation (C1). Unrecognised predicates are refused. Blank/whitespace/surrounding-padded predicate → incomplete_claim_predicate_identity; blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity; blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog relation).
 
 Credits: 1. HTTP: POST /api/v2/context/claim-relations`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        predicate: { type: 'string' },
+        predicate: {
+          type: 'string',
+          description:
+            'Non-blank unpadded predicate. Blank/whitespace/surrounding-padded → incomplete_claim_predicate_identity (never trim-launder).',
+        },
         argument_ids: {
           type: 'array',
           items: { type: 'string' },
@@ -1131,13 +1135,17 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations`,
   },
   {
     name: 'list_claim_relations',
-    description: `List persisted claim relations for the authenticated tenant (C1). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog filter).
+    description: `List persisted claim relations for the authenticated tenant (C1). Blank/whitespace/surrounding-padded predicate → incomplete_claim_predicate_identity; blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity (never trim-launder into a certified catalog filter).
 
 Credits: 1. HTTP: GET /api/v2/context/claim-relations`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        predicate: { type: 'string' },
+        predicate: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded predicate filter. Blank/whitespace/surrounding-padded → incomplete_claim_predicate_identity (never trim-launder).',
+        },
         claim_revision_id: {
           type: 'string',
           description:
@@ -1221,13 +1229,17 @@ Credits: 1. HTTP: POST /api/v2/context/claim-structure/resolve-definition`,
   },
   {
     name: 'formalize_claim_relation',
-    description: `Dry-run formalize a claim relation without persisting (C1). Unrecognised predicates or unresolved args return formalized:false. Blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity (never trim-launder into a certified formalize).
+    description: `Dry-run formalize a claim relation without persisting (C1). Unrecognised predicates or unresolved args return formalized:false. Blank/whitespace/surrounding-padded predicate → incomplete_claim_predicate_identity; blank/whitespace/surrounding-padded argument_ids → incomplete_claim_argument_identity (never trim-launder into a certified formalize).
 
 Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        predicate: { type: 'string' },
+        predicate: {
+          type: 'string',
+          description:
+            'Non-blank unpadded predicate. Blank/whitespace/surrounding-padded → incomplete_claim_predicate_identity (never trim-launder).',
+        },
         argument_ids: {
           type: 'array',
           items: { type: 'string' },

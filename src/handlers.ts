@@ -1088,6 +1088,46 @@ function assertAllowedFragmentIdsComplete(ids: unknown): asserts ids is string[]
 }
 
 /**
+ * C1 claim-relation predicate: blank/whitespace/surrounding-padded predicate
+ * must never trim-launder into a certified catalog create/list/formalize
+ * (same identityComplete honesty as argument_ids / claim_revision_id #75 and
+ * operation kind #83/#88). Equal pads must not look like a recognised predicate.
+ */
+function assertClaimRelationPredicateComplete(
+  predicate: unknown,
+): asserts predicate is string {
+  if (typeof predicate !== 'string' || !wakeIdentityComplete(predicate)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'predicate is incomplete (blank/whitespace/padded)',
+      {
+        details: {
+          reason: 'incomplete_claim_predicate_identity',
+          field: 'predicate',
+        },
+        actionable:
+          'Blank/whitespace/padded predicate never certifies a claim-relation; do not invent or trim-launder a predicate identity.',
+      },
+    );
+  }
+}
+
+/**
+ * C1 list_claim_relations: optional predicate, when present as string,
+ * blank/whitespace/surrounding-padded never trim-launders into a certified
+ * catalog filter (same honesty as optional claim_revision_id #75).
+ */
+function assertOptionalClaimRelationPredicateComplete(
+  predicate: unknown,
+): string | undefined {
+  if (typeof predicate !== 'string') {
+    return undefined;
+  }
+  assertClaimRelationPredicateComplete(predicate);
+  return predicate;
+}
+
+/**
  * C1 claim-relation argument / claim_revision ids: blank/whitespace/surrounding-
  * padded argument_ids or claim_revision_id must never trim-launder into a
  * certified catalog create/list/formalize (same identityComplete honesty as
@@ -2110,9 +2150,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   create_claim_relation: async (args, client) => {
-    if (typeof args?.predicate !== 'string') {
-      throw new ToolFailure('invalid_argument', 'predicate and argument_ids are required');
-    }
+    // C1: refuse padded/blank predicate before HTTP — never trim-launder into
+    // a certified catalog relation (same honesty as argument_ids #75).
+    assertClaimRelationPredicateComplete(args?.predicate);
     if (typeof args?.arguments_resolved !== 'boolean') {
       throw new ToolFailure('invalid_argument', 'arguments_resolved is required');
     }
@@ -2140,7 +2180,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   list_claim_relations: async (args, client) => {
-    // C1: padded optional claim_revision_id never trim-launders into a catalog filter.
+    // C1: padded optional predicate / claim_revision_id never trim-launder into
+    // a certified catalog filter.
+    const predicate = assertOptionalClaimRelationPredicateComplete(args?.predicate);
     let claimRevisionId: string | undefined;
     if (typeof args?.claim_revision_id === 'string') {
       if (!wakeIdentityComplete(args.claim_revision_id)) {
@@ -2161,7 +2203,7 @@ export const handlers: Record<string, ToolHandler> = {
     }
     const raw = await wrapApi(
       client.listClaimRelations({
-        predicate: typeof args?.predicate === 'string' ? args.predicate : undefined,
+        predicate,
         claim_revision_id: claimRevisionId,
       }),
     );
@@ -2269,9 +2311,9 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   formalize_claim_relation: async (args, client) => {
-    if (typeof args?.predicate !== 'string') {
-      throw new ToolFailure('invalid_argument', 'predicate and argument_ids are required');
-    }
+    // C1: refuse padded/blank predicate before HTTP — never trim-launder into
+    // a certified formalize dry-run (same honesty as create #75/#predicate-pad).
+    assertClaimRelationPredicateComplete(args?.predicate);
     if (typeof args?.arguments_resolved !== 'boolean') {
       throw new ToolFailure('invalid_argument', 'arguments_resolved is required');
     }
