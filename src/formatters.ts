@@ -27,6 +27,7 @@ import type {
   GetResearchRunResponse,
   CheckpointResearchRunResponse,
   ResolveSeedsResponse,
+  ExpandSeedsResponse,
   LearningJudgeResponse,
   LearningApplyResponse,
   LearningPlaceholderResponse,
@@ -692,6 +693,10 @@ export function formatResolveSeeds(result: ResolveSeedsResponse): string {
     parts.push(`**Index size:** ${result.index_size}`);
   }
   return parts.join('\n');
+}
+
+export function formatExpandSeeds(result: ExpandSeedsResponse): string {
+  return `# Expand Seeds\n\n**Hops:** ${result.hops}\n**Seeds:** ${result.seeds.join(', ') || '(none)'}`;
 }
 
 export function formatLearningJudge(result: LearningJudgeResponse): string {

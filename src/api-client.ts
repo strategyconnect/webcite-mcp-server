@@ -45,6 +45,8 @@ import type {
   CheckpointResearchRunResponse,
   ResolveSeedsOptions,
   ResolveSeedsResponse,
+  ExpandSeedsOptions,
+  ExpandSeedsResponse,
   LearningJudgeOptions,
   LearningJudgeResponse,
   LearningApplyOptions,
@@ -575,6 +577,15 @@ export class WebCiteApiClient {
     const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/resolve-seeds',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async expandSeeds(options: ExpandSeedsOptions): Promise<ExpandSeedsResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/expand-seeds',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );

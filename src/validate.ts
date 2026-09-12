@@ -22,6 +22,7 @@ import type {
   GetResearchRunResponse,
   CheckpointResearchRunResponse,
   ResolveSeedsResponse,
+  ExpandSeedsResponse,
   LearningJudgeResponse,
   LearningApplyResponse,
   LearningPlaceholderResponse,
@@ -407,6 +408,21 @@ export function validateResolveSeeds(raw: unknown): ResolveSeedsResponse {
         : null,
     index_source: typeof root.index_source === 'string' ? root.index_source : undefined,
     index_size: typeof root.index_size === 'number' ? root.index_size : undefined,
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateExpandSeeds(raw: unknown): ExpandSeedsResponse {
+  const root = requireObject(raw, 'ExpandSeeds');
+  if (!Array.isArray(root.seeds)) {
+    throw new ToolFailure('invalid_api_output', 'ExpandSeeds.seeds must be an array');
+  }
+  if (typeof root.hops !== 'number' || !Number.isFinite(root.hops)) {
+    throw new ToolFailure('invalid_api_output', 'ExpandSeeds.hops must be a number');
+  }
+  return {
+    seeds: root.seeds as string[],
+    hops: root.hops,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }
