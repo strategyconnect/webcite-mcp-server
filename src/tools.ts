@@ -577,6 +577,8 @@ Blank/whitespace or surrounding-padded query text fails closed as padded_select_
 
 Blank/whitespace or surrounding-padded source_texts → padded_source_text; blank/whitespace/surrounding-padded source_version_ids → incomplete_source_version_identity — equal pads never materialize or pin a query source and must not trim-launder (#264/#279 / #314 honesty).
 
+Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified query-context replay; same honesty as settle/compare_assertions #92/#105).
+
 Never supply tenant/scope fields; the API derives scope from the API key.
 
 Credits: 1. HTTP: POST /api/v2/context/query`,
@@ -621,7 +623,8 @@ Credits: 1. HTTP: POST /api/v2/context/query`,
         },
         idempotency_key: {
           type: 'string',
-          description: 'Logical idempotency key for chargeable/settled calls. Not a scope field.',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a query-context replay pin).',
         },
       },
       required: ['text'],
