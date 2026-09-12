@@ -765,17 +765,18 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * workflow publish-or-run / provider-cost / research create-or-checkpoint /
  * evaluation-compare / assess_support / compare_assertions /
  * find_contradictions / assess_meaning / formal_eligibility / query_context /
- * change-impact / formal_check / formal_resolution_state / resolve_fragment_uses replay pin — refuse
- * before HTTP (same identityComplete honesty as required open_operation_root /
- * reserve_operation idempotency_key after #83/#88). Shared by settle_operation
- * (#92), link_operation_consumer (#94), record/resolve_operation_attempt (#95),
- * publish_context_workflow / run_saved_workflow (#97), create_evidence_packet
- * (#98), get_provider_cost (#99), create/checkpoint_research_run (#100),
- * compare_evaluations (#101), assess_support (#102), find_contradictions (#104),
- * compare_assertions (#105), assess_meaning (#103), get_change_impact (#106),
- * formal_eligibility (#107), query_context (#108), formal_check (#110),
- * formal_resolution_state (#113), and resolve_fragment_uses (W3). Omit when not
- * a string. Does not trim or rewrite formal_check Lean source trailing newlines.
+ * change-impact / formal_check / formal_resolution_state / resolve_fragment_uses /
+ * number_inventory replay pin — refuse before HTTP (same identityComplete honesty
+ * as required open_operation_root / reserve_operation idempotency_key after
+ * #83/#88). Shared by settle_operation (#92), link_operation_consumer (#94),
+ * record/resolve_operation_attempt (#95), publish_context_workflow /
+ * run_saved_workflow (#97), create_evidence_packet (#98), get_provider_cost
+ * (#99), create/checkpoint_research_run (#100), compare_evaluations (#101),
+ * assess_support (#102), find_contradictions (#104), compare_assertions (#105),
+ * assess_meaning (#103), get_change_impact (#106), formal_eligibility (#107),
+ * query_context (#108), formal_check (#110), resolve_fragment_uses (#111),
+ * formal_resolution_state (#113), and number_inventory (W2). Omit when not a
+ * string. Does not trim or rewrite formal_check Lean source trailing newlines.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -789,11 +790,12 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check/formal_resolution_state/resolve_fragment_uses replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support/compare_assertions/find_contradictions/assess_meaning/formal_eligibility/query_context/change-impact/formal_check/formal_resolution_state/resolve_fragment_uses/number_inventory replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
 }
+
 
 /**
  * C3/I4 EvidenceAttempt path ids: blank/whitespace/surrounding-padded
@@ -2110,6 +2112,10 @@ export const handlers: Record<string, ToolHandler> = {
           'Provide occurrences[] with recognition_state, non-blank unpadded raw, and an explicit unpadded method (never invent method=native; never trim-launder padded labels).',
       });
     }
+    // W2 after #92/#102/#107: optional padded idempotency_key never certifies a
+    // number-inventory replay pin (same helper as settle/formal_eligibility).
+    // formal_check Lean source trailing newlines remain untouched.
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     // Pass rows through unchanged — do not default omitted method to native.
     const raw = await wrapApi(
       client.numberInventory({

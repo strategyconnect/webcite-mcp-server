@@ -946,7 +946,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank or surrounding-padded raw/non-null blank or surrounding-padded normalized_decimal/invalid missing or surrounding-padded method/interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native; never trim-launder padded labels). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity (blank/whitespace or surrounding-padded id or fragment_id)/blank or surrounding-padded raw/non-null blank or surrounding-padded normalized_decimal/invalid missing or surrounding-padded method/interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native; never trim-launder padded labels). Coverage complete means certified counts; unknown must not be treated as a certified inventory. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified number-inventory replay pin; same honesty as settle/formal_eligibility #92/#107). Lean formal_check source trailing newlines are out of scope for this tool.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -1024,7 +1024,11 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
             },
           },
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a number-inventory replay pin).',
+        },
       },
       required: ['occurrences'],
     },
