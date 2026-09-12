@@ -795,6 +795,7 @@ export interface ListMetricDefinitionsResponse {
 }
 
 export interface CreateResearchRunOptions {
+  /** Non-blank unpadded; blank/padded → padded_research_objective. */
   objective: string;
   snapshot_id: string;
   workflow_version: string;

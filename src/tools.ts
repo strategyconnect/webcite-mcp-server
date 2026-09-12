@@ -1234,13 +1234,17 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
   },
   {
     name: 'create_research_run',
-    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget. Blank/whitespace/surrounding-padded snapshot_id / workflow_version / deal_id / session_id / root_operation_id fail closed (incomplete_create_research_identity; evidenceId / ResearchScope id-pad honesty #281/#297 — never trim-launder). Blank/whitespace/padded open_requirement_ids fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
+    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget. Blank/whitespace/surrounding-padded objective → padded_research_objective (never trim-launder into a certified run purpose). Blank/whitespace/surrounding-padded snapshot_id / workflow_version / deal_id / session_id / root_operation_id fail closed (incomplete_create_research_identity; evidenceId / ResearchScope id-pad honesty #281/#297 — never trim-launder). Blank/whitespace/padded open_requirement_ids fail closed (incomplete_loop_requirement_identity; backend #304 — pads never certify a loop stop). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        objective: { type: 'string' },
+        objective: {
+          type: 'string',
+          description:
+            'Non-blank unpadded research objective. Blank/whitespace/surrounding-padded → padded_research_objective (never trim-launder).',
+        },
         snapshot_id: {
           type: 'string',
           description:

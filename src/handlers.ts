@@ -246,6 +246,26 @@ function assertClaimTextComplete(text: unknown): asserts text is string {
 }
 
 /**
+ * C3 create_research_run: blank/whitespace or surrounding-padded objective
+ * never certifies a research run purpose — refuse before HTTP so equal pads
+ * cannot trim-launder into the same durable objective as clean text (same
+ * honesty as claim_text #76 / selectPassage #314).
+ */
+function assertResearchObjectiveComplete(text: unknown): asserts text is string {
+  if (typeof text !== 'string' || !selectTextComplete(text)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'objective is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'padded_research_objective', field: 'objective' },
+        actionable:
+          'Blank/whitespace/padded objective never certifies a research run; do not invent or trim-launder a run purpose.',
+      },
+    );
+  }
+}
+
+/**
  * Backend #311: blank/whitespace or surrounding-padded resolve_seeds filters are
  * dishonest constraints — never ignore them into a bare_term seed, and never
  * equal-pad-pin against a padded index scope. Refuse before HTTP.
@@ -1985,6 +2005,9 @@ export const handlers: Record<string, ToolHandler> = {
         'objective, snapshot_id, workflow_version, and budget are required',
       );
     }
+    // C3: refuse padded/blank objective before HTTP — never trim-launder into
+    // a certified research-run purpose (same honesty as claim_text #76).
+    assertResearchObjectiveComplete(args.objective);
     // Backend evidenceId / ResearchScope (#281/#297): padded create identities
     // never certify a run — refuse before HTTP (never trim-launder).
     assertCreateResearchIdentityComplete(args);
