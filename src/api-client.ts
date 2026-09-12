@@ -27,6 +27,8 @@ import type {
   AssessMeaningResponse,
   FindContradictionsOptions,
   FindContradictionsResponse,
+  NumberInventoryOptions,
+  NumberInventoryResponse,
   FormalEligibilityOptions,
   FormalEligibilityResponse,
   FormalCheckOptions,
@@ -474,6 +476,17 @@ export class WebCiteApiClient {
     const { idempotency_key, ...body } = options;
     return this.request(
       '/api/v2/context/contradictions',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async numberInventory(
+    options: NumberInventoryOptions,
+  ): Promise<NumberInventoryResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/numbers/inventory',
       { method: 'POST', body: JSON.stringify(body) },
       { idempotencyKey: idempotency_key },
     );

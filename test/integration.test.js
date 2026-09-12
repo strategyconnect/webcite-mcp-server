@@ -228,6 +228,41 @@ const ROUTES = {
     falseClaimSupport: 'not_checked',
     engine: 'context_graph',
   },
+  '/api/v2/context/numbers/inventory': {
+    counts: { read: 2, uncertain: 1, unreadable: 0 },
+    occurrences: [
+      {
+        id: 'occ-1',
+        raw: '10',
+        fragment_id: 'frag-a',
+        normalized_decimal: '10',
+        interpretation: 'unknown',
+        method: 'native',
+        recognition_state: 'read',
+      },
+      {
+        id: 'occ-2',
+        raw: '10',
+        fragment_id: 'frag-b',
+        normalized_decimal: '10',
+        interpretation: 'unknown',
+        method: 'native',
+        recognition_state: 'read',
+      },
+      {
+        id: 'occ-3',
+        raw: '~12',
+        fragment_id: 'frag-c',
+        normalized_decimal: null,
+        interpretation: 'unknown',
+        method: 'native',
+        recognition_state: 'uncertain',
+      },
+    ],
+    coverage: 'complete',
+    unresolved: [],
+    engine: 'context_graph',
+  },
   '/api/v2/context/contradictions': {
     count: 1,
     pairs: [
@@ -418,6 +453,38 @@ function startStub(options = {}) {
           if (parsed.text === 'badshape') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'weird', refs: null }));
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
+      }
+
+      // Dynamic number inventory: incomplete rows fail closed (400)
+      if (url.pathname === '/api/v2/context/numbers/inventory' && body) {
+        try {
+          const parsed = JSON.parse(body);
+          const rows = Array.isArray(parsed?.occurrences) ? parsed.occurrences : [];
+          const incomplete = rows.some((row) => {
+            const state = row.recognition_state ?? row.recognitionState;
+            const id = row.id ?? '';
+            const fragmentId = row.fragment_id ?? row.fragmentId ?? '';
+            const decimal =
+              row.normalized_decimal !== undefined
+                ? row.normalized_decimal
+                : row.normalizedDecimal;
+            if (!id || !fragmentId) return true;
+            if (state === 'unreadable' && decimal != null) return true;
+            return false;
+          });
+          if (incomplete) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                message: 'number_inventory_incomplete: missing_occurrence_identity,unreadable_claims_normalized_decimal',
+                statusCode: 400,
+              }),
+            );
             return;
           }
         } catch {
@@ -1043,6 +1110,42 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /Authority:\*\* not_checked/);
   });
 
+  await t.test('number_inventory posts occurrences and returns counts', async () => {
+    const text = await call('number_inventory', {
+      occurrences: [
+        {
+          id: 'occ-1',
+          raw: '10',
+          fragment_id: 'frag-a',
+          normalized_decimal: '10',
+          recognition_state: 'read',
+        },
+        {
+          id: 'occ-2',
+          raw: '10',
+          fragment_id: 'frag-b',
+          normalized_decimal: '10',
+          recognition_state: 'read',
+        },
+        {
+          id: 'occ-3',
+          raw: '~12',
+          fragment_id: 'frag-c',
+          normalized_decimal: null,
+          recognition_state: 'uncertain',
+        },
+      ],
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/numbers/inventory');
+    assert.equal(req.method, 'POST');
+    assert.equal(req.body.occurrences.length, 3);
+    assert.match(text, /Coverage:\*\* complete/);
+    assert.match(text, /Read:\*\* 2/);
+    assert.match(text, /Uncertain:\*\* 1/);
+    assert.match(text, /Occurrences:\*\* 3/);
+  });
+
   await t.test('find_contradictions posts claims and returns count', async () => {
     const text = await call('find_contradictions', {
       claims: [
@@ -1629,6 +1732,35 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.isError, true);
     assert.equal(res.result.structuredContent.code, 'invalid_argument');
     assert.match(res.result.content[0].text, /mutually exclusive/);
+  });
+
+  await t.test('number_inventory missing occurrences → invalid_argument', async () => {
+    const res = await rpc('tools/call', {
+      name: 'number_inventory',
+      arguments: {},
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'invalid_argument');
+    assert.match(res.result.content[0].text, /occurrences/);
+  });
+
+  await t.test('number_inventory incomplete → api_error fail-closed', async () => {
+    const res = await rpc('tools/call', {
+      name: 'number_inventory',
+      arguments: {
+        occurrences: [
+          {
+            id: '',
+            fragment_id: '',
+            recognition_state: 'unreadable',
+            normalized_decimal: '1.5',
+          },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /number_inventory_incomplete/);
   });
 
   await t.test('invalid API output → isError invalid_api_output', async () => {

@@ -15,6 +15,7 @@ import type {
   AssessSupportResponse,
   AssessMeaningResponse,
   FindContradictionsResponse,
+  NumberInventoryResponse,
   FormalEligibilityResponse,
   FormalCheckResponse,
   CreateClaimRelationResponse,
@@ -364,6 +365,44 @@ export function validateFindContradictions(raw: unknown): FindContradictionsResp
   return {
     count: typeof root.count === 'number' ? root.count : root.pairs.length,
     pairs: root.pairs as FindContradictionsResponse['pairs'],
+    engine: typeof root.engine === 'string' ? root.engine : undefined,
+  };
+}
+
+export function validateNumberInventory(raw: unknown): NumberInventoryResponse {
+  const root = requireObject(raw, 'NumberInventory');
+  const counts = requireObject(root.counts, 'NumberInventory.counts');
+  if (!Array.isArray(root.occurrences)) {
+    throw new ToolFailure('invalid_api_output', 'NumberInventory.occurrences must be an array');
+  }
+  if (!Array.isArray(root.unresolved)) {
+    throw new ToolFailure('invalid_api_output', 'NumberInventory.unresolved must be an array');
+  }
+  const coverage = root.coverage;
+  if (coverage !== 'complete' && coverage !== 'unknown') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'NumberInventory.coverage must be complete|unknown',
+    );
+  }
+  const read = counts.read;
+  const uncertain = counts.uncertain;
+  const unreadable = counts.unreadable;
+  if (
+    typeof read !== 'number' ||
+    typeof uncertain !== 'number' ||
+    typeof unreadable !== 'number'
+  ) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'NumberInventory.counts requires read/uncertain/unreadable numbers',
+    );
+  }
+  return {
+    counts: { read, uncertain, unreadable },
+    occurrences: root.occurrences as NumberInventoryResponse['occurrences'],
+    coverage,
+    unresolved: root.unresolved.filter((u): u is string => typeof u === 'string'),
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

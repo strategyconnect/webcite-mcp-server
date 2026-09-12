@@ -556,6 +556,45 @@ export interface FindContradictionsResponse {
   engine?: string;
 }
 
+/** W2 A_WORKBENCH_COUNTS — occurrence inventory (fail-closed when incomplete). */
+export type NumberRecognitionState = 'read' | 'uncertain' | 'unreadable';
+
+export interface NumberInventoryOccurrenceInput {
+  id?: string;
+  raw?: string;
+  fragment_id?: string;
+  fragmentId?: string;
+  normalized_decimal?: string | null;
+  normalizedDecimal?: string | null;
+  interpretation?: string;
+  method?: string;
+  recognition_state?: NumberRecognitionState;
+  recognitionState?: NumberRecognitionState;
+}
+
+export interface NumberInventoryOptions {
+  occurrences: NumberInventoryOccurrenceInput[];
+  idempotency_key?: string;
+}
+
+export interface NumberInventoryOccurrence {
+  id: string;
+  raw: string;
+  fragment_id: string;
+  normalized_decimal: string | null;
+  interpretation: string;
+  method: string;
+  recognition_state: NumberRecognitionState;
+}
+
+export interface NumberInventoryResponse {
+  counts: { read: number; uncertain: number; unreadable: number };
+  occurrences: NumberInventoryOccurrence[];
+  coverage: 'complete' | 'unknown';
+  unresolved: string[];
+  engine?: string;
+}
+
 export interface FormalEligibilityOptions {
   decimal?: string | null;
   unit?: string | null;

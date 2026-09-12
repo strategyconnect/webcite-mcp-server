@@ -846,6 +846,45 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
     },
   },
   {
+    name: 'number_inventory',
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity/recognition or unreadable rows that claim a normalized decimal fail closed as number_inventory_incomplete (never silently repaired). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+
+Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        occurrences: {
+          type: 'array',
+          description:
+            'NumericOccurrence rows. recognition_state required (read|uncertain|unreadable). fragment_id + id required for complete coverage.',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              raw: { type: 'string' },
+              fragment_id: { type: 'string' },
+              fragmentId: { type: 'string' },
+              normalized_decimal: { type: ['string', 'null'] },
+              normalizedDecimal: { type: ['string', 'null'] },
+              interpretation: { type: 'string' },
+              method: { type: 'string' },
+              recognition_state: {
+                type: 'string',
+                enum: ['read', 'uncertain', 'unreadable'],
+              },
+              recognitionState: {
+                type: 'string',
+                enum: ['read', 'uncertain', 'unreadable'],
+              },
+            },
+          },
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['occurrences'],
+    },
+  },
+  {
     name: 'find_contradictions',
     description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown bounds never invent a contradiction.
 
@@ -1640,6 +1679,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/evidence-packets': 'create_evidence_packet',
   'POST /api/v2/context/assess-support': 'assess_support',
   'POST /api/v2/context/assess-meaning': 'assess_meaning',
+  'POST /api/v2/context/numbers/inventory': 'number_inventory',
   'POST /api/v2/context/contradictions': 'find_contradictions',
   'POST /api/v2/context/formal/eligibility': 'formal_eligibility',
   'POST /api/v2/context/formal/check': 'formal_check',

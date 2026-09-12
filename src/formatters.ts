@@ -18,6 +18,7 @@ import type {
   AssessSupportResponse,
   AssessMeaningResponse,
   FindContradictionsResponse,
+  NumberInventoryResponse,
   FormalEligibilityResponse,
   FormalCheckResponse,
   CreateClaimRelationResponse,
@@ -669,6 +670,21 @@ export function formatAssessMeaning(result: AssessMeaningResponse): string {
 
 export function formatFindContradictions(result: FindContradictionsResponse): string {
   return `# Contradictions\n\n**Count:** ${result.count}\n**Pairs:** ${result.pairs.length}`;
+}
+
+export function formatNumberInventory(result: NumberInventoryResponse): string {
+  const parts = [
+    `# Number Inventory\n`,
+    `**Coverage:** ${result.coverage}`,
+    `**Read:** ${result.counts.read}`,
+    `**Uncertain:** ${result.counts.uncertain}`,
+    `**Unreadable:** ${result.counts.unreadable}`,
+    `**Occurrences:** ${result.occurrences.length}`,
+  ];
+  if (result.unresolved.length > 0) {
+    parts.push(`**Unresolved:** ${result.unresolved.join(', ')}`);
+  }
+  return parts.join('\n');
 }
 
 export function formatFormalEligibility(result: FormalEligibilityResponse): string {

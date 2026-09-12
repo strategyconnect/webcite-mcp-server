@@ -18,6 +18,7 @@ import {
   formatCreatePacket,
   formatAssessSupport,
   formatAssessMeaning,
+  formatNumberInventory,
   formatFindContradictions,
   formatFormalEligibility,
   formatFormalCheck,
@@ -67,6 +68,7 @@ import {
 import { collectStreamEvents } from './stream.js';
 import type {
   FindContradictionsOptions,
+  NumberInventoryOptions,
   ResolveSeedsOptions,
   ResearchRunPayload,
   FormalRevenueBridgeOptions,
@@ -88,6 +90,7 @@ import {
   validateCreatePacket,
   validateAssessSupport,
   validateAssessMeaning,
+  validateNumberInventory,
   validateFindContradictions,
   validateFormalEligibility,
   validateFormalCheck,
@@ -667,6 +670,23 @@ export const handlers: Record<string, ToolHandler> = {
     );
     const validated = validateAssessMeaning(raw);
     return ok(formatAssessMeaning(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  number_inventory: async (args, client) => {
+    if (!Array.isArray(args?.occurrences)) {
+      throw new ToolFailure('invalid_argument', 'occurrences must be an array', {
+        actionable: 'Provide occurrences[] with recognition_state on each row.',
+      });
+    }
+    const raw = await wrapApi(
+      client.numberInventory({
+        occurrences: args.occurrences as NumberInventoryOptions['occurrences'],
+        idempotency_key:
+          typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
+      }),
+    );
+    const validated = validateNumberInventory(raw);
+    return ok(formatNumberInventory(validated), validated as unknown as Record<string, unknown>);
   },
 
   find_contradictions: async (args, client) => {
