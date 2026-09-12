@@ -5334,6 +5334,121 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'run_saved_workflow surrounding-padded revision_id → incomplete_workflow_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'run_saved_workflow',
+        arguments: {
+          revision_id: ' wf-rev-1 ',
+          mode: 'preview',
+          event_id: 'evt-1',
+          input: { k: 'v' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_revision_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'revision_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/workflows/') && String(r.path || '').includes('/runs')),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified workflow run',
+      );
+    },
+  );
+
+  await t.test(
+    'run_saved_workflow whitespace-only revision_id → incomplete_workflow_revision_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'run_saved_workflow',
+        arguments: {
+          revision_id: '  ',
+          mode: 'preview',
+          event_id: 'evt-1',
+          input: { k: 'v' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_revision_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/workflows/') && String(r.path || '').includes('/runs')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'run_saved_workflow surrounding-padded event_id → incomplete_workflow_event_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'run_saved_workflow',
+        arguments: {
+          revision_id: 'wf-rev-1',
+          mode: 'propose',
+          event_id: ' evt-1 ',
+          input: { k: 'v' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_event_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'event_id');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/workflows/') && String(r.path || '').includes('/runs')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'run_saved_workflow whitespace-only event_id → incomplete_workflow_event_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'run_saved_workflow',
+        arguments: {
+          revision_id: 'wf-rev-1',
+          mode: 'preview',
+          event_id: '\t',
+          input: { k: 'v' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_workflow_event_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/workflows/') && String(r.path || '').includes('/runs')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'create_evidence_packet binding-pad regression still refuses padded source_version_id',
     async () => {
       const before = seen.length;
