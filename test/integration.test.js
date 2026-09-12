@@ -5564,6 +5564,184 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'record_operation_attempt surrounding-padded provider → incomplete_attempt_provider_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: { operation_id: 'op-1', provider: ' openai ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_provider_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'provider');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'record_operation_attempt whitespace-only provider → incomplete_attempt_provider_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: { operation_id: 'op-1', provider: '   ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_provider_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'record_operation_attempt equal-pad provider → incomplete_attempt_provider_identity (never attribute)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: { operation_id: 'op-1', provider: ' openai ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_provider_identity',
+      );
+      // Must refuse before HTTP — never trim-launder into certified attribution.
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'record_operation_attempt surrounding-padded model → incomplete_attempt_model_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: { operation_id: 'op-1', provider: 'openai', model: ' gpt-4o ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_model_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'model');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'record_operation_attempt surrounding-padded provider_idempotency_key → incomplete_attempt_provider_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: {
+          operation_id: 'op-1',
+          provider: 'openai',
+          provider_idempotency_key: ' pk-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_provider_idempotency_identity',
+      );
+      assert.equal(
+        res.result.structuredContent.details?.field,
+        'provider_idempotency_key',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #87 reserve_research_budget kind pad must stay fail-closed.
+  await t.test(
+    'reserve_research_budget surrounding-padded kind still → incomplete_operation_kind_identity (#87 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'reserve_research_budget',
+        arguments: {
+          run_id: 'run-1',
+          idempotency_key: 'budget-key-1',
+          kind: ' research_llm ',
+          credits: 1,
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_kind_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/reserve')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #86 representationId pad must stay fail-closed.
+  await t.test(
+    'resolve_fragment_uses surrounding-padded representationId still → incomplete_representation_identity (#86 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: ' rep-1 ', first: 0, lastExclusive: 1 },
+          fragments: [],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_representation_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'resolve_operation_attempt surrounding-padded attempt_id → incomplete_attempt_identity',
     async () => {
       const before = seen.length;

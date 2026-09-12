@@ -755,6 +755,61 @@ function assertEvidenceAttemptIdComplete(attemptId: unknown): asserts attemptId 
 }
 
 /**
+ * C3/I4 record_operation_attempt: blank/whitespace/surrounding-padded provider
+ * (required) and optional string model / provider_idempotency_key must never
+ * trim-launder into a certified attempt attribution or provider replay pin
+ * (same identityComplete honesty as consumer_kind #264/#279 / operation kind #83).
+ * null model / provider_idempotency_key remain allowed.
+ */
+function assertRecordOperationAttemptProviderComplete(args: Args | undefined): void {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) {
+    throw new ToolFailure('invalid_argument', 'operation_id and provider are required');
+  }
+  const provider = (args as Record<string, unknown>).provider;
+  if (typeof provider !== 'string' || !wakeIdentityComplete(provider)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'provider is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'incomplete_attempt_provider_identity', field: 'provider' },
+        actionable:
+          'Blank/whitespace/padded provider never certifies an evidence attempt; do not invent or trim-launder provider attribution.',
+      },
+    );
+  }
+  const model = (args as Record<string, unknown>).model;
+  if (typeof model === 'string' && !wakeIdentityComplete(model)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'model is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'incomplete_attempt_model_identity', field: 'model' },
+        actionable:
+          'Blank/whitespace/padded model never certifies an evidence attempt; omit model, pass null, or pass non-blank unpadded text.',
+      },
+    );
+  }
+  const providerIdempotencyKey = (args as Record<string, unknown>).provider_idempotency_key;
+  if (
+    typeof providerIdempotencyKey === 'string' &&
+    !wakeIdentityComplete(providerIdempotencyKey)
+  ) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'provider_idempotency_key is incomplete (blank/whitespace/padded)',
+      {
+        details: {
+          reason: 'incomplete_attempt_provider_idempotency_identity',
+          field: 'provider_idempotency_key',
+        },
+        actionable:
+          'Blank/whitespace/padded provider_idempotency_key never certifies a provider replay pin; omit it, pass null, or pass non-blank unpadded text.',
+      },
+    );
+  }
+}
+
+/**
  * C3/I4 consumer link/usage ids: blank/whitespace/surrounding-padded
  * consumer_kind / consumer_id must never trim-launder into a certified
  * consumer link or usage aggregate (same identityComplete rule as
@@ -2608,13 +2663,13 @@ export const handlers: Record<string, ToolHandler> = {
     // C3/I4: refuse padded/blank operation_id before HTTP — never trim-launder
     // into a certified attempt record target.
     assertEvidenceOperationIdComplete(args?.operation_id);
-    if (typeof args?.provider !== 'string') {
-      throw new ToolFailure('invalid_argument', 'operation_id and provider are required');
-    }
+    // C3/I4: padded provider / model / provider_idempotency_key never certify
+    // attempt attribution or a provider replay pin (sibling of kind #83/#87).
+    assertRecordOperationAttemptProviderComplete(args);
     const raw = await wrapApi(
       client.recordOperationAttempt({
         operation_id: args.operation_id,
-        provider: args.provider,
+        provider: args.provider as string,
         model:
           typeof args?.model === 'string' || args?.model === null
             ? (args.model as string | null)
