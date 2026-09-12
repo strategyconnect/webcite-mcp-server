@@ -1408,6 +1408,16 @@ Credits: 1. HTTP: GET /api/v2/context/eval/catalog`,
     },
   },
   {
+    name: 'certify_private_upload',
+    description: `I1: Certify private evidence upload configuration for cutover/eval. Missing EVIDENCE_STORAGE_ROOT or EVIDENCE_BUCKET_NAME returns ok:false with not_run — never a pass.
+
+Credits: 1. HTTP: GET /api/v2/context/private-upload/certify`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+  {
     name: 'proofs_applies',
     description: `Probe whether a proof receipt still binds under the current premise hash and approved toolchains (P3). Does not invent proved status.
 
@@ -1583,6 +1593,7 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/formal/resolution-state': 'formal_resolution_state',
   'POST /api/v2/context/formal/revenue-bridge': 'formal_revenue_bridge',
   'GET /api/v2/context/eval/catalog': 'eval_catalog',
+  'GET /api/v2/context/private-upload/certify': 'certify_private_upload',
   'GET /api/v2/context/proofs/applies': 'proofs_applies',
   'POST /api/v2/context/workflows': 'publish_context_workflow',
   'GET /api/v2/context/workflows/:revisionId': 'get_context_workflow',

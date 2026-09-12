@@ -52,6 +52,7 @@ import type {
   FormalizeClaimRelationResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
+  CertifyPrivateUploadResponse,
   ExtractedDoc,
   ExtractedFigure,
   FigureProvenance,
@@ -881,4 +882,17 @@ export function formatEvalCatalog(result: EvalCatalogResponse): string {
     );
   });
   return parts.join('\n');
+}
+
+export function formatCertifyPrivateUpload(
+  result: CertifyPrivateUploadResponse,
+): string {
+  const lines = [
+    `# Private Upload Certify`,
+    ``,
+    `**Ok:** ${result.ok ? 'yes' : 'no'}`,
+  ];
+  if (result.mode) lines.push(`**Mode:** ${result.mode}`);
+  if (result.reason) lines.push(`**Reason:** ${result.reason}`);
+  return lines.join('\n');
 }

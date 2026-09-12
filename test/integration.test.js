@@ -345,6 +345,11 @@ const ROUTES = {
     suites: [{ id: 'core', caseCount: 3, surfaceIds: ['http'] }],
     private_gold_denied: true,
   },
+  '/api/v2/context/private-upload/certify': {
+    ok: false,
+    reason: 'not_run: EVIDENCE_STORAGE_ROOT or EVIDENCE_BUCKET_NAME required',
+    engine: 'context_graph',
+  },
 };
 
 function startStub(options = {}) {
@@ -1246,6 +1251,11 @@ test('every tool round-trips through the real server against the API', async (t)
     const text = await call('eval_catalog', {});
     assert.equal(seen.at(-1).path, '/api/v2/context/eval/catalog');
     assert.match(text, /Private gold denied:\*\* yes/);
+
+    const upload = await call('certify_private_upload', {});
+    assert.equal(seen.at(-1).path, '/api/v2/context/private-upload/certify');
+    assert.match(upload, /Ok:\*\* no/);
+    assert.match(upload, /not_run/);
   });
 
   await t.test('Q_MCP_FAILURES: invalid argument is isError without crashing', async () => {

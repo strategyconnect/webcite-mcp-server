@@ -93,6 +93,7 @@ import type {
   FormalizeClaimRelationResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
+  CertifyPrivateUploadResponse,
   EvaluationCaseResponse,
   EvaluationCompareResponse,
   EvaluationDescribeResponse,
@@ -865,6 +866,12 @@ export class WebCiteApiClient {
 
   async evalCatalog(): Promise<EvalCatalogResponse> {
     return this.request('/api/v2/context/eval/catalog', { method: 'GET' });
+  }
+
+  async certifyPrivateUpload(): Promise<CertifyPrivateUploadResponse> {
+    return this.request('/api/v2/context/private-upload/certify', {
+      method: 'GET',
+    });
   }
 
   async publishContextWorkflow(

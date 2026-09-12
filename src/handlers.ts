@@ -53,6 +53,7 @@ import {
   formatFormalizeClaimRelation,
   formatDocumentAnalysis,
   formatEvalCatalog,
+  formatCertifyPrivateUpload,
   formatExtractedDoc,
   formatFigures,
   formatGaps,
@@ -119,6 +120,7 @@ import {
   validateClaimStructureResolveDefinition,
   validateFormalizeClaimRelation,
   validateEvalCatalog,
+  validateCertifyPrivateUpload,
   validateResolvedAnswer,
   validateResolvedPacket,
 } from './validate.js';
@@ -1443,6 +1445,15 @@ export const handlers: Record<string, ToolHandler> = {
     const raw = await wrapApi(client.evalCatalog());
     const validated = validateEvalCatalog(raw);
     return ok(formatEvalCatalog(validated), validated as unknown as Record<string, unknown>);
+  },
+
+  certify_private_upload: async (_args, client) => {
+    const raw = await wrapApi(client.certifyPrivateUpload());
+    const validated = validateCertifyPrivateUpload(raw);
+    return ok(
+      formatCertifyPrivateUpload(validated),
+      validated as unknown as Record<string, unknown>,
+    );
   },
 
   proofs_applies: async (args, client) => {
