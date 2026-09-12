@@ -540,10 +540,12 @@ function validateNumberInventoryOccurrence(
   }
   const id = idRaw;
   const rawText = row.raw;
-  if (typeof rawText !== 'string' || !rawText.trim()) {
-    throw new ToolFailure('invalid_api_output', `${label}.raw must be a non-blank string`, {
+  // Backend #287: blank/whitespace or surrounding-padded raw is not a certified
+  // glyph (" 12 " must not certify as 12 after trim) — same honesty as decimal pad.
+  if (typeof rawText !== 'string' || !occurrenceIdentityComplete(rawText)) {
+    throw new ToolFailure('invalid_api_output', `${label}.raw is incomplete (blank/padded)`, {
       actionable:
-        'Blank raw is incomplete (missing_occurrence_raw); do not invent a glyph or method=native.',
+        'Blank/whitespace or surrounding-padded raw is incomplete (missing_occurrence_raw); do not invent or strip a glyph or method=native.',
     });
   }
   const method = row.method;

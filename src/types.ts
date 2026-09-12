@@ -625,6 +625,7 @@ export const NUMBER_OCCURRENCE_INTERPRETATIONS: readonly NumberOccurrenceInterpr
 export interface NumberInventoryOccurrenceInput {
   /** Blank/whitespace/padded → missing_occurrence_identity (never invent). */
   id?: string;
+  /** Blank/whitespace or surrounding-padded → missing_occurrence_raw (#287); never trim-launder. */
   raw?: string;
   /** Blank/whitespace/padded → missing_occurrence_identity (never invent). */
   fragment_id?: string;
