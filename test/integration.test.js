@@ -2112,6 +2112,85 @@ test('every tool round-trips through the real server against the API', async (t)
   );
 
   await t.test(
+    'assess_support surrounding-padded claim_hash → incomplete_claim_hash_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: ' hash-1 ',
+          evidence_group_revision_id: 'eg-r1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_hash_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'claim_hash');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_support whitespace-only claim_hash → incomplete_claim_hash_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: '   ',
+          evidence_group_revision_id: 'eg-r1',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_hash_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_support equal-pad claim_hash → incomplete_claim_hash_identity (never assess)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: ' hash-1 ',
+          evidence_group_revision_id: 'eg-r1',
+          proposed: 'supports',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_claim_hash_identity',
+      );
+      // Equal pads must not trim-launder into the same certified assessment as
+      // a clean hash-1 hit (happy-path fixture above still posts hash-1).
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'assess_support surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity',
     async () => {
       const before = seen.length;

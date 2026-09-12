@@ -852,7 +852,7 @@ Credits: 2. HTTP: POST /api/v2/context/evidence-packets`,
   },
   {
     name: 'assess_support',
-    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
+    description: `Assess evidence support for a claim revision. Exact binding alone never invents support; tier ceilings cap machine judgments (I3). Blank/whitespace/surrounding-padded claim_revision_id → incomplete_claim_revision_identity; blank/whitespace/surrounding-padded claim_hash → incomplete_claim_hash_identity; blank/whitespace/surrounding-padded evidence_group_revision_id → incomplete_evidence_group_identity; blank/whitespace/surrounding-padded alternative_fragment_id → incomplete_alternative_fragment_identity (backend assessSupportBodySchema evidenceId — never trim-launder into a certified assessment).
 
 Scope comes from the authenticated API.
 
@@ -867,7 +867,8 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
         },
         claim_hash: {
           type: 'string',
-          description: 'Hash of the claim text checked against the evidence group.',
+          description:
+            'Non-blank unpadded hash of the claim text checked against the evidence group. Blank/whitespace/surrounding-padded → incomplete_claim_hash_identity (never trim-launder).',
         },
         evidence_group_revision_id: {
           type: 'string',

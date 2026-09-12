@@ -554,8 +554,11 @@ export interface CreateEvidencePacketResponse {
 }
 
 export interface AssessSupportOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_claim_revision_identity. */
   claim_revision_id: string;
+  /** Non-blank unpadded; blank/padded → incomplete_claim_hash_identity. */
   claim_hash: string;
+  /** Non-blank unpadded; blank/padded → incomplete_evidence_group_identity. */
   evidence_group_revision_id: string;
   alternative_fragment_id?: string | null;
   tier?: 1 | 2 | 3;
