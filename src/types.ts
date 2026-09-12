@@ -890,6 +890,10 @@ export interface CheckpointResearchRunResponse {
 }
 
 export interface ResolveSeedsOptions {
+  /**
+   * Natural-language resolve text. Blank/whitespace or surrounding-padded →
+   * padded_resolve_text (#311/#314); never trim-launder into certified seeds.
+   */
   text: string;
   /**
    * Optional ClaimScope filters. Blank/whitespace or surrounding-padded values →

@@ -2388,6 +2388,48 @@ test('every tool round-trips through the real server against the API', async (t)
   });
 
   await t.test(
+    'resolve_seeds surrounding-padded text → padded_resolve_text',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: { text: ' revenue ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_text');
+      assert.equal(res.result.structuredContent.details?.field, 'text');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/resolve-seeds')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_seeds whitespace-only text → padded_resolve_text',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_seeds',
+        arguments: { text: '   ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_resolve_text');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/resolve-seeds')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'resolve_seeds surrounding-padded metric filter → padded_resolve_filter',
     async () => {
       const before = seen.length;
