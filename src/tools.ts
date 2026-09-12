@@ -1679,7 +1679,7 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/release`,
   },
   {
     name: 'record_operation_attempt',
-    description: `Persist an EvidenceAttempt BEFORE dispatch so a lost outcome stays attributable (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity; blank/whitespace/surrounding-padded provider → incomplete_attempt_provider_identity; blank/padded string model → incomplete_attempt_model_identity; blank/padded string provider_idempotency_key → incomplete_attempt_provider_idempotency_identity (never trim-launder attribution or provider replay pins).
+    description: `Persist an EvidenceAttempt BEFORE dispatch so a lost outcome stays attributable (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity; blank/whitespace/surrounding-padded provider → incomplete_attempt_provider_identity; blank/padded string model → incomplete_attempt_model_identity; blank/padded string provider_idempotency_key → incomplete_attempt_provider_idempotency_identity; blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder attribution, provider replay pins, or attempt-record replay pins).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
     inputSchema: {
@@ -1705,14 +1705,18 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
           description:
             'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_attempt_provider_idempotency_identity. null allowed.',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into an attempt-record replay pin; same honesty as settle/link #92/#94).',
+        },
       },
       required: ['operation_id', 'provider'],
     },
   },
   {
     name: 'resolve_operation_attempt',
-    description: `Resolve one attempt outcome (I4). Missing price stays unknown, never zero. Blank/whitespace/surrounding-padded attempt_id → incomplete_attempt_identity; blank/padded string failure_class → incomplete_attempt_failure_class_identity; blank/padded price.amount/currency/priceRevision → incomplete_attempt_price_identity (never trim-launder into a certified attempt resolve, outcome class, or settlement pin).
+    description: `Resolve one attempt outcome (I4). Missing price stays unknown, never zero. Blank/whitespace/surrounding-padded attempt_id → incomplete_attempt_identity; blank/padded string failure_class → incomplete_attempt_failure_class_identity; blank/padded price.amount/currency/priceRevision → incomplete_attempt_price_identity; blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified attempt resolve, outcome class, settlement pin, or resolve replay pin).
 
 Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
     inputSchema: {
@@ -1755,7 +1759,11 @@ Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
             },
           },
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into an attempt-resolve replay pin; same honesty as settle/link #92/#94).',
+        },
       },
       required: ['attempt_id', 'state'],
     },

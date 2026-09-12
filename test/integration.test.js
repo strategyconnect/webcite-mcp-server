@@ -6076,6 +6076,62 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+
+  await t.test(
+    'record_operation_attempt surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: {
+          operation_id: 'op-1',
+          provider: 'openai',
+          idempotency_key: ' attempt-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'record_operation_attempt whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: {
+          operation_id: 'op-1',
+          provider: 'openai',
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
   // Squash-regression guard: #87 reserve_research_budget kind pad must stay fail-closed.
   await t.test(
     'reserve_research_budget surrounding-padded kind still → incomplete_operation_kind_identity (#87 regression)',
@@ -6388,6 +6444,117 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
         .slice(before)
         .find((r) => String(r.path || '').includes('/api/v2/context/attempts/'));
       assert.ok(hit, 'null price must not pad-refuse before HTTP');
+    },
+  );
+
+
+  await t.test(
+    'resolve_operation_attempt surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'succeeded',
+          idempotency_key: ' resolve-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'failed',
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #92 settle_operation optional idempotency pad must stay fail-closed.
+  await t.test(
+    'settle_operation surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#92 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'settle_operation',
+        arguments: {
+          operation_id: 'op-settle-reg',
+          settled_credits: 1,
+          idempotency_key: ' settle-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/settle')),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #94 link_operation_consumer optional idempotency pad must stay fail-closed.
+  await t.test(
+    'link_operation_consumer surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#94 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'link_operation_consumer',
+        arguments: {
+          operation_id: 'op-1',
+          consumer_kind: 'research_run',
+          consumer_id: 'run-1',
+          idempotency_key: ' link-reg-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/consumers')),
+        undefined,
+      );
     },
   );
 

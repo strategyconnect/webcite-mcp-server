@@ -1150,6 +1150,10 @@ export interface RecordOperationAttemptOptions {
    * incomplete_attempt_provider_idempotency_identity. null allowed.
    */
   provider_idempotency_key?: string | null;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92/#94 honesty shared with settle/link).
+   */
   idempotency_key?: string;
 }
 
@@ -1178,6 +1182,10 @@ export interface ResolveOperationAttemptOptions {
     currency: string;
     priceRevision: string;
   } | null;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92/#94 honesty shared with settle/link).
+   */
   idempotency_key?: string;
 }
 
