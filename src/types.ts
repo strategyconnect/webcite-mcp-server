@@ -1159,8 +1159,17 @@ export interface ResolveOperationAttemptOptions {
   /** Non-blank unpadded; blank/padded → incomplete_attempt_identity (#264/#279). */
   attempt_id: string;
   state: 'succeeded' | 'failed' | 'outcome_unknown';
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_attempt_failure_class_identity. null allowed.
+   */
   failure_class?: string | null;
   measurements?: Record<string, unknown>;
+  /**
+   * Optional. When object: amount/currency/priceRevision must be non-blank
+   * unpadded (blank/padded → incomplete_attempt_price_identity). null omits
+   * price (unknown cost; never invent zero).
+   */
   price?: {
     amount: string;
     currency: string;

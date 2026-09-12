@@ -5882,6 +5882,245 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'resolve_operation_attempt surrounding-padded failure_class → incomplete_attempt_failure_class_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'failed',
+          failure_class: ' timeout ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_failure_class_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'failure_class');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt whitespace-only failure_class → incomplete_attempt_failure_class_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'failed',
+          failure_class: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_failure_class_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt equal-pad failure_class → incomplete_attempt_failure_class_identity (never classify)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'failed',
+          failure_class: ' timeout ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_failure_class_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt null failure_class still resolves',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'failed',
+          failure_class: null,
+        },
+      });
+      assert.notEqual(
+        res.result.structuredContent?.details?.reason,
+        'incomplete_attempt_failure_class_identity',
+      );
+      const hit = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/api/v2/context/attempts/'));
+      assert.ok(hit, 'null failure_class must not pad-refuse before HTTP');
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt surrounding-padded price.amount → incomplete_attempt_price_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'succeeded',
+          price: { amount: ' 0.12 ', currency: 'USD', priceRevision: 'pr-1' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_price_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'price.amount');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt surrounding-padded price.currency → incomplete_attempt_price_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'succeeded',
+          price: { amount: '0.12', currency: ' USD ', priceRevision: 'pr-1' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_price_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'price.currency');
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt surrounding-padded price.priceRevision → incomplete_attempt_price_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'succeeded',
+          price: { amount: '0.12', currency: 'USD', priceRevision: ' pr-1 ' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_price_identity',
+      );
+      assert.equal(
+        res.result.structuredContent.details?.field,
+        'price.priceRevision',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt whitespace-only price.amount → incomplete_attempt_price_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'succeeded',
+          price: { amount: '   ', currency: 'USD', priceRevision: 'pr-1' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_attempt_price_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/api/v2/context/attempts/')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_operation_attempt null price still resolves (unknown cost)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_operation_attempt',
+        arguments: {
+          attempt_id: 'att-1',
+          state: 'succeeded',
+          price: null,
+        },
+      });
+      assert.notEqual(
+        res.result.structuredContent?.details?.reason,
+        'incomplete_attempt_price_identity',
+      );
+      const hit = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/api/v2/context/attempts/'));
+      assert.ok(hit, 'null price must not pad-refuse before HTTP');
+    },
+  );
+
+  await t.test(
     'link_operation_consumer surrounding-padded operation_id → incomplete_operation_identity',
     async () => {
       const before = seen.length;
