@@ -1521,14 +1521,22 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
   },
   {
     name: 'open_operation_root',
-    description: `Open the run-level root EvidenceOperation whose budget every child shares (I4). Same idempotency key replays the existing root.
+    description: `Open the run-level root EvidenceOperation whose budget every child shares (I4). Same idempotency key replays the existing root. Blank/whitespace/surrounding-padded idempotency_key → incomplete_operation_idempotency_identity; blank/whitespace/surrounding-padded kind → incomplete_operation_kind_identity (C3/I4 #264/#279 — never trim-launder into a certified root open/replay).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/open-root`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        idempotency_key: { type: 'string' },
-        kind: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Non-blank unpadded idempotency key (replay identity). Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
+        kind: {
+          type: 'string',
+          description:
+            'Non-blank unpadded operation kind. Blank/whitespace/surrounding-padded → incomplete_operation_kind_identity (never trim-launder).',
+        },
         max_credits: { type: 'number' },
         max_tokens: { type: 'number' },
         deadline_ms: { type: 'number' },

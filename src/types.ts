@@ -1031,8 +1031,11 @@ export interface ReserveResearchBudgetResponse {
   engine?: string;
 }
 
+/** Open root EvidenceOperation; idempotency_key/kind must be non-blank unpadded. */
 export interface OpenOperationRootOptions {
+  /** Non-blank unpadded; blank/padded → incomplete_operation_idempotency_identity. */
   idempotency_key: string;
+  /** Non-blank unpadded; blank/padded → incomplete_operation_kind_identity. */
   kind: string;
   max_credits: number;
   max_tokens: number;
