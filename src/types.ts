@@ -461,6 +461,10 @@ export interface ResolveFragmentUsesOptions {
   groups?: unknown[];
   links?: unknown[];
   consumers?: unknown[];
+  /**
+   * Optional authorization allow-list; blank/padded entries →
+   * incomplete_allowed_fragment_identity (expand_seeds #68; never trim-launder).
+   */
   allowed_fragment_ids?: string[];
   cursor?: string | null;
   limit?: number;
