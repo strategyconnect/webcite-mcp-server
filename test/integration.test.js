@@ -907,6 +907,78 @@ function startStub(options = {}) {
           );
           return;
         }
+        // Backend #297: padded memory-note id in API output must fail closed.
+        if (runId === 'padded-note' && !action) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              run: {
+                id: runId,
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'running',
+                scope: {
+                  tenantId: 't1',
+                  userId: 'u1',
+                  dealId: 'd1',
+                  sessionId: 's1',
+                },
+                notes: [
+                  {
+                    id: ' n1 ',
+                    scope: {
+                      tenantId: 't1',
+                      userId: 'u1',
+                      dealId: 'd1',
+                      sessionId: 's1',
+                    },
+                    kind: 'working_note',
+                    text: 'Check revenue',
+                    status: 'active',
+                  },
+                ],
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        // Backend #297: padded note ResearchScope in API output must fail closed.
+        if (runId === 'padded-note-scope' && !action) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              run: {
+                id: runId,
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'running',
+                scope: {
+                  tenantId: ' t1 ',
+                  userId: 'u1',
+                  dealId: 'd1',
+                  sessionId: 's1',
+                },
+                notes: [
+                  {
+                    id: 'n1',
+                    scope: {
+                      tenantId: ' t1 ',
+                      userId: 'u1',
+                      dealId: 'd1',
+                      sessionId: 's1',
+                    },
+                    kind: 'working_note',
+                    text: 'Check revenue',
+                    status: 'active',
+                  },
+                ],
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
         const isCheckpoint = action === 'checkpoints';
         let parsedBody = {};
         if (isCheckpoint && body) {
@@ -926,6 +998,10 @@ function startStub(options = {}) {
           isCheckpoint && incomingRun && typeof incomingRun === 'object'
             ? incomingRun.scope
             : undefined;
+        const incomingNotes =
+          isCheckpoint && incomingRun && typeof incomingRun === 'object'
+            ? incomingRun.notes
+            : undefined;
         const run = {
           id: runId,
           checkpointRevision: isCheckpoint ? 1 : 0,
@@ -933,6 +1009,7 @@ function startStub(options = {}) {
           phase: incomingWait ? 'waiting' : 'running',
           ...(incomingWait !== undefined ? { wait: incomingWait } : {}),
           ...(incomingScope !== undefined ? { scope: incomingScope } : {}),
+          ...(incomingNotes !== undefined ? { notes: incomingNotes } : {}),
         };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ run, engine: 'context_graph' }));
@@ -2962,6 +3039,163 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       assert.equal(res.result.isError, true);
       assert.equal(res.result.structuredContent.code, 'invalid_api_output');
       assert.match(res.result.content[0].text, /incomplete_wake_tenant_identity|padded/);
+    },
+  );
+
+  await t.test(
+    'get_research_run padded note id → incomplete_eligible_note_identity',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: 'padded-note' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.match(res.result.content[0].text, /incomplete_eligible_note_identity|padded/);
+    },
+  );
+
+  await t.test(
+    'get_research_run padded note ResearchScope → incomplete_eligible_note_identity',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: 'padded-note-scope' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.match(res.result.content[0].text, /incomplete_eligible_note_identity|padded/);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run padded note id → incomplete_eligible_note_identity',
+    async () => {
+      const before = seen.length;
+      const scope = {
+        tenantId: 't1',
+        userId: 'u1',
+        dealId: 'd1',
+        sessionId: 's1',
+      };
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: 'run-note-pad',
+          expected_revision: 0,
+          run: {
+            id: 'run-note-pad',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+            scope,
+            notes: [
+              {
+                id: ' n1 ',
+                scope,
+                kind: 'working_note',
+                text: 'Check revenue',
+                status: 'active',
+              },
+            ],
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_eligible_note_identity|padded/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run padded note scope tenantId → incomplete_eligible_note_identity',
+    async () => {
+      const before = seen.length;
+      const paddedScope = {
+        tenantId: ' t1 ',
+        userId: 'u1',
+        dealId: 'd1',
+        sessionId: 's1',
+      };
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: 'run-note-scope-pad',
+          expected_revision: 0,
+          run: {
+            id: 'run-note-scope-pad',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+            scope: paddedScope,
+            notes: [
+              {
+                id: 'n1',
+                scope: paddedScope,
+                kind: 'working_note',
+                text: 'Check revenue',
+                status: 'active',
+              },
+            ],
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_eligible_note_identity|padded/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run complete notes forward unpadded identities',
+    async () => {
+      const before = seen.length;
+      const scope = {
+        tenantId: 't1',
+        userId: 'u1',
+        dealId: 'd1',
+        sessionId: 's1',
+      };
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: 'run-note-ok',
+          expected_revision: 0,
+          run: {
+            id: 'run-note-ok',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'running',
+            scope,
+            notes: [
+              {
+                id: 'n1',
+                scope,
+                kind: 'working_note',
+                text: 'Check revenue',
+                status: 'active',
+              },
+            ],
+          },
+        },
+      });
+      assert.equal(res.result.isError, undefined);
+      assert.equal(res.result.structuredContent.run.notes[0].id, 'n1');
+      assert.equal(res.result.structuredContent.run.notes[0].scope.tenantId, 't1');
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.ok(req);
+      assert.equal(req.body.run.notes[0].id, 'n1');
+      assert.equal(req.body.run.scope.sessionId, 's1');
     },
   );
 
