@@ -577,6 +577,41 @@ export interface FindContradictionsResponse {
 /** W2 A_WORKBENCH_COUNTS — occurrence inventory (fail-closed when incomplete). */
 export type NumberRecognitionState = 'read' | 'uncertain' | 'unreadable';
 
+/** Capture method — never invent `native` when the client omits method. */
+export type NumberOccurrenceMethod =
+  | 'native'
+  | 'ocr'
+  | 'asr'
+  | 'human'
+  | 'chart_estimate';
+
+export type NumberOccurrenceInterpretation =
+  | 'measure'
+  | 'date'
+  | 'identifier'
+  | 'ordinal'
+  | 'range'
+  | 'formula'
+  | 'unknown';
+
+export const NUMBER_OCCURRENCE_METHODS: readonly NumberOccurrenceMethod[] = [
+  'native',
+  'ocr',
+  'asr',
+  'human',
+  'chart_estimate',
+] as const;
+
+export const NUMBER_OCCURRENCE_INTERPRETATIONS: readonly NumberOccurrenceInterpretation[] = [
+  'measure',
+  'date',
+  'identifier',
+  'ordinal',
+  'range',
+  'formula',
+  'unknown',
+] as const;
+
 export interface NumberInventoryOccurrenceInput {
   id?: string;
   raw?: string;
@@ -584,8 +619,9 @@ export interface NumberInventoryOccurrenceInput {
   fragmentId?: string;
   normalized_decimal?: string | null;
   normalizedDecimal?: string | null;
-  interpretation?: string;
-  method?: string;
+  interpretation?: NumberOccurrenceInterpretation | string;
+  /** Required for complete coverage; omit/blank/invalid → number_inventory_incomplete (never defaulted to native). */
+  method?: NumberOccurrenceMethod | string;
   recognition_state?: NumberRecognitionState;
   recognitionState?: NumberRecognitionState;
 }
@@ -600,8 +636,8 @@ export interface NumberInventoryOccurrence {
   raw: string;
   fragment_id: string;
   normalized_decimal: string | null;
-  interpretation: string;
-  method: string;
+  interpretation: NumberOccurrenceInterpretation;
+  method: NumberOccurrenceMethod;
   recognition_state: NumberRecognitionState;
 }
 
