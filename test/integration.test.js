@@ -462,6 +462,27 @@ function startStub(options = {}) {
             res.end(JSON.stringify({ status: 'weird', refs: null }));
             return;
           }
+          // Backend #314: API gap padded_select_text must fail closed on validate.
+          if (parsed.text === 'padded_select_gap') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                operatorClass: 'select_passage',
+                status: 'refuse',
+                refuseReason: 'insufficient',
+                queryPlan: {
+                  operatorClass: 'select_passage',
+                  seeds: [],
+                  truncated: false,
+                  traversedRelationIds: [],
+                },
+                refs: [],
+                gaps: ['padded_select_text'],
+                engine: 'context_graph',
+              }),
+            );
+            return;
+          }
           // Backend #307: API gap padded_lookup_filter must fail closed on validate.
           if (parsed.text === 'padded_lookup_gap') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1588,6 +1609,20 @@ test('every tool round-trips through the real server against the API', async (t)
         seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
         undefined,
       );
+    },
+  );
+
+  await t.test(
+    'query_context API padded_select_text gap → invalid_api_output',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: { text: 'padded_select_gap' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.equal(res.result.structuredContent.details.reason, 'padded_select_text');
+      assert.match(res.result.content[0].text, /padded_select_text/);
     },
   );
 
