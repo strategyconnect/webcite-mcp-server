@@ -1124,8 +1124,20 @@ export interface ReleaseOperationResponse {
 export interface RecordOperationAttemptOptions {
   /** Non-blank unpadded; blank/padded → incomplete_operation_identity (#264/#279). */
   operation_id: string;
+  /**
+   * Non-blank unpadded provider. Blank/whitespace/surrounding-padded →
+   * incomplete_attempt_provider_identity (never trim-launder attribution).
+   */
   provider: string;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_attempt_model_identity. null allowed.
+   */
   model?: string | null;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_attempt_provider_idempotency_identity. null allowed.
+   */
   provider_idempotency_key?: string | null;
   idempotency_key?: string;
 }

@@ -1654,7 +1654,7 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/release`,
   },
   {
     name: 'record_operation_attempt',
-    description: `Persist an EvidenceAttempt BEFORE dispatch so a lost outcome stays attributable (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity (never trim-launder).
+    description: `Persist an EvidenceAttempt BEFORE dispatch so a lost outcome stays attributable (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity; blank/whitespace/surrounding-padded provider → incomplete_attempt_provider_identity; blank/padded string model → incomplete_attempt_model_identity; blank/padded string provider_idempotency_key → incomplete_attempt_provider_idempotency_identity (never trim-launder attribution or provider replay pins).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
     inputSchema: {
@@ -1665,9 +1665,21 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/attempts`,
           description:
             'Non-blank unpadded EvidenceOperation id. Blank/whitespace/surrounding-padded → incomplete_operation_identity (never trim-launder).',
         },
-        provider: { type: 'string' },
-        model: { type: ['string', 'null'] },
-        provider_idempotency_key: { type: ['string', 'null'] },
+        provider: {
+          type: 'string',
+          description:
+            'Non-blank unpadded provider. Blank/whitespace/surrounding-padded → incomplete_attempt_provider_identity (never trim-launder).',
+        },
+        model: {
+          type: ['string', 'null'],
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_attempt_model_identity. null allowed.',
+        },
+        provider_idempotency_key: {
+          type: ['string', 'null'],
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_attempt_provider_idempotency_identity. null allowed.',
+        },
         idempotency_key: { type: 'string' },
       },
       required: ['operation_id', 'provider'],
