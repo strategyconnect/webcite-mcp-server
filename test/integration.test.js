@@ -173,6 +173,22 @@ const ROUTES = {
     left: { metric: 'revenue', period: 'FY24' },
     right: { metric: 'revenue', period: 'FY24' },
   },
+  '/api/v2/context/fragments/resolve-uses': {
+    status: 'ok',
+    matches: [
+      {
+        matchKind: 'contains',
+        fragmentId: 'passage',
+        groupIds: ['g1'],
+        linkIds: ['link-1'],
+        consumerIds: ['claim-c1'],
+        useAge: 'current',
+        semanticSupport: false,
+      },
+    ],
+    nextCursor: null,
+    engine: 'context_graph',
+  },
   '/api/v2/context/change-impact': {
     answer_revision_id: 'answer-v1',
     freshness: {
@@ -402,6 +418,28 @@ function startStub(options = {}) {
           if (parsed.text === 'badshape') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'weird', refs: null }));
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
+      }
+
+      // Dynamic resolve_fragment_uses refuse for unsupported selector kinds
+      if (url.pathname === '/api/v2/context/fragments/resolve-uses' && body) {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed?.selector?.kind === 'cells') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                status: 'refuse',
+                reason: 'unsupported_selector_kind:cells',
+                matches: [],
+                nextCursor: null,
+                engine: 'context_graph',
+              }),
+            );
             return;
           }
         } catch {
@@ -852,6 +890,40 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/compare-assertions');
     assert.match(text, /\*\*Result:\*\* same/);
+  });
+
+  await t.test('resolve_fragment_uses posts selector catalog and keeps semanticSupport false', async () => {
+    const text = await call('resolve_fragment_uses', {
+      selector: {
+        kind: 'tokens',
+        representationId: 'rep-1',
+        first: 12,
+        lastExclusive: 13,
+      },
+      fragments: [
+        {
+          id: 'passage',
+          ref: { sourceVersionId: 'sv1', sourceUnitId: 'u1', anchorId: 'a1' },
+          selector: {
+            kind: 'tokens',
+            representationId: 'rep-1',
+            first: 10,
+            lastExclusive: 20,
+          },
+        },
+      ],
+      consumers: [{ fragment_id: 'passage', consumer_id: 'claim-c1', use_age: 'current' }],
+      idempotency_key: 'frag-1',
+    });
+    const req = seen.at(-1);
+    assert.equal(req.path, '/api/v2/context/fragments/resolve-uses');
+    assert.equal(req.body.selector.kind, 'tokens');
+    assert.equal(req.body.fragments[0].id, 'passage');
+    assert.equal(req.idempotencyKey, 'frag-1');
+    assert.match(text, /Fragment Uses/);
+    assert.match(text, /passage/);
+    assert.match(text, /contains/);
+    assert.match(text, /semanticSupport=false/);
   });
 
   await t.test('create_evidence_packet posts context inputs and returns packet id', async () => {
@@ -1343,6 +1415,7 @@ test('A_MCP: context tools round-trip against fake HTTP boundary', async (t) => 
   assert.ok(names.includes('query_context'));
   assert.ok(names.includes('get_answer'));
   assert.ok(names.includes('verify_claim'));
+  assert.ok(names.includes('resolve_fragment_uses'));
 
   const call = async (name, args) => {
     const res = await rpc('tools/call', { name, arguments: args });
@@ -1446,6 +1519,26 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.structuredContent.status, 'refuse');
     assert.equal(res.result.structuredContent.refs.length, 0);
     assert.match(res.result.content[0].text, /successful no-match/i);
+  });
+
+  await t.test('resolve_fragment_uses refuse is success with empty matches', async () => {
+    const res = await rpc('tools/call', {
+      name: 'resolve_fragment_uses',
+      arguments: {
+        selector: { kind: 'cells', representationId: 'rep-1', sheet: 'S', ranges: ['A1'] },
+      },
+    });
+    assert.ok(!res.result.isError);
+    assert.equal(res.result.structuredContent.status, 'refuse');
+    assert.equal(res.result.structuredContent.matches.length, 0);
+    assert.match(res.result.content[0].text, /Successful refuse/i);
+  });
+
+  await t.test('resolve_fragment_uses missing selector → invalid_argument', async () => {
+    const res = await rpc('tools/call', { name: 'resolve_fragment_uses', arguments: {} });
+    assert.equal(res.result.isError, true);
+    assert.match(res.result.content[0].text, /invalid_argument/);
+    assert.equal(res.result.structuredContent.code, 'invalid_argument');
   });
 
   await t.test('invalid API output → isError invalid_api_output', async () => {
