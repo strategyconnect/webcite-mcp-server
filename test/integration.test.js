@@ -601,8 +601,8 @@ function startStub(options = {}) {
             if (state !== 'read' && state !== 'uncertain' && state !== 'unreadable') {
               unresolved.push('invalid_recognition_state');
             }
-            // Backend #278: non-null blank/whitespace decimal is not a magnitude.
-            if (decimal != null && !String(decimal).trim()) {
+            // Backend #278/#282: non-null blank/whitespace or padded decimal is incomplete.
+            if (decimal != null && (!String(decimal).trim() || String(decimal) !== String(decimal).trim())) {
               unresolved.push('blank_normalized_decimal');
             }
             if (state === 'unreadable' && decimal != null) {
@@ -2441,6 +2441,91 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       // MCP must forward whitespace identity as-is — never invent ids.
       assert.equal(req.body.occurrences[0].id, '  ');
       assert.equal(req.body.occurrences[0].fragment_id, '\t');
+    },
+  );
+
+  await t.test(
+    'number_inventory blank/whitespace normalizedDecimal → blank_normalized_decimal',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'dec',
+              raw: '9',
+              fragment_id: 'frag-d',
+              method: 'native',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+              normalizedDecimal: '  ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /blank_normalized_decimal/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      // Forward blank claimed magnitude as-is — never invent a decimal.
+      assert.equal(req.body.occurrences[0].normalizedDecimal, '  ');
+    },
+  );
+
+
+  await t.test(
+    'number_inventory surrounding-padded normalizedDecimal → blank_normalized_decimal',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'dec-pad',
+              raw: '9',
+              fragment_id: 'frag-dp',
+              method: 'native',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+              normalizedDecimal: ' 9 ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /blank_normalized_decimal/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      assert.equal(req.body.occurrences[0].normalizedDecimal, ' 9 ');
+    },
+  );
+
+  await t.test(
+    'number_inventory null normalizedDecimal still completes',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'ok-null-dec',
+              raw: '12',
+              fragment_id: 'frag-ok',
+              method: 'native',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+              normalizedDecimal: null,
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, undefined);
+      assert.match(res.result.content[0].text, /read|counts|coverage|complete/i);
     },
   );
 
