@@ -785,12 +785,49 @@ function startStub(options = {}) {
           );
           return;
         }
+        // Backend #268: blank wait subject identity in API output must fail closed.
+        if (runId === 'blank-wait' && !action) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              run: {
+                id: runId,
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'waiting',
+                wait: {
+                  kind: 'source_ready',
+                  subjectId: '  ',
+                  subjectRevisionId: 'v2',
+                  expiresAtMs: 9999,
+                },
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
         const isCheckpoint = action === 'checkpoints';
+        let parsedBody = {};
+        if (isCheckpoint && body) {
+          try {
+            parsedBody = JSON.parse(body);
+          } catch {
+            parsedBody = {};
+          }
+        }
+        const incomingRun =
+          parsedBody && typeof parsedBody === 'object' ? parsedBody.run : undefined;
+        const incomingWait =
+          isCheckpoint && incomingRun && typeof incomingRun === 'object'
+            ? incomingRun.wait
+            : undefined;
         const run = {
           id: runId,
           checkpointRevision: isCheckpoint ? 1 : 0,
           objective: 'trace ARR',
-          phase: 'running',
+          phase: incomingWait ? 'waiting' : 'running',
+          ...(incomingWait !== undefined ? { wait: incomingWait } : {}),
         };
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ run, engine: 'context_graph' }));
@@ -1571,6 +1608,28 @@ test('every tool round-trips through the real server against the API', async (t)
       '/api/v2/context/research-runs/11111111-1111-1111-1111-111111111111/checkpoints',
     );
     assert.match(checkpointed, /Revision:\*\* 1/);
+
+    // Backend #268: complete wait subject identity forwards as-is (never trimmed).
+    const waiting = await call('checkpoint_research_run', {
+      run_id: '11111111-1111-1111-1111-111111111111',
+      expected_revision: 1,
+      run: {
+        id: '11111111-1111-1111-1111-111111111111',
+        checkpointRevision: 1,
+        objective: 'trace ARR',
+        phase: 'waiting',
+        wait: {
+          kind: 'source_ready',
+          subjectId: 'src-1',
+          subjectRevisionId: 'rev-2',
+          expiresAtMs: 9999,
+        },
+      },
+    });
+    assert.match(waiting, /Phase:\*\* waiting/);
+    const waitReq = seen.at(-1);
+    assert.equal(waitReq.body.run.wait.subjectId, 'src-1');
+    assert.equal(waitReq.body.run.wait.subjectRevisionId, 'rev-2');
   });
 
   await t.test('research create/list/get/checkpoint/reserve refuse when CONTEXT_GRAPH_RESEARCH off', async () => {
@@ -2343,6 +2402,88 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.match(res.result.content[0].text, /change_impact_incomplete/);
     assert.match(res.result.content[0].text, /missing_dependency_graph|missing_sealed_packet/);
   });
+
+  await t.test(
+    'checkpoint_research_run whitespace wait subjectId → incomplete_wake_subject_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          expected_revision: 0,
+          run: {
+            id: '11111111-1111-1111-1111-111111111111',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'waiting',
+            wait: {
+              kind: 'source_ready',
+              subjectId: '  ',
+              subjectRevisionId: 'v2',
+              expiresAtMs: 9999,
+            },
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_wake_subject_identity|blank\/whitespace/);
+      assert.match(res.result.content[0].text, /subjectId/);
+      // Fail closed before HTTP — never invent a certified wake match.
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run blank subjectRevisionId → incomplete_wake_subject_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          expected_revision: 0,
+          run: {
+            id: '11111111-1111-1111-1111-111111111111',
+            checkpointRevision: 0,
+            objective: 'x',
+            phase: 'waiting',
+            wait: {
+              kind: 'source_ready',
+              subjectId: 's',
+              subjectRevisionId: '',
+              expiresAtMs: 9999,
+            },
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_wake_subject_identity|blank\/whitespace/);
+      assert.match(res.result.content[0].text, /subjectRevisionId/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'get_research_run blank wait subject identity → incomplete_wake_subject_identity',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: 'blank-wait' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.match(res.result.content[0].text, /incomplete_wake_subject_identity|blank\/whitespace/);
+    },
+  );
 
   await t.test(
     'get_change_impact whitespace-only changed_ids → incomplete_changed_ids',

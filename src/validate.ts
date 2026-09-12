@@ -700,8 +700,42 @@ export function validateListMetricDefinitions(
   };
 }
 
+/**
+ * Backend #268: blank/whitespace wait subject identity must not certify as a
+ * wakeable subject match (same honesty as W2 occurrence / W3 changed_ids).
+ */
+function assertWakeSubjectCompleteOutput(
+  wait: unknown,
+  label: string,
+): void {
+  if (wait === null || wait === undefined) return;
+  if (typeof wait !== 'object' || Array.isArray(wait)) {
+    throw new ToolFailure('invalid_api_output', `${label}.wait must be an object or null`, {
+      actionable:
+        'Reject incomplete wait; do not invent a certified wake subject match.',
+    });
+  }
+  const w = wait as Record<string, unknown>;
+  for (const key of ['subjectId', 'subjectRevisionId'] as const) {
+    const value = w[key];
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new ToolFailure(
+        'invalid_api_output',
+        `${label}.wait.${key} is incomplete (blank/whitespace)`,
+        {
+          details: { reason: 'incomplete_wake_subject_identity', field: key },
+          actionable:
+            'Blank/whitespace wake subject identity never matches; do not invent a certified subject match.',
+        },
+      );
+    }
+  }
+}
+
 function requireResearchRun(raw: unknown, label: string): CreateResearchRunResponse['run'] {
   const run = requireObject(raw, label);
+  // Preserve wait as-is when present; refuse blank subject identity fail-closed.
+  assertWakeSubjectCompleteOutput(run.wait, label);
   return {
     ...run,
     id: requireString(run, 'id', label),

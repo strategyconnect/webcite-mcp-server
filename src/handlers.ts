@@ -158,6 +158,37 @@ function requireString(args: Args, key: string): string {
   return value;
 }
 
+/**
+ * Backend #268: wait subjectId / subjectRevisionId must be non-blank.
+ * Equal blanks must never look like a certified wake subject match.
+ * null/undefined wait is fine (not waiting).
+ */
+function assertWakeSubjectComplete(wait: unknown, label: string): void {
+  if (wait === null || wait === undefined) return;
+  if (typeof wait !== 'object' || Array.isArray(wait)) {
+    throw new ToolFailure('invalid_argument', `${label} must be an object or null`, {
+      details: { reason: 'incomplete_wake_subject_identity' },
+      actionable:
+        'Pass wait:null or a WaitCondition with non-blank subjectId and subjectRevisionId.',
+    });
+  }
+  const w = wait as Record<string, unknown>;
+  for (const key of ['subjectId', 'subjectRevisionId'] as const) {
+    const value = w[key];
+    if (typeof value !== 'string' || !value.trim()) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `${label}.${key} is incomplete (blank/whitespace)`,
+        {
+          details: { reason: 'incomplete_wake_subject_identity', field: key },
+          actionable:
+            'Blank/whitespace wake subject identity never matches; do not invent subject ids.',
+        },
+      );
+    }
+  }
+}
+
 function assetRef(args: Args): AssetRefOptions {
   const assetId = args?.asset_id as string | undefined;
   const assetUrl = args?.asset_url as string | undefined;
@@ -1065,11 +1096,16 @@ export const handlers: Record<string, ToolHandler> = {
         'run_id, expected_revision, and run are required',
       );
     }
+    const run = args.run as ResearchRunPayload;
+    // Backend #268: blank/whitespace wait subject identity never wakes — refuse
+    // before HTTP so equal blanks cannot look like a certified subject match.
+    assertWakeSubjectComplete(run.wait, 'checkpoint_research_run.run.wait');
     const raw = await wrapApi(
       client.checkpointResearchRun({
         run_id: args.run_id,
         expected_revision: args.expected_revision,
-        run: args.run as ResearchRunPayload,
+        // Forward wait subject ids as-is — never invent or strip whitespace.
+        run,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),
