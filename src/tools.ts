@@ -901,6 +901,69 @@ Credits: 1. HTTP: GET /api/v2/context/metric-definitions`,
     },
   },
   {
+    name: 'claim_structure_tier',
+    description: `Compute the claim tier ceiling from assertion structure and definition resolution (C1b). Does not persist.
+
+Credits: 1. HTTP: POST /api/v2/context/claim-structure/tier`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        assertion: { type: 'object', description: 'TieredAssertion payload' },
+        definition: {
+          type: ['object', 'null'],
+          description: 'Resolved MetricDefinition, if any',
+        },
+        ambiguity: {
+          type: ['object', 'null'],
+          description: 'Ambiguity with candidates when definition is unresolved',
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['assertion'],
+    },
+  },
+  {
+    name: 'claim_structure_resolve_definition',
+    description: `Resolve an attributed metric definition or surface ambiguity (C1c). Does not persist.
+
+Credits: 1. HTTP: POST /api/v2/context/claim-structure/resolve-definition`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        metric: { type: 'string' },
+        knowledge_as_of: { type: 'string' },
+        effective_at: { type: 'string' },
+        catalog: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'Candidate MetricDefinition revisions',
+        },
+        decision: {
+          type: ['object', 'null'],
+          description: 'Optional InterpretationDecision to disambiguate',
+        },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['metric', 'knowledge_as_of', 'effective_at', 'catalog'],
+    },
+  },
+  {
+    name: 'formalize_claim_relation',
+    description: `Dry-run formalize a claim relation without persisting (C1). Unrecognised predicates or unresolved args return formalized:false.
+
+Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        predicate: { type: 'string' },
+        argument_ids: { type: 'array', items: { type: 'string' }, minItems: 1 },
+        arguments_resolved: { type: 'boolean' },
+        idempotency_key: { type: 'string' },
+      },
+      required: ['predicate', 'argument_ids', 'arguments_resolved'],
+    },
+  },
+  {
     name: 'create_research_run',
     description: `Create a durable research run checkpoint (C3). Scope comes from the API key.
 
@@ -1238,8 +1301,12 @@ export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
   'POST /api/v2/context/formal/check': 'formal_check',
   'POST /api/v2/context/claim-relations': 'create_claim_relation',
   'GET /api/v2/context/claim-relations': 'list_claim_relations',
+  'POST /api/v2/context/claim-relations/formalize': 'formalize_claim_relation',
   'POST /api/v2/context/metric-definitions': 'create_metric_definition',
   'GET /api/v2/context/metric-definitions': 'list_metric_definitions',
+  'POST /api/v2/context/claim-structure/tier': 'claim_structure_tier',
+  'POST /api/v2/context/claim-structure/resolve-definition':
+    'claim_structure_resolve_definition',
   'POST /api/v2/context/research-runs': 'create_research_run',
   'GET /api/v2/context/research-runs/:runId': 'get_research_run',
   'POST /api/v2/context/research-runs/:runId/checkpoints': 'checkpoint_research_run',

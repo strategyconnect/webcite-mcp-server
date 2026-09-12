@@ -59,6 +59,12 @@ import type {
   FormalResolutionStateResponse,
   FormalRevenueBridgeOptions,
   FormalRevenueBridgeResponse,
+  ClaimStructureTierOptions,
+  ClaimStructureTierResponse,
+  ClaimStructureResolveDefinitionOptions,
+  ClaimStructureResolveDefinitionResponse,
+  FormalizeClaimRelationOptions,
+  FormalizeClaimRelationResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   EvaluationCaseResponse,
@@ -496,6 +502,39 @@ export class WebCiteApiClient {
     return this.request(
       `/api/v2/context/metric-definitions${q ? `?${q}` : ''}`,
       { method: 'GET' },
+    );
+  }
+
+  async claimStructureTier(
+    options: ClaimStructureTierOptions,
+  ): Promise<ClaimStructureTierResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/claim-structure/tier',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async claimStructureResolveDefinition(
+    options: ClaimStructureResolveDefinitionOptions,
+  ): Promise<ClaimStructureResolveDefinitionResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/claim-structure/resolve-definition',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
+    );
+  }
+
+  async formalizeClaimRelation(
+    options: FormalizeClaimRelationOptions,
+  ): Promise<FormalizeClaimRelationResponse> {
+    const { idempotency_key, ...body } = options;
+    return this.request(
+      '/api/v2/context/claim-relations/formalize',
+      { method: 'POST', body: JSON.stringify(body) },
+      { idempotencyKey: idempotency_key },
     );
   }
 

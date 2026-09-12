@@ -34,6 +34,9 @@ import type {
   ReserveResearchBudgetResponse,
   FormalResolutionStateResponse,
   FormalRevenueBridgeResponse,
+  ClaimStructureTierResponse,
+  ClaimStructureResolveDefinitionResponse,
+  FormalizeClaimRelationResponse,
   DocumentAnalysisResponse,
   EvalCatalogResponse,
   ExtractedDoc,
@@ -714,6 +717,31 @@ export function formatFormalRevenueBridge(
   result: FormalRevenueBridgeResponse,
 ): string {
   return `# Formal Revenue Bridge\n\n**Status:** ${result.status}${result.sum ? `\n**Sum:** ${result.sum}` : ''}${result.reason ? `\n**Reason:** ${result.reason}` : ''}`;
+}
+
+export function formatClaimStructureTier(result: ClaimStructureTierResponse): string {
+  return `# Claim Structure Tier\n\n**Tier:** ${result.tier}`;
+}
+
+export function formatClaimStructureResolveDefinition(
+  result: ClaimStructureResolveDefinitionResponse,
+): string {
+  return `# Claim Structure Resolve Definition\n\n**Kind:** ${result.kind}`;
+}
+
+export function formatFormalizeClaimRelation(
+  result: FormalizeClaimRelationResponse,
+): string {
+  const parts = [
+    `# Formalize Claim Relation\n`,
+    `**Formalized:** ${result.formalized ? 'yes' : 'no'}`,
+    `**Recognised:** ${result.recognised.join(', ') || '(none)'}`,
+  ];
+  if (result.relation) {
+    parts.push(`**Predicate:** ${result.relation.predicate}`);
+    parts.push(`**Args:** ${result.relation.argumentIds.join(', ')}`);
+  }
+  return parts.join('\n');
 }
 
 export function formatEvalCatalog(result: EvalCatalogResponse): string {

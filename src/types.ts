@@ -780,6 +780,51 @@ export interface FormalRevenueBridgeResponse {
   engine?: string;
 }
 
+export interface ClaimStructureTierOptions {
+  assertion: Record<string, unknown>;
+  definition?: Record<string, unknown> | null;
+  ambiguity?: Record<string, unknown> | null;
+  idempotency_key?: string;
+}
+
+export interface ClaimStructureTierResponse {
+  tier: 1 | 2 | 3;
+  engine?: string;
+}
+
+export interface ClaimStructureResolveDefinitionOptions {
+  metric: string;
+  knowledge_as_of: string;
+  effective_at: string;
+  catalog: Record<string, unknown>[];
+  decision?: Record<string, unknown> | null;
+  idempotency_key?: string;
+}
+
+export interface ClaimStructureResolveDefinitionResponse {
+  kind: 'definition' | 'ambiguity';
+  result: unknown;
+  engine?: string;
+}
+
+export interface FormalizeClaimRelationOptions {
+  predicate: string;
+  argument_ids: string[];
+  arguments_resolved: boolean;
+  idempotency_key?: string;
+}
+
+export interface FormalizeClaimRelationResponse {
+  relation: {
+    predicate: string;
+    argumentIds: string[];
+    argumentsResolved: boolean;
+  } | null;
+  formalized: boolean;
+  recognised: string[];
+  engine?: string;
+}
+
 export interface AnswerArtifactSummary {
   id: string;
   revisionId: string;
