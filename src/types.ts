@@ -848,6 +848,10 @@ export interface ListClaimRelationsResponse {
 
 export interface CreateMetricDefinitionOptions {
   definition: Record<string, unknown>;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 
