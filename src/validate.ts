@@ -572,6 +572,18 @@ function validateNumberInventoryOccurrence(
       `${label}.normalized_decimal must be string|null`,
     );
   }
+  // Backend #278: non-null blank/whitespace is not a certified magnitude.
+  if (typeof decimal === 'string' && !decimal.trim()) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label}.normalized_decimal is incomplete (blank/whitespace)`,
+      {
+        details: { reason: 'blank_normalized_decimal' },
+        actionable:
+          'Blank/whitespace normalized_decimal is incomplete (blank_normalized_decimal); do not invent a magnitude. null is allowed (no claimed magnitude).',
+      },
+    );
+  }
   return {
     id,
     raw: rawText,
@@ -706,8 +718,16 @@ export function validateListMetricDefinitions(
 }
 
 /**
- * Backend #268: blank/whitespace wait subject identity must not certify as a
- * wakeable subject match (same honesty as W2 occurrence / W3 changed_ids).
+ * Backend #268/#281: non-blank, non-padded wake identity (id === trim).
+ * Same honesty as W2 occurrence (#276) and W3 change-impact roots (#279).
+ */
+function wakeIdentityComplete(id: string): boolean {
+  return typeof id === 'string' && id.trim().length > 0 && id === id.trim();
+}
+
+/**
+ * Backend #268/#281: blank/whitespace/padded wait subject identity must not
+ * certify as a wakeable subject match.
  */
 function assertWakeSubjectCompleteOutput(
   wait: unknown,
@@ -723,14 +743,14 @@ function assertWakeSubjectCompleteOutput(
   const w = wait as Record<string, unknown>;
   for (const key of ['subjectId', 'subjectRevisionId'] as const) {
     const value = w[key];
-    if (typeof value !== 'string' || !value.trim()) {
+    if (typeof value !== 'string' || !wakeIdentityComplete(value)) {
       throw new ToolFailure(
         'invalid_api_output',
-        `${label}.wait.${key} is incomplete (blank/whitespace)`,
+        `${label}.wait.${key} is incomplete (blank/whitespace/padded)`,
         {
           details: { reason: 'incomplete_wake_subject_identity', field: key },
           actionable:
-            'Blank/whitespace wake subject identity never matches; do not invent a certified subject match.',
+            'Blank/whitespace/padded wake subject identity never matches; do not invent a certified subject match.',
         },
       );
     }
@@ -738,8 +758,8 @@ function assertWakeSubjectCompleteOutput(
 }
 
 /**
- * Backend #277: blank/whitespace scope.tenantId never wakes when wait is set —
- * equal blanks must not look like a certified tenant match.
+ * Backend #277/#281: blank/whitespace/padded scope.tenantId never wakes when
+ * wait is set — equal blanks/pads must not look like a certified tenant match.
  */
 function assertWakeTenantCompleteOutput(
   run: Record<string, unknown>,
@@ -751,14 +771,14 @@ function assertWakeTenantCompleteOutput(
     scope && typeof scope === 'object' && !Array.isArray(scope)
       ? (scope as Record<string, unknown>).tenantId
       : undefined;
-  if (typeof tenantId !== 'string' || !tenantId.trim()) {
+  if (typeof tenantId !== 'string' || !wakeIdentityComplete(tenantId)) {
     throw new ToolFailure(
       'invalid_api_output',
-      `${label}.scope.tenantId is incomplete (blank/whitespace)`,
+      `${label}.scope.tenantId is incomplete (blank/whitespace/padded)`,
       {
         details: { reason: 'incomplete_wake_tenant_identity', field: 'tenantId' },
         actionable:
-          'Blank/whitespace wake tenant identity never matches; do not invent a certified tenant match.',
+          'Blank/whitespace/padded wake tenant identity never matches; do not invent a certified tenant match.',
       },
     );
   }

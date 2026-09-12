@@ -473,10 +473,13 @@ function startStub(options = {}) {
             const packetId =
               typeof parsed?.packet_id === 'string' ? parsed.packet_id.trim() : '';
             const unresolved = [];
-            // Backend #264: blank/whitespace roots → incomplete_changed_ids.
+            // Backend #264/#279: blank/whitespace/padded roots → incomplete_changed_ids.
             if (
               changedIds.some(
-                (id) => typeof id !== 'string' || !String(id).trim(),
+                (id) =>
+                  typeof id !== 'string' ||
+                  !String(id).trim() ||
+                  String(id) !== String(id).trim(),
               )
             ) {
               unresolved.push('incomplete_changed_ids');
@@ -597,6 +600,10 @@ function startStub(options = {}) {
             }
             if (state !== 'read' && state !== 'uncertain' && state !== 'unreadable') {
               unresolved.push('invalid_recognition_state');
+            }
+            // Backend #278: non-null blank/whitespace decimal is not a magnitude.
+            if (decimal != null && !String(decimal).trim()) {
+              unresolved.push('blank_normalized_decimal');
             }
             if (state === 'unreadable' && decimal != null) {
               unresolved.push('unreadable_claims_normalized_decimal');
@@ -821,6 +828,52 @@ function startStub(options = {}) {
                 objective: 'trace ARR',
                 phase: 'waiting',
                 scope: { tenantId: '  ' },
+                wait: {
+                  kind: 'source_ready',
+                  subjectId: 'src',
+                  subjectRevisionId: 'v2',
+                  expiresAtMs: 9999,
+                },
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        // Backend #281: padded wait subject identity in API output must fail closed.
+        if (runId === 'padded-wait' && !action) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              run: {
+                id: runId,
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'waiting',
+                scope: { tenantId: 't1' },
+                wait: {
+                  kind: 'source_ready',
+                  subjectId: ' src ',
+                  subjectRevisionId: 'v2',
+                  expiresAtMs: 9999,
+                },
+              },
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        }
+        // Backend #281: padded wait tenant identity in API output must fail closed.
+        if (runId === 'padded-tenant-wait' && !action) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              run: {
+                id: runId,
+                checkpointRevision: 0,
+                objective: 'trace ARR',
+                phase: 'waiting',
+                scope: { tenantId: ' t1 ' },
                 wait: {
                   kind: 'source_ready',
                   subjectId: 'src',
@@ -2450,6 +2503,60 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+  await t.test(
+    'number_inventory blank/whitespace normalizedDecimal → blank_normalized_decimal',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'dec',
+              raw: '9',
+              fragment_id: 'frag-d',
+              method: 'native',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+              normalizedDecimal: '  ',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+      assert.match(res.result.content[0].text, /blank_normalized_decimal/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+      assert.ok(req);
+      assert.equal(req.body.occurrences[0].normalizedDecimal, '  ');
+    },
+  );
+
+  await t.test(
+    'number_inventory null normalizedDecimal still completes',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'number_inventory',
+        arguments: {
+          occurrences: [
+            {
+              id: 'ok-null-dec',
+              raw: '12',
+              fragment_id: 'frag-ok',
+              method: 'native',
+              interpretation: 'unknown',
+              recognition_state: 'read',
+              normalizedDecimal: null,
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, undefined);
+      assert.match(res.result.content[0].text, /read|counts|coverage|complete/i);
+    },
+  );
+
   await t.test('number_inventory invalid interpretation → incomplete', async () => {
     const res = await rpc('tools/call', {
       name: 'number_inventory',
@@ -2626,6 +2733,134 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'checkpoint_research_run padded subjectId → incomplete_wake_subject_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          expected_revision: 0,
+          run: {
+            id: '11111111-1111-1111-1111-111111111111',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'waiting',
+            scope: { tenantId: 't1' },
+            wait: {
+              kind: 'source_ready',
+              subjectId: ' src ',
+              subjectRevisionId: 'v2',
+              expiresAtMs: 9999,
+            },
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_wake_subject_identity|padded/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run padded subjectRevisionId → incomplete_wake_subject_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          expected_revision: 0,
+          run: {
+            id: '11111111-1111-1111-1111-111111111111',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'waiting',
+            scope: { tenantId: 't1' },
+            wait: {
+              kind: 'source_ready',
+              subjectId: 'src',
+              subjectRevisionId: ' v2',
+              expiresAtMs: 9999,
+            },
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_wake_subject_identity|padded/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'checkpoint_research_run padded scope.tenantId → incomplete_wake_tenant_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'checkpoint_research_run',
+        arguments: {
+          run_id: '11111111-1111-1111-1111-111111111111',
+          expected_revision: 0,
+          run: {
+            id: '11111111-1111-1111-1111-111111111111',
+            checkpointRevision: 0,
+            objective: 'trace ARR',
+            phase: 'waiting',
+            scope: { tenantId: ' t1 ' },
+            wait: {
+              kind: 'source_ready',
+              subjectId: 'src',
+              subjectRevisionId: 'v2',
+              expiresAtMs: 9999,
+            },
+          },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.match(res.result.content[0].text, /incomplete_wake_tenant_identity|padded/);
+      const req = seen
+        .slice(before)
+        .find((r) => String(r.path || '').includes('/checkpoints'));
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'get_research_run padded wait subject identity → incomplete_wake_subject_identity',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: 'padded-wait' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.match(res.result.content[0].text, /incomplete_wake_subject_identity|padded/);
+    },
+  );
+
+  await t.test(
+    'get_research_run padded wait tenant identity → incomplete_wake_tenant_identity',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'get_research_run',
+        arguments: { run_id: 'padded-tenant-wait' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.match(res.result.content[0].text, /incomplete_wake_tenant_identity|padded/);
+    },
+  );
+
+  await t.test(
     'get_change_impact whitespace-only changed_ids → incomplete_changed_ids',
     async () => {
       const before = seen.length;
@@ -2644,6 +2879,28 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
       assert.ok(req);
       // MCP must forward whitespace roots as-is — never strip into certified empty impact.
       assert.deepEqual(req.body.changed_ids, ['  ', '\t']);
+    },
+  );
+
+  await t.test(
+    'get_change_impact surrounding-padded changed_ids → incomplete_changed_ids',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          changed_ids: [' cell '],
+          links: [{ source_id: 'cell', consumer_id: 'claim-1' }],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'api_error');
+      assert.match(res.result.content[0].text, /change_impact_incomplete/);
+      assert.match(res.result.content[0].text, /incomplete_changed_ids/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact');
+      assert.ok(req);
+      // MCP must forward padded roots as-is — never strip into certified empty impact.
+      assert.deepEqual(req.body.changed_ids, [' cell ']);
     },
   );
 

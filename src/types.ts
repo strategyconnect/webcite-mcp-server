@@ -462,7 +462,7 @@ export interface ChangeImpactOptions {
   packet_id?: string;
   /**
    * Packet dependency path — W3 incomplete sealed-packet / graph surfaces.
-   * Blank/whitespace entries → incomplete_changed_ids (never invent / never strip).
+   * Blank/whitespace/padded entries → incomplete_changed_ids (never invent / never strip).
    */
   changed_ids?: string[];
   links?: Array<{ source_id: string; consumer_id: string }>;
@@ -625,7 +625,9 @@ export interface NumberInventoryOccurrenceInput {
   /** Blank/whitespace/padded → missing_occurrence_identity (never invent). */
   fragment_id?: string;
   fragmentId?: string;
+  /** Non-null blank/whitespace → blank_normalized_decimal (backend #278); null allowed. */
   normalized_decimal?: string | null;
+  /** Alias of normalized_decimal; non-null blank/whitespace → blank_normalized_decimal. */
   normalizedDecimal?: string | null;
   interpretation?: NumberOccurrenceInterpretation | string;
   /** Required for complete coverage; omit/blank/invalid → number_inventory_incomplete (never defaulted to native). */
@@ -763,15 +765,15 @@ export interface CreateResearchRunOptions {
 
 export interface ResearchWaitCondition {
   kind: 'source_ready' | 'review_recorded' | string;
-  /** Non-blank; whitespace → incomplete_wake_subject_identity (backend #268). */
+  /** Non-blank/unpadded; whitespace/pad → incomplete_wake_subject_identity (backend #268/#281). */
   subjectId: string;
-  /** Non-blank; whitespace → incomplete_wake_subject_identity (backend #268). */
+  /** Non-blank/unpadded; whitespace/pad → incomplete_wake_subject_identity (backend #268/#281). */
   subjectRevisionId: string;
   expiresAtMs: number;
 }
 
 export interface ResearchRunScope {
-  /** Non-blank when wait is set; whitespace → incomplete_wake_tenant_identity (backend #277). */
+  /** Non-blank/unpadded when wait is set; whitespace/pad → incomplete_wake_tenant_identity (#277/#281). */
   tenantId: string;
   [key: string]: unknown;
 }
@@ -781,9 +783,9 @@ export interface ResearchRunPayload {
   checkpointRevision: number;
   objective: string;
   phase: string;
-  /** When set, subjectId + subjectRevisionId must be non-blank; scope.tenantId must be non-blank. */
+  /** When set, subjectId + subjectRevisionId must be non-blank/unpadded; scope.tenantId likewise. */
   wait?: ResearchWaitCondition | null;
-  /** Required non-blank tenantId when wait is set (backend #277). */
+  /** Required non-blank/unpadded tenantId when wait is set (backend #277/#281). */
   scope?: ResearchRunScope;
   [key: string]: unknown;
 }
