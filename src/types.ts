@@ -996,6 +996,11 @@ export interface ResolveSeedsOptions {
     scope: Record<string, string | null | undefined>;
     terms: string[];
   }>;
+  /**
+   * Optional replay key. When string: blank/whitespace/surrounding-padded →
+   * incomplete_operation_idempotency_identity (never trim-launder into a
+   * certified resolve-seeds replay pin; same honesty as #92/#105/#111).
+   */
   idempotency_key?: string;
 }
 
