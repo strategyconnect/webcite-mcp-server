@@ -441,9 +441,35 @@ export function validateFindContradictions(raw: unknown): FindContradictionsResp
   if (!Array.isArray(root.pairs)) {
     throw new ToolFailure('invalid_api_output', 'FindContradictions.pairs must be an array');
   }
+  if (!Array.isArray(root.unresolved)) {
+    throw new ToolFailure('invalid_api_output', 'FindContradictions.unresolved must be an array');
+  }
+  const coverage = root.coverage;
+  if (coverage !== 'complete' && coverage !== 'unknown') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'FindContradictions.coverage must be complete|unknown',
+      {
+        actionable:
+          'Incomplete contradiction scans must fail closed (contradiction_scan_incomplete), not ship unknown coverage as certified all-clear.',
+      },
+    );
+  }
+  if (coverage === 'unknown') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      'FindContradictions.coverage unknown must not be accepted as success',
+      {
+        actionable:
+          'HTTP should have refused with contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value); do not invent certified no-contradiction.',
+      },
+    );
+  }
   return {
     count: typeof root.count === 'number' ? root.count : root.pairs.length,
     pairs: root.pairs as FindContradictionsResponse['pairs'],
+    coverage,
+    unresolved: root.unresolved.filter((u): u is string => typeof u === 'string'),
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

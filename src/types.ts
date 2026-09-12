@@ -571,6 +571,9 @@ export interface FindContradictionsResponse {
     left: { interval: unknown; decimal_value: string | null };
     right: { interval: unknown; decimal_value: string | null };
   }>;
+  /** complete = certified scan; unknown must not be accepted as all-clear. */
+  coverage: 'complete' | 'unknown';
+  unresolved: string[];
   engine?: string;
 }
 
