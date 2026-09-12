@@ -882,7 +882,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
   },
   {
     name: 'number_inventory',
-    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity/recognition or unreadable rows that claim a normalized decimal fail closed as number_inventory_incomplete (never silently repaired). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
+    description: `W2 A_WORKBENCH_COUNTS: count numeric occurrences by recognition state (read/uncertain/unreadable). Dedupes by occurrence id only — same magnitude at two locations stays two rows. Incomplete identity/blank raw/invalid or missing method/invalid interpretation/recognition, or unreadable rows that claim a normalized decimal, fail closed as number_inventory_incomplete (never silently repaired; never invent method=native). Coverage complete means certified counts; unknown must not be treated as a certified inventory.
 
 Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
     inputSchema: {
@@ -891,18 +891,37 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
         occurrences: {
           type: 'array',
           description:
-            'NumericOccurrence rows. recognition_state required (read|uncertain|unreadable). fragment_id + id required for complete coverage.',
+            'NumericOccurrence rows. recognition_state + non-blank raw + valid method required for complete coverage (method is never defaulted to native). fragment_id + id required.',
           items: {
             type: 'object',
             properties: {
               id: { type: 'string' },
-              raw: { type: 'string' },
+              raw: {
+                type: 'string',
+                description: 'Non-blank glyph text; blank/whitespace → missing_occurrence_raw.',
+              },
               fragment_id: { type: 'string' },
               fragmentId: { type: 'string' },
               normalized_decimal: { type: ['string', 'null'] },
               normalizedDecimal: { type: ['string', 'null'] },
-              interpretation: { type: 'string' },
-              method: { type: 'string' },
+              interpretation: {
+                type: 'string',
+                enum: [
+                  'measure',
+                  'date',
+                  'identifier',
+                  'ordinal',
+                  'range',
+                  'formula',
+                  'unknown',
+                ],
+              },
+              method: {
+                type: 'string',
+                enum: ['native', 'ocr', 'asr', 'human', 'chart_estimate'],
+                description:
+                  'Capture method. Omit/blank/invalid → invalid_occurrence_method (HTTP never invents native).',
+              },
               recognition_state: {
                 type: 'string',
                 enum: ['read', 'uncertain', 'unreadable'],

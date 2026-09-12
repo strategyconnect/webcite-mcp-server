@@ -535,12 +535,25 @@ function startStub(options = {}) {
         }
       }
 
-      // Dynamic number inventory: incomplete rows fail closed (400)
+      // Dynamic number inventory: incomplete rows fail closed (400).
+      // Mirror backend #251: never invent method=native; blank raw / invalid
+      // method / invalid interpretation mark coverage unknown → refuse.
       if (url.pathname === '/api/v2/context/numbers/inventory' && body) {
         try {
           const parsed = JSON.parse(body);
           const rows = Array.isArray(parsed?.occurrences) ? parsed.occurrences : [];
-          const incomplete = rows.some((row) => {
+          const METHODS = new Set(['native', 'ocr', 'asr', 'human', 'chart_estimate']);
+          const INTERPRETATIONS = new Set([
+            'measure',
+            'date',
+            'identifier',
+            'ordinal',
+            'range',
+            'formula',
+            'unknown',
+          ]);
+          const unresolved = [];
+          for (const row of rows) {
             const state = row.recognition_state ?? row.recognitionState;
             const id = row.id ?? '';
             const fragmentId = row.fragment_id ?? row.fragmentId ?? '';
@@ -548,15 +561,36 @@ function startStub(options = {}) {
               row.normalized_decimal !== undefined
                 ? row.normalized_decimal
                 : row.normalizedDecimal;
-            if (!id || !fragmentId) return true;
-            if (state === 'unreadable' && decimal != null) return true;
-            return false;
-          });
-          if (incomplete) {
+            const rawText = typeof row.raw === 'string' ? row.raw : '';
+            // HTTP: interpretation may default to unknown; never invent method=native.
+            const method = row.method ?? '';
+            const interpretation = row.interpretation ?? 'unknown';
+            if (!id || !fragmentId) {
+              unresolved.push('missing_occurrence_identity');
+              continue;
+            }
+            if (!String(rawText).trim()) {
+              unresolved.push('missing_occurrence_raw');
+            }
+            if (!METHODS.has(method)) {
+              unresolved.push('invalid_occurrence_method');
+            }
+            if (!INTERPRETATIONS.has(interpretation)) {
+              unresolved.push('invalid_occurrence_interpretation');
+            }
+            if (state !== 'read' && state !== 'uncertain' && state !== 'unreadable') {
+              unresolved.push('invalid_recognition_state');
+            }
+            if (state === 'unreadable' && decimal != null) {
+              unresolved.push('unreadable_claims_normalized_decimal');
+            }
+          }
+          const unique = [...new Set(unresolved)];
+          if (unique.length) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(
               JSON.stringify({
-                message: 'number_inventory_incomplete: missing_occurrence_identity,unreadable_claims_normalized_decimal',
+                message: `number_inventory_incomplete: ${unique.join(',')}`,
                 statusCode: 400,
               }),
             );
@@ -1225,6 +1259,8 @@ test('every tool round-trips through the real server against the API', async (t)
           raw: '10',
           fragment_id: 'frag-a',
           normalized_decimal: '10',
+          interpretation: 'unknown',
+          method: 'native',
           recognition_state: 'read',
         },
         {
@@ -1232,6 +1268,8 @@ test('every tool round-trips through the real server against the API', async (t)
           raw: '10',
           fragment_id: 'frag-b',
           normalized_decimal: '10',
+          interpretation: 'unknown',
+          method: 'native',
           recognition_state: 'read',
         },
         {
@@ -1239,6 +1277,8 @@ test('every tool round-trips through the real server against the API', async (t)
           raw: '~12',
           fragment_id: 'frag-c',
           normalized_decimal: null,
+          interpretation: 'unknown',
+          method: 'native',
           recognition_state: 'uncertain',
         },
       ],
@@ -1247,6 +1287,7 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.equal(req.path, '/api/v2/context/numbers/inventory');
     assert.equal(req.method, 'POST');
     assert.equal(req.body.occurrences.length, 3);
+    assert.equal(req.body.occurrences[0].method, 'native');
     assert.match(text, /Coverage:\*\* complete/);
     assert.match(text, /Read:\*\* 2/);
     assert.match(text, /Uncertain:\*\* 1/);
@@ -1943,6 +1984,74 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     assert.equal(res.result.isError, true);
     assert.equal(res.result.structuredContent.code, 'api_error');
     assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+  });
+
+  await t.test('number_inventory omits method → incomplete (never invent native)', async () => {
+    const before = seen.length;
+    const res = await rpc('tools/call', {
+      name: 'number_inventory',
+      arguments: {
+        occurrences: [
+          {
+            id: 'occ-m',
+            raw: '10',
+            fragment_id: 'frag-m',
+            interpretation: 'unknown',
+            recognition_state: 'read',
+          },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /number_inventory_incomplete/);
+    assert.match(res.result.content[0].text, /invalid_occurrence_method/);
+    const req = seen.slice(before).find((r) => r.path === '/api/v2/context/numbers/inventory');
+    assert.ok(req);
+    // MCP must forward omission as-is — never invent method=native.
+    assert.equal(req.body.occurrences[0].method, undefined);
+  });
+
+  await t.test('number_inventory blank raw → incomplete missing_occurrence_raw', async () => {
+    const res = await rpc('tools/call', {
+      name: 'number_inventory',
+      arguments: {
+        occurrences: [
+          {
+            id: 'occ-blank',
+            raw: '   ',
+            fragment_id: 'frag-blank',
+            method: 'native',
+            interpretation: 'unknown',
+            recognition_state: 'read',
+          },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /missing_occurrence_raw/);
+  });
+
+  await t.test('number_inventory invalid interpretation → incomplete', async () => {
+    const res = await rpc('tools/call', {
+      name: 'number_inventory',
+      arguments: {
+        occurrences: [
+          {
+            id: 'occ-i',
+            raw: '10',
+            fragment_id: 'frag-i',
+            method: 'native',
+            interpretation: 'made_up',
+            recognition_state: 'read',
+          },
+        ],
+      },
+    });
+    assert.equal(res.result.isError, true);
+    assert.equal(res.result.structuredContent.code, 'api_error');
+    assert.match(res.result.content[0].text, /invalid_occurrence_interpretation/);
   });
 
   await t.test('get_change_impact missing both paths → invalid_argument', async () => {

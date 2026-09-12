@@ -4,6 +4,10 @@
  */
 
 import { ToolFailure } from './errors.js';
+import {
+  NUMBER_OCCURRENCE_METHODS,
+  NUMBER_OCCURRENCE_INTERPRETATIONS,
+} from './types.js';
 import type {
   ChangeImpactResponse,
   CompareAssertionsResponse,
@@ -16,6 +20,10 @@ import type {
   AssessMeaningResponse,
   FindContradictionsResponse,
   NumberInventoryResponse,
+  NumberInventoryOccurrence,
+  NumberOccurrenceMethod,
+  NumberOccurrenceInterpretation,
+  NumberRecognitionState,
   FormalEligibilityResponse,
   FormalCheckResponse,
   CreateClaimRelationResponse,
@@ -440,6 +448,78 @@ export function validateFindContradictions(raw: unknown): FindContradictionsResp
   };
 }
 
+const NUMBER_METHOD_SET = new Set<string>(NUMBER_OCCURRENCE_METHODS);
+const NUMBER_INTERPRETATION_SET = new Set<string>(NUMBER_OCCURRENCE_INTERPRETATIONS);
+const NUMBER_RECOGNITION_SET = new Set<string>(['read', 'uncertain', 'unreadable']);
+
+function validateNumberInventoryOccurrence(
+  raw: unknown,
+  index: number,
+): NumberInventoryOccurrence {
+  const label = `NumberInventory.occurrences[${index}]`;
+  const row = requireObject(raw, label);
+  const id = requireString(row, 'id', label);
+  const fragmentRaw = row.fragment_id ?? row.fragmentId;
+  if (typeof fragmentRaw !== 'string' || !fragmentRaw.trim()) {
+    throw new ToolFailure('invalid_api_output', `${label}.fragment_id is required`, {
+      actionable: 'Reject the payload; do not invent occurrence identity.',
+    });
+  }
+  const rawText = row.raw;
+  if (typeof rawText !== 'string' || !rawText.trim()) {
+    throw new ToolFailure('invalid_api_output', `${label}.raw must be a non-blank string`, {
+      actionable:
+        'Blank raw is incomplete (missing_occurrence_raw); do not invent a glyph or method=native.',
+    });
+  }
+  const method = row.method;
+  if (typeof method !== 'string' || !NUMBER_METHOD_SET.has(method)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label}.method must be native|ocr|asr|human|chart_estimate`,
+      {
+        actionable:
+          'Never invent method=native for omitted/invalid method; incomplete inventories must fail closed.',
+      },
+    );
+  }
+  const interpretation = row.interpretation;
+  if (typeof interpretation !== 'string' || !NUMBER_INTERPRETATION_SET.has(interpretation)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label}.interpretation must be measure|date|identifier|ordinal|range|formula|unknown`,
+      {
+        actionable: 'Reject invalid interpretation labels; do not repair them.',
+      },
+    );
+  }
+  const recognition =
+    row.recognition_state ?? row.recognitionState;
+  if (typeof recognition !== 'string' || !NUMBER_RECOGNITION_SET.has(recognition)) {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label}.recognition_state must be read|uncertain|unreadable`,
+    );
+  }
+  const decimal =
+    row.normalized_decimal !== undefined ? row.normalized_decimal : row.normalizedDecimal;
+  if (decimal !== null && typeof decimal !== 'string') {
+    throw new ToolFailure(
+      'invalid_api_output',
+      `${label}.normalized_decimal must be string|null`,
+    );
+  }
+  return {
+    id,
+    raw: rawText,
+    fragment_id: fragmentRaw,
+    normalized_decimal: decimal === undefined ? null : (decimal as string | null),
+    interpretation: interpretation as NumberOccurrenceInterpretation,
+    method: method as NumberOccurrenceMethod,
+    recognition_state: recognition as NumberRecognitionState,
+  };
+}
+
 export function validateNumberInventory(raw: unknown): NumberInventoryResponse {
   const root = requireObject(raw, 'NumberInventory');
   const counts = requireObject(root.counts, 'NumberInventory.counts');
@@ -469,9 +549,12 @@ export function validateNumberInventory(raw: unknown): NumberInventoryResponse {
       'NumberInventory.counts requires read/uncertain/unreadable numbers',
     );
   }
+  const occurrences = root.occurrences.map((row, index) =>
+    validateNumberInventoryOccurrence(row, index),
+  );
   return {
     counts: { read, uncertain, unreadable },
-    occurrences: root.occurrences as NumberInventoryResponse['occurrences'],
+    occurrences,
     coverage,
     unresolved: root.unresolved.filter((u): u is string => typeof u === 'string'),
     engine: typeof root.engine === 'string' ? root.engine : undefined,
