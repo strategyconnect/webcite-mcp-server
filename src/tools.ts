@@ -2052,7 +2052,7 @@ Credits: 1. HTTP: GET /api/v2/context/evaluations/:runId`,
   },
   {
     name: 'compare_evaluations',
-    description: `Compare two frozen evaluation runs via the E1 comparator (does not recompute grades). Blank/whitespace/surrounding-padded baseline_run_id / candidate_run_id → incomplete_evaluation_run_identity (W3 #264/#279 — never trim-launder into a certified compare).
+    description: `Compare two frozen evaluation runs via the E1 comparator (does not recompute grades). Blank/whitespace/surrounding-padded baseline_run_id / candidate_run_id → incomplete_evaluation_run_identity (W3 #264/#279 — never trim-launder into a certified compare). Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified compare replay).
 
 Credits: 1. HTTP: POST /api/v2/context/evaluations/compare`,
     inputSchema: {
@@ -2068,7 +2068,11 @@ Credits: 1. HTTP: POST /api/v2/context/evaluations/compare`,
           description:
             'Non-blank unpadded candidate evaluation run ID. Blank/whitespace/surrounding-padded → incomplete_evaluation_run_identity (never trim-launder).',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded replay key. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
       },
       required: ['baseline_run_id', 'candidate_run_id'],
     },

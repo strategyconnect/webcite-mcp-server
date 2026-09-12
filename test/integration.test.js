@@ -7771,6 +7771,84 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'compare_evaluations surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_evaluations',
+        arguments: {
+          baseline_run_id: 'base-1',
+          candidate_run_id: 'cand-1',
+          idempotency_key: ' cmp-eval-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evaluations/compare'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'compare_evaluations whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_evaluations',
+        arguments: {
+          baseline_run_id: 'base-1',
+          candidate_run_id: 'cand-1',
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evaluations/compare'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #95 record_operation_attempt optional idempotency pad must stay fail-closed.
+  await t.test(
+    'record_operation_attempt surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#95 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'record_operation_attempt',
+        arguments: {
+          operation_id: 'op-1',
+          provider: 'openai',
+          idempotency_key: ' record-reg-cmp-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/attempts')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_evaluation_case surrounding-padded case_id → incomplete_evaluation_case_identity',
     async () => {
       const before = seen.length;
