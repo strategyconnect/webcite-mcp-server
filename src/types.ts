@@ -617,6 +617,11 @@ export interface AssessSupportResponse {
 export interface AssessMeaningOptions {
   assessment: Record<string, unknown>;
   known_false_claim?: boolean;
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92/#102 honesty shared with
+   * settle / assess_support).
+   */
   idempotency_key?: string;
 }
 
