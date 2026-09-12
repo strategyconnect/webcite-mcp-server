@@ -1940,6 +1940,10 @@ export const handlers: Record<string, ToolHandler> = {
         ...(typeof row.seed === 'string' ? { seed: row.seed } : {}),
       });
     }
+    // W3: optional idempotency_key pads never seal/replay into a certified
+    // packet pin — refuse before HTTP (same identityComplete honesty as
+    // settle/link/attempt #92/#94/#95).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.createEvidencePacket({
         claim_text: claimText,

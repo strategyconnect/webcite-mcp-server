@@ -2425,6 +2425,97 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'create_evidence_packet surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+          idempotency_key: ' pkt-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_evidence_packet whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #90 operator_class pad refuse must stay fail-closed.
+  await t.test(
+    'create_evidence_packet surrounding-padded operator_class still → padded_operator_class (#90 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_evidence_packet',
+        arguments: {
+          claim_text: 'Revenue grew 18%.',
+          operator_class: ' lookup_number ',
+          bindings: [
+            {
+              source_version_id: 'sv1',
+              source_unit_id: 'u1',
+              representation_id: 'rep1',
+            },
+          ],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_operator_class');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/evidence-packets'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('assess_support posts claim hashes and returns tier-capped judgment', async () => {
     const text = await call('assess_support', {
       claim_revision_id: 'claim-r1',
