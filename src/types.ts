@@ -481,6 +481,11 @@ export interface ResolveFragmentUsesOptions {
   allowed_fragment_ids?: string[];
   cursor?: string | null;
   limit?: number;
+  /**
+   * Optional replay key. When string: blank/whitespace/surrounding-padded →
+   * incomplete_operation_idempotency_identity (never trim-launder into a
+   * certified resolve-fragment-uses replay pin; same honesty as #92/#103/#105).
+   */
   idempotency_key?: string;
 }
 

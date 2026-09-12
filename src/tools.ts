@@ -661,7 +661,7 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
   },
   {
     name: 'resolve_fragment_uses',
-    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set. Blank/whitespace/surrounding-padded selector.representationId → incomplete_representation_identity; blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity; blank/whitespace/surrounding-padded answer_revision_id → incomplete_answer_revision_identity (W3 #264/#279 — never trim-launder into a certified sealed catalog hit). Blank/whitespace/surrounding-padded allowed_fragment_ids → incomplete_allowed_fragment_identity (expand_seeds #68 allow-list honesty — never trim-launder into a certified authorization pin).
+    description: `A_SELECT_USES: resolve authorized fragment uses for a selector. Returns matchKind (exact/contains/contained/overlap); semanticSupport is always false — overlap never implies support. Successful refuse is not a tool failure. Prefer packet_id or answer_revision_id for a sealed server catalog; client fragments/groups/links are refused when either sealed id is set. Blank/whitespace/surrounding-padded selector.representationId → incomplete_representation_identity; blank/whitespace/surrounding-padded packet_id → incomplete_packet_identity; blank/whitespace/surrounding-padded answer_revision_id → incomplete_answer_revision_identity (W3 #264/#279 — never trim-launder into a certified sealed catalog hit). Blank/whitespace/surrounding-padded allowed_fragment_ids → incomplete_allowed_fragment_identity (expand_seeds #68 allow-list honesty — never trim-launder into a certified authorization pin). Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified resolve-uses replay; same honesty as settle/compare_assertions #92/#105).
 
 Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
     inputSchema: {
@@ -725,7 +725,8 @@ Credits: 1. HTTP: POST /api/v2/context/fragments/resolve-uses`,
         },
         idempotency_key: {
           type: 'string',
-          description: 'Logical idempotency key. Not a scope field.',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a resolve-fragment-uses replay pin).',
         },
       },
       required: ['selector'],

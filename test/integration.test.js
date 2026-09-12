@@ -5046,6 +5046,107 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'resolve_fragment_uses surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          idempotency_key: ' frag-uses-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified resolve-uses replay',
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'resolve_fragment_uses equal-pad idempotency_key → incomplete_operation_idempotency_identity (never resolve)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          idempotency_key: ' frag-uses-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: allowed_fragment_ids pad refuse must stay fail-closed (#84).
+  await t.test(
+    'resolve_fragment_uses surrounding-padded allowed_fragment_ids still → incomplete_allowed_fragment_identity (#84 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'resolve_fragment_uses',
+        arguments: {
+          selector: { kind: 'tokens', representationId: 'rep-1', first: 0, lastExclusive: 1 },
+          fragments: [],
+          allowed_fragment_ids: [' frag-a '],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_allowed_fragment_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/fragments/resolve-uses'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_answer surrounding-padded revision_id → incomplete_answer_revision_identity',
     async () => {
       const before = seen.length;
