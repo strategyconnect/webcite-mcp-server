@@ -692,15 +692,15 @@ export const handlers: Record<string, ToolHandler> = {
           throw new ToolFailure('invalid_argument', `links[${i}] must be an object`);
         }
         const row = link as Record<string, unknown>;
-        // Backend #285: forward blank/whitespace/padded endpoints as-is — never
-        // trim into a silent certified dependency match / empty no-impact.
+        // Backend #285/#294: forward blank/whitespace/padded and self-loop
+        // endpoints as-is — never trim/drop into certified match / empty impact.
         if (typeof row.source_id !== 'string' || typeof row.consumer_id !== 'string') {
           throw new ToolFailure(
             'invalid_argument',
             `links[${i}] requires string source_id and consumer_id`,
             {
               actionable:
-                'Blank/padded link endpoints fail closed on HTTP as incomplete_dependency_graph; supply complete unpadded endpoints.',
+                'Blank/padded link endpoints fail closed on HTTP as incomplete_dependency_graph; self-loops (source_id === consumer_id) as self_loop_dependency.',
             },
           );
         }
