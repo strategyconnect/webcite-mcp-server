@@ -1861,6 +1861,103 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  await t.test(
+    'compare_assertions surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_assertions',
+        arguments: {
+          left: { metric: 'revenue', period: 'FY24' },
+          right: { metric: 'revenue', period: 'FY24' },
+          idempotency_key: ' cmp-assert-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/compare-assertions'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into a certified compare replay',
+      );
+    },
+  );
+
+  await t.test(
+    'compare_assertions whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_assertions',
+        arguments: {
+          left: { metric: 'revenue', period: 'FY24' },
+          right: { metric: 'revenue', period: 'FY24' },
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/compare-assertions'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'compare_assertions equal-pad idempotency_key → incomplete_operation_idempotency_identity (never compare)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_assertions',
+        arguments: {
+          left: { metric: 'revenue', period: 'FY24' },
+          right: { metric: 'revenue', period: 'FY24' },
+          idempotency_key: ' cmp-assert-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/compare-assertions'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: padded_compare_filter must stay fail-closed.
+  await t.test(
+    'compare_assertions surrounding-padded left metric still → padded_compare_filter (#307 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'compare_assertions',
+        arguments: {
+          left: { metric: ' revenue ', period: 'FY24' },
+          right: { metric: 'revenue', period: 'FY24' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_compare_filter');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/compare-assertions'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('resolve_fragment_uses posts selector catalog and keeps semanticSupport false', async () => {
     const text = await call('resolve_fragment_uses', {
       selector: {

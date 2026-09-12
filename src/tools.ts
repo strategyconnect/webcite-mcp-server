@@ -629,7 +629,7 @@ Credits: 1. HTTP: POST /api/v2/context/query`,
   },
   {
     name: 'compare_assertions',
-    description: `Compare two claim scopes. Returns same, different, or unknown — unknown is never treated as contradiction. Blank/whitespace/surrounding-padded ClaimScope string fields on left/right fail closed (padded_compare_filter; same honesty as resolve_seeds #311 / query_context #307 — equal pads never certify same/different and must not trim-launder).
+    description: `Compare two claim scopes. Returns same, different, or unknown — unknown is never treated as contradiction. Blank/whitespace/surrounding-padded ClaimScope string fields on left/right fail closed (padded_compare_filter; same honesty as resolve_seeds #311 / query_context #307 — equal pads never certify same/different and must not trim-launder). Blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified compare-assertions replay; same honesty as settle/compare_evaluations #92/#101).
 
 Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
     inputSchema: {
@@ -649,7 +649,8 @@ Credits: 1. HTTP: POST /api/v2/context/compare-assertions`,
         },
         idempotency_key: {
           type: 'string',
-          description: 'Logical idempotency key. Not a scope field.',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a compare-assertions replay pin).',
         },
       },
       required: ['left', 'right'],
