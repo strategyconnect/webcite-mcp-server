@@ -9058,6 +9058,78 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
     },
   );
 
+  await t.test(
+    'get_change_impact surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          answer_revision_id: 'answer-v1',
+          idempotency_key: ' chg-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'get_change_impact whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          answer_revision_id: 'answer-v1',
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact'),
+        undefined,
+      );
+    },
+  );
+
+  // Squash-regression guard: #57/#264 answer_revision pad refuse must stay fail-closed.
+  await t.test(
+    'get_change_impact surrounding-padded answer_revision_id still → incomplete_answer_revision_identity (#57 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'get_change_impact',
+        arguments: {
+          answer_revision_id: ' answer-v1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_answer_revision_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/change-impact'),
+        undefined,
+      );
+    },
+  );
+
   await t.test('invalid API output → isError invalid_api_output', async () => {
     const res = await rpc('tools/call', {
       name: 'query_context',

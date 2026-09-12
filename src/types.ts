@@ -512,6 +512,10 @@ export interface ChangeImpactOptions {
   links?: Array<{ source_id: string; consumer_id: string }>;
   observed_at_ms?: number | null;
   window?: { start_ms: number; end_ms: number };
+  /**
+   * Optional. When string: non-blank unpadded; blank/padded →
+   * incomplete_operation_idempotency_identity (#92 honesty shared with settle).
+   */
   idempotency_key?: string;
 }
 
