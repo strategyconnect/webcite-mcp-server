@@ -1501,7 +1501,7 @@ Credits: 1. HTTP: POST /api/v2/context/format/certify`,
   },
   {
     name: 'reserve_research_budget',
-    description: `Reserve credits under a research run's root operation (I4/C3). Blank/whitespace/surrounding-padded run_id → incomplete_research_run_identity (never trim-launder into a certified reserve). Missing root refuses. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed.
+    description: `Reserve credits under a research run's root operation (I4/C3). Blank/whitespace/surrounding-padded run_id → incomplete_research_run_identity (never trim-launder into a certified reserve). Blank/whitespace/surrounding-padded idempotency_key → incomplete_operation_idempotency_identity; blank/whitespace/surrounding-padded kind → incomplete_operation_kind_identity (same honesty as open_operation_root #83 — never trim-launder into a certified reserve/replay). Missing root refuses. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
     inputSchema: {
@@ -1512,8 +1512,16 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
           description:
             'Non-blank unpadded research run id. Blank/whitespace/surrounding-padded → incomplete_research_run_identity (never trim-launder).',
         },
-        idempotency_key: { type: 'string' },
-        kind: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Non-blank unpadded idempotency key (replay identity). Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
+        kind: {
+          type: 'string',
+          description:
+            'Non-blank unpadded operation kind. Blank/whitespace/surrounding-padded → incomplete_operation_kind_identity (never trim-launder).',
+        },
         credits: { type: 'number' },
         tokens: { type: 'number' },
       },
