@@ -875,8 +875,11 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   resolve_seeds: async (args, client) => {
-    if (typeof args?.text !== 'string' || !Array.isArray(args?.index)) {
-      throw new ToolFailure('invalid_argument', 'text and index are required');
+    if (typeof args?.text !== 'string') {
+      throw new ToolFailure('invalid_argument', 'text is required');
+    }
+    if (args?.index !== undefined && !Array.isArray(args.index)) {
+      throw new ToolFailure('invalid_argument', 'index must be an array when provided');
     }
     const raw = await wrapApi(
       client.resolveSeeds({
@@ -885,7 +888,9 @@ export const handlers: Record<string, ToolHandler> = {
           args.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
             ? (args.filters as Record<string, string | null | undefined>)
             : undefined,
-        index: args.index as ResolveSeedsOptions['index'],
+        index: Array.isArray(args.index)
+          ? (args.index as ResolveSeedsOptions['index'])
+          : undefined,
         idempotency_key:
           typeof args?.idempotency_key === 'string' ? args.idempotency_key : undefined,
       }),

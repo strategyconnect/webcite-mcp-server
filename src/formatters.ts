@@ -680,7 +680,16 @@ export function formatCheckpointResearchRun(
 }
 
 export function formatResolveSeeds(result: ResolveSeedsResponse): string {
-  return `# Resolve Seeds\n\n**Count:** ${result.candidates.length}\n**Leading resolver:** ${result.leading_resolver ?? 'none'}`;
+  const parts = [
+    `# Resolve Seeds\n`,
+    `**Count:** ${result.candidates.length}`,
+    `**Leading resolver:** ${result.leading_resolver ?? 'none'}`,
+  ];
+  if (result.index_source) parts.push(`**Index source:** ${result.index_source}`);
+  if (typeof result.index_size === 'number') {
+    parts.push(`**Index size:** ${result.index_size}`);
+  }
+  return parts.join('\n');
 }
 
 export function formatLearningJudge(result: LearningJudgeResponse): string {

@@ -1024,7 +1024,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
   },
   {
     name: 'resolve_seeds',
-    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback.
+    description: `Resolve entry-point seeds from ClaimScope vocabulary (C2). No embedding fallback. Omit index to use the SQL metric-definition catalog.
 
 Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
     inputSchema: {
@@ -1043,10 +1043,11 @@ Credits: 1. HTTP: POST /api/v2/context/resolve-seeds`,
             },
             required: ['id', 'scope', 'terms'],
           },
+          description: 'Inline vocabulary. Omit to load from the SQL catalog.',
         },
         idempotency_key: { type: 'string' },
       },
-      required: ['text', 'index'],
+      required: ['text'],
     },
   },
   {
