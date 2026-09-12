@@ -1533,6 +1533,65 @@ test('every tool round-trips through the real server against the API', async (t)
   });
 
   await t.test(
+    'query_context surrounding-padded text → padded_select_text',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: ' discusses churn ',
+          source_texts: ['discusses churn'],
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_select_text');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
+        undefined,
+        'must refuse before HTTP — pads must not trim-launder into lexical seeds',
+      );
+    },
+  );
+
+  await t.test(
+    'query_context leading/trailing pad text → padded_select_text (never select)',
+    async () => {
+      for (const text of [' churn', 'churn ']) {
+        const before = seen.length;
+        const res = await rpc('tools/call', {
+          name: 'query_context',
+          arguments: { text },
+        });
+        assert.equal(res.result.isError, true);
+        assert.equal(res.result.structuredContent.details?.reason, 'padded_select_text');
+        assert.equal(
+          seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
+          undefined,
+        );
+      }
+    },
+  );
+
+  await t.test(
+    'query_context whitespace-only text → padded_select_text',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: { text: '   ' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.details?.reason, 'padded_select_text');
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/query'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'query_context padded filter → padded_lookup_filter',
     async () => {
       const before = seen.length;
@@ -2361,7 +2420,8 @@ test('every tool round-trips through the real server against the API', async (t)
   await t.test('Q_MCP_FAILURES: invalid argument is isError without crashing', async () => {
     const bad = await rpc('tools/call', { name: 'query_context', arguments: {} });
     assert.equal(bad.result.isError, true);
-    assert.match(bad.result.content[0].text, /invalid_argument|text is required/i);
+    assert.match(bad.result.content[0].text, /invalid_argument|padded_select_text|incomplete/i);
+    assert.equal(bad.result.structuredContent.details?.reason, 'padded_select_text');
   });
 
   await t.test('an API failure surfaces as a tool error, not a crash', async () => {

@@ -177,6 +177,35 @@ function seedFilterComplete(value: string): boolean {
 }
 
 /**
+ * Backend #314: non-blank, non-padded query text required to certify a lexical
+ * selectPassage. Surrounding whitespace (value !== trim) must not count as known —
+ * equal pads must not look like a certified topical hit (tokens() would otherwise
+ * silently strip them). Same honesty as W2 resolveSeeds filter pads after #311.
+ */
+function selectTextComplete(value: string): boolean {
+  return value.trim().length > 0 && value === value.trim();
+}
+
+/**
+ * Backend #314: blank/whitespace or surrounding-padded query_context text never
+ * certifies selectPassage seeds — refuse before HTTP so equal pads cannot
+ * trim-launder into the same lexical hit as a clean query.
+ */
+function assertSelectTextComplete(text: unknown): asserts text is string {
+  if (typeof text !== 'string' || !selectTextComplete(text)) {
+    throw new ToolFailure(
+      'invalid_argument',
+      'text is incomplete (blank/whitespace/padded)',
+      {
+        details: { reason: 'padded_select_text', field: 'text' },
+        actionable:
+          'Blank/whitespace/padded query text never certifies a passage select; do not invent or trim-launder topical seeds.',
+      },
+    );
+  }
+}
+
+/**
  * Backend #311: blank/whitespace or surrounding-padded resolve_seeds filters are
  * dishonest constraints — never ignore them into a bare_term seed, and never
  * equal-pad-pin against a padded index scope. Refuse before HTTP.
@@ -749,7 +778,10 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   query_context: async (args, client) => {
-    const text = requireString(args, 'text');
+    // Backend #314: refuse padded/blank selectPassage text before HTTP — never
+    // trim-launder into certified lexical seeds.
+    const text = args?.text;
+    assertSelectTextComplete(text);
     const maxHops = args?.max_hops;
     if (maxHops !== undefined && maxHops !== 0 && maxHops !== 1 && maxHops !== 2) {
       throw new ToolFailure('invalid_argument', 'max_hops must be 0, 1, or 2', {

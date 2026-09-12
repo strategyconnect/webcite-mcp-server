@@ -571,6 +571,8 @@ Credits: 1. HTTP: GET /api/v2/evidence-packets/:id`,
     name: 'query_context',
     description: `Query persisted context for numbers or passages. A successful no-match (status refuse / empty refs) is not a tool failure — it means nothing matched under current authorization. Blank/whitespace/surrounding-padded ClaimScope filters fail closed (padded_lookup_filter; backend #307 — equal pads never bind lookup_number).
 
+Blank/whitespace or surrounding-padded query text fails closed as padded_select_text (backend #314 selectPassage) — equal pads never certify a lexical select and must not trim-launder into seeds.
+
 Never supply tenant/scope fields; the API derives scope from the API key.
 
 Credits: 1. HTTP: POST /api/v2/context/query`,
@@ -579,7 +581,8 @@ Credits: 1. HTTP: POST /api/v2/context/query`,
       properties: {
         text: {
           type: 'string',
-          description: 'Natural-language query (e.g. "What was revenue in FY2024?").',
+          description:
+            'Natural-language query (e.g. "What was revenue in FY2024?"). Non-blank unpadded; blank/whitespace/surrounding-padded → padded_select_text (#314).',
         },
         source_texts: {
           type: 'array',
