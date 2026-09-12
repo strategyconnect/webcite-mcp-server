@@ -441,9 +441,9 @@ export interface FragmentUseMatch {
 
 export interface ResolveFragmentUsesOptions {
   selector: Record<string, unknown>;
-  /** Sealed packet id — loads catalog server-side; mutually exclusive with answer_revision_id. */
+  /** Non-blank unpadded sealed packet id; blank/padded → incomplete_packet_identity (#264/#279). */
   packet_id?: string;
-  /** Sealed answer revision — loads evidence catalog; mutually exclusive with packet_id. */
+  /** Non-blank unpadded sealed answer revision; blank/padded → incomplete_answer_revision_identity (#264/#279). */
   answer_revision_id?: string;
   fragments?: unknown[];
   groups?: unknown[];
