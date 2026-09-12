@@ -763,13 +763,13 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
  * C3/I4 + W3 optional idempotency_key: when present as string,
  * blank/whitespace/surrounding-padded never certifies a settle/link/attempt/
  * workflow publish-or-run / provider-cost / research create-or-checkpoint /
- * evaluation-compare replay pin — refuse before HTTP (same identityComplete
- * honesty as required open_operation_root / reserve_operation idempotency_key
- * after #83/#88). Shared by settle_operation (#92), link_operation_consumer
- * (#94), record/resolve_operation_attempt (#95), publish_context_workflow /
- * run_saved_workflow (#97), create_evidence_packet (#98), get_provider_cost
- * (#99), create/checkpoint_research_run (#100), and compare_evaluations (W3).
- * Omit when not a string.
+ * evaluation-compare / assess_support replay pin — refuse before HTTP (same
+ * identityComplete honesty as required open_operation_root / reserve_operation
+ * idempotency_key after #83/#88). Shared by settle_operation (#92),
+ * link_operation_consumer (#94), record/resolve_operation_attempt (#95),
+ * publish_context_workflow / run_saved_workflow (#97), create_evidence_packet
+ * (#98), get_provider_cost (#99), create/checkpoint_research_run (#100),
+ * compare_evaluations (#101), and assess_support. Omit when not a string.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -783,7 +783,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare replay pin; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies a settle/link/attempt/workflow/provider-cost/research/compare/assess_support replay pin; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -2043,6 +2043,9 @@ export const handlers: Record<string, ToolHandler> = {
       tierRaw === 1 || tierRaw === 2 || tierRaw === 3
         ? (tierRaw as 1 | 2 | 3)
         : undefined;
+    // W3 after #92/#98/#100: optional padded idempotency_key never certifies an
+    // assess-support replay pin (same helper as settle/packet/research).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.assessSupport({
         claim_revision_id: claimRevisionId,
