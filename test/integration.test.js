@@ -2891,6 +2891,122 @@ test('every tool round-trips through the real server against the API', async (t)
     },
   );
 
+  // Squash-regression guard: #102 assess_support idempotency pad refuse must stay.
+  await t.test(
+    'assess_support surrounding-padded idempotency_key still → incomplete_operation_idempotency_identity (#102 regression)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_support',
+        arguments: {
+          claim_revision_id: 'claim-r1',
+          claim_hash: 'hash-1',
+          evidence_group_revision_id: 'eg-r1',
+          idempotency_key: ' assess-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-support'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_meaning surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_meaning',
+        arguments: {
+          assessment: {
+            id: 'm1',
+            originalRevisionId: 'o1',
+            decompositionRevisionId: 'd1',
+            semanticReview: 'pass',
+            operationId: 'op1',
+          },
+          idempotency_key: ' meaning-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-meaning'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_meaning whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_meaning',
+        arguments: {
+          assessment: {
+            id: 'm1',
+            originalRevisionId: 'o1',
+            decompositionRevisionId: 'd1',
+            semanticReview: 'pass',
+            operationId: 'op1',
+          },
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-meaning'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'assess_meaning equal-pad idempotency_key → incomplete_operation_idempotency_identity (never assess)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'assess_meaning',
+        arguments: {
+          assessment: {
+            id: 'm1',
+            originalRevisionId: 'o1',
+            decompositionRevisionId: 'd1',
+            semanticReview: 'pass',
+            operationId: 'op1',
+          },
+          idempotency_key: ' meaning-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/assess-meaning'),
+        undefined,
+      );
+    },
+  );
+
     await t.test('assess_meaning returns independent facets', async () => {
     const text = await call('assess_meaning', {
       assessment: {

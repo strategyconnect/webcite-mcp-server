@@ -916,7 +916,7 @@ Credits: 1. HTTP: POST /api/v2/context/assess-support`,
   },
   {
     name: 'assess_meaning',
-    description: `Assess meaning / authority / false-claim facets independently (C5). Never collapses into one badge.
+    description: `Assess meaning / authority / false-claim facets independently (C5). Never collapses into one badge. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified assess-meaning replay pin; same honesty as assess_support #102 / settle #92).
 
 Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
     inputSchema: {
@@ -930,7 +930,11 @@ Credits: 1. HTTP: POST /api/v2/context/assess-meaning`,
           type: 'boolean',
           description: 'When true, evaluate false-claim support facet.',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into an assess-meaning replay pin).',
+        },
       },
       required: ['assessment'],
     },
