@@ -462,6 +462,27 @@ function startStub(options = {}) {
             res.end(JSON.stringify({ status: 'weird', refs: null }));
             return;
           }
+          // Backend #307: API gap padded_lookup_filter must fail closed on validate.
+          if (parsed.text === 'padded_lookup_gap') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                operatorClass: 'lookup_number',
+                status: 'refuse',
+                refuseReason: 'insufficient',
+                queryPlan: {
+                  operatorClass: 'lookup_number',
+                  seeds: [],
+                  truncated: false,
+                  traversedRelationIds: [],
+                },
+                refs: [],
+                gaps: ['padded_lookup_filter'],
+                engine: 'context_graph',
+              }),
+            );
+            return;
+          }
         } catch {
           /* fall through */
         }
@@ -1510,6 +1531,79 @@ test('every tool round-trips through the real server against the API', async (t)
     assert.match(text, /Context Query/);
     assert.match(text, /Revenue 12\.5/);
   });
+
+  await t.test(
+    'query_context padded filter → padded_lookup_filter',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          filters: { metric: ' revenue ', period: 'FY24' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details.reason, 'padded_lookup_filter');
+      assert.match(res.result.content[0].text, /blank|whitespace|padded/);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/query');
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'query_context whitespace-only filter → padded_lookup_filter',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          filters: { metric: '  ', period: 'FY24' },
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(res.result.structuredContent.details.reason, 'padded_lookup_filter');
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/query');
+      assert.equal(req, undefined);
+    },
+  );
+
+  await t.test(
+    'query_context API padded_lookup_filter gap → invalid_api_output',
+    async () => {
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: { text: 'padded_lookup_gap' },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_api_output');
+      assert.equal(res.result.structuredContent.details.reason, 'padded_lookup_filter');
+      assert.match(res.result.content[0].text, /padded_lookup_filter/);
+    },
+  );
+
+  await t.test(
+    'query_context unknown/null filters still forward (honest unknowns)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'query_context',
+        arguments: {
+          text: 'What was revenue in FY24?',
+          filters: { metric: 'unknown', entityId: null, period: '' },
+        },
+      });
+      assert.equal(res.result.isError, undefined);
+      const req = seen.slice(before).find((r) => r.path === '/api/v2/context/query');
+      assert.ok(req);
+      assert.equal(req.body.filters.metric, 'unknown');
+      assert.equal(req.body.filters.entityId, null);
+      assert.equal(req.body.filters.period, '');
+    },
+  );
 
   await t.test('compare_assertions returns same/different/unknown', async () => {
     const text = await call('compare_assertions', {

@@ -202,6 +202,31 @@ function assertResolveSeedsFiltersComplete(
 }
 
 /**
+ * Backend #307: blank/whitespace or surrounding-padded query_context / lookupNumber
+ * filters are dishonest constraints — never ignore them into a bind on remaining
+ * fields, and never equal-pad-bind against a padded node scope. Refuse before HTTP.
+ */
+function assertLookupFiltersComplete(
+  filters: Record<string, unknown> | undefined,
+): void {
+  if (!filters) return;
+  for (const [key, value] of Object.entries(filters)) {
+    if (value == null || value === '' || value === 'unknown') continue;
+    if (typeof value !== 'string' || !seedFilterComplete(value)) {
+      throw new ToolFailure(
+        'invalid_argument',
+        `filters.${key} is incomplete (blank/whitespace/padded)`,
+        {
+          details: { reason: 'padded_lookup_filter', field: key },
+          actionable:
+            'Blank/whitespace/padded ClaimScope filters never bind a lookup_number; do not invent or trim-launder a certified match.',
+        },
+      );
+    }
+  }
+}
+
+/**
  * Backend #268/#281: wait subjectId / subjectRevisionId must be non-blank/unpadded.
  * Equal blanks/pads must never look like a certified wake subject match.
  * null/undefined wait is fine (not waiting).
@@ -731,6 +756,12 @@ export const handlers: Record<string, ToolHandler> = {
         actionable: 'Use 0, 1, or 2 for authorized expansion hops.',
       });
     }
+    const filters =
+      args?.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
+        ? (args.filters as Record<string, unknown>)
+        : undefined;
+    // Backend #307: padded/blank filters never certify a lookup_number bind.
+    assertLookupFiltersComplete(filters);
     const raw = await wrapApi(
       client.queryContext({
         text,
@@ -740,10 +771,8 @@ export const handlers: Record<string, ToolHandler> = {
         source_version_ids: Array.isArray(args?.source_version_ids)
           ? (args?.source_version_ids as string[])
           : undefined,
-        filters:
-          args?.filters && typeof args.filters === 'object' && !Array.isArray(args.filters)
-            ? (args.filters as Partial<ClaimScope>)
-            : undefined,
+        // Forward filters as-is — never trim pads into a certified bind.
+        filters: filters as Partial<ClaimScope> | undefined,
         max_hops: maxHops as 0 | 1 | 2 | undefined,
         limit: clamp(args?.limit, 10, 1, 50),
         idempotency_key:
