@@ -1076,7 +1076,7 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
   },
   {
     name: 'formal_eligibility',
-    description: `Check exact-proof obligation eligibility (P1). Uncertain recognition never promotes.
+    description: `Check exact-proof obligation eligibility (P1). Uncertain recognition never promotes. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified formal-eligibility replay pin; same honesty as settle/assess_support #92/#102). Lean formal_check source trailing newlines are out of scope for this tool.
 
 Credits: 1. HTTP: POST /api/v2/context/formal/eligibility`,
     inputSchema: {
@@ -1087,7 +1087,11 @@ Credits: 1. HTTP: POST /api/v2/context/formal/eligibility`,
         scale: { type: ['string', 'null'] },
         basis_reviewed: { type: 'boolean' },
         recognition: { type: 'string', enum: ['native', 'reviewed', 'uncertain'] },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional. When string: non-blank unpadded; blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder into a formal-eligibility replay pin).',
+        },
       },
       required: ['basis_reviewed', 'recognition'],
     },
