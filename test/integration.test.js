@@ -3846,6 +3846,84 @@ test('every tool round-trips through the real server against the API', async (t)
   );
 
   await t.test(
+    'create_claim_relation surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+          idempotency_key: ' rel-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'create_claim_relation equal-pad idempotency_key → incomplete_operation_idempotency_identity (never create)',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'create_claim_relation',
+        arguments: {
+          predicate: 'equals',
+          argument_ids: ['a', 'b'],
+          arguments_resolved: true,
+          idempotency_key: ' rel-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen.slice(before).find((r) => r.path === '/api/v2/context/claim-relations'),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'list_claim_relations surrounding-padded predicate → incomplete_claim_predicate_identity',
     async () => {
       const before = seen.length;
