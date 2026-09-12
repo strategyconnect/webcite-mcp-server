@@ -6475,6 +6475,89 @@ test('Q_MCP_FAILURES: invalid arg, isError, no-match success, unknown tool, bad 
   );
 
   await t.test(
+    'link_operation_consumer surrounding-padded idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'link_operation_consumer',
+        arguments: {
+          operation_id: 'op-link-1',
+          consumer_kind: 'research_run',
+          consumer_id: 'run-link-1',
+          idempotency_key: ' link-key-1 ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(res.result.structuredContent.code, 'invalid_argument');
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(res.result.structuredContent.details?.field, 'idempotency_key');
+      assert.match(res.result.content[0].text, /blank\/whitespace\/padded/);
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/consumers')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'link_operation_consumer whitespace-only idempotency_key → incomplete_operation_idempotency_identity',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'link_operation_consumer',
+        arguments: {
+          operation_id: 'op-link-2',
+          consumer_kind: 'research_run',
+          consumer_id: 'run-link-2',
+          idempotency_key: '   ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/consumers')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
+    'settle_operation pad regression still refuses padded idempotency_key',
+    async () => {
+      const before = seen.length;
+      const res = await rpc('tools/call', {
+        name: 'settle_operation',
+        arguments: {
+          operation_id: 'op-settle-reg',
+          settled_credits: 1,
+          idempotency_key: ' settle-key-reg ',
+        },
+      });
+      assert.equal(res.result.isError, true);
+      assert.equal(
+        res.result.structuredContent.details?.reason,
+        'incomplete_operation_idempotency_identity',
+      );
+      assert.equal(
+        seen
+          .slice(before)
+          .find((r) => String(r.path || '').includes('/settle')),
+        undefined,
+      );
+    },
+  );
+
+  await t.test(
     'get_consumer_usage surrounding-padded consumer_id → incomplete_consumer_identity',
     async () => {
       const before = seen.length;

@@ -760,11 +760,11 @@ function assertOpenOperationRootIdentityComplete(args: Args | undefined): void {
 }
 
 /**
- * C3/I4 settle_operation: optional idempotency_key, when present as string,
- * blank/whitespace/surrounding-padded never certifies a settle replay pin —
+ * C3/I4 optional operation idempotency_key: when present as string,
+ * blank/whitespace/surrounding-padded never certifies a settle/link/replay pin —
  * refuse before HTTP (same identityComplete honesty as required
  * open_operation_root / reserve_operation idempotency_key after #83/#88).
- * Omit when not a string.
+ * Shared by settle_operation (#92) and link_operation_consumer. Omit when not a string.
  */
 function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown): void {
   if (typeof idempotencyKey !== 'string') return;
@@ -778,7 +778,7 @@ function assertOptionalOperationIdempotencyKeyComplete(idempotencyKey: unknown):
           field: 'idempotency_key',
         },
         actionable:
-          'Blank/whitespace/padded idempotency_key never certifies an operation settle/replay; omit idempotency_key or pass a non-blank unpadded key.',
+          'Blank/whitespace/padded idempotency_key never certifies an operation settle/link/replay; omit idempotency_key or pass a non-blank unpadded key.',
       },
     );
   }
@@ -2905,6 +2905,9 @@ export const handlers: Record<string, ToolHandler> = {
       consumer_kind: consumerKind,
       consumer_id: consumerId,
     });
+    // C3/I4 after #92: optional padded idempotency_key never certifies a consumer
+    // link replay pin (same honesty as settle_operation optional idempotency).
+    assertOptionalOperationIdempotencyKeyComplete(args?.idempotency_key);
     const raw = await wrapApi(
       client.linkOperationConsumer({
         operation_id: args.operation_id,

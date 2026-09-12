@@ -1762,7 +1762,7 @@ Credits: 1. HTTP: POST /api/v2/context/attempts/:attemptId/resolve`,
   },
   {
     name: 'link_operation_consumer',
-    description: `Link a consumer to an operation without re-charging the provider (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity; blank/whitespace/surrounding-padded consumer_kind / consumer_id → incomplete_consumer_identity (never trim-launder).
+    description: `Link a consumer to an operation without re-charging the provider (I4). Blank/whitespace/surrounding-padded operation_id → incomplete_operation_identity; blank/whitespace/surrounding-padded consumer_kind / consumer_id → incomplete_consumer_identity; blank/whitespace/surrounding-padded optional idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified consumer link/replay).
 
 Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/consumers`,
     inputSchema: {
@@ -1783,7 +1783,11 @@ Credits: 1. HTTP: POST /api/v2/context/operations/:operationId/consumers`,
           description:
             'Non-blank unpadded consumer id. Blank/whitespace/surrounding-padded → incomplete_consumer_identity (never trim-launder).',
         },
-        idempotency_key: { type: 'string' },
+        idempotency_key: {
+          type: 'string',
+          description:
+            'Optional non-blank unpadded consumer-link replay key. Blank/whitespace/surrounding-padded → incomplete_operation_idempotency_identity (never trim-launder).',
+        },
       },
       required: ['operation_id', 'consumer_kind', 'consumer_id'],
     },
