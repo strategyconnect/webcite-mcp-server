@@ -1111,7 +1111,7 @@ Credits: 1. HTTP: POST /api/v2/context/claim-relations/formalize`,
   },
   {
     name: 'create_research_run',
-    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget.
+    description: `Create a durable research run checkpoint (C3). Scope comes from the API key. Omitting root_operation_id auto-opens a shared root budget. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs`,
     inputSchema: {
@@ -1145,7 +1145,7 @@ Credits: 1. HTTP: POST /api/v2/context/research-runs`,
   },
   {
     name: 'get_research_run',
-    description: `Load a research run by id (C3).
+    description: `Load a research run by id (C3). Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a run.
 
 Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
     inputSchema: {
@@ -1158,7 +1158,7 @@ Credits: 1. HTTP: GET /api/v2/context/research-runs/:runId`,
   },
   {
     name: 'checkpoint_research_run',
-    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict.
+    description: `Compare-and-swap a research-run checkpoint (C3). Stale revisions conflict. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed; do not invent a checkpoint.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/checkpoints`,
     inputSchema: {
@@ -1301,7 +1301,7 @@ Credits: 1. HTTP: POST /api/v2/context/format/certify`,
   },
   {
     name: 'reserve_research_budget',
-    description: `Reserve credits under a research run's root operation (I4). Missing root refuses.
+    description: `Reserve credits under a research run's root operation (I4). Missing root refuses. Gated by CONTEXT_GRAPH_RESEARCH (default off) — flag-off refuses fail-closed.
 
 Credits: 1. HTTP: POST /api/v2/context/research-runs/:runId/reserve`,
     inputSchema: {

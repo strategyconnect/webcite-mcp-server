@@ -39,9 +39,9 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `claim_structure_tier` | `POST /api/v2/context/claim-structure/tier` | assertion (+ definition/ambiguity) | tier 1\|2\|3 | auth / missing assertion | 0 | — |
 | `claim_structure_resolve_definition` | `POST /api/v2/context/claim-structure/resolve-definition` | metric, knowledge_as_of, effective_at, catalog | kind + result | auth / missing fields | 0 | definition revision / ambiguity |
 | `formalize_claim_relation` | `POST /api/v2/context/claim-relations/formalize` | predicate, argument_ids, arguments_resolved | relation + formalized | unrecognised → formalized:false | 0 | — |
-| `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget (+ optional root) | run (+ opened_root when auto) | auth | 0 | research scope |
-| `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404 | 0 | run id |
-| `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale | 0 | checkpoint CAS |
+| `create_research_run` | `POST /api/v2/context/research-runs` | objective, snapshot, workflow, budget (+ optional root) | run (+ opened_root when auto) | auth; `CONTEXT_GRAPH_RESEARCH` off → refuse | 0 | research scope |
+| `get_research_run` | `GET /api/v2/context/research-runs/:runId` | run_id | run | 404; flag off → refuse | 0 | run id; `CONTEXT_GRAPH_RESEARCH` |
+| `checkpoint_research_run` | `POST /api/v2/context/research-runs/:runId/checkpoints` | expected_revision + run | run | 409 stale; flag off → refuse | 0 | checkpoint CAS; `CONTEXT_GRAPH_RESEARCH` |
 | `resolve_seeds` | `POST /api/v2/context/resolve-seeds` | text, filters?, index? (omit → SQL catalog) | candidates + leading_resolver + index_source | auth | 0 | ClaimScope seeds |
 | `expand_seeds` | `POST /api/v2/context/expand-seeds` | seeds, edges, allowed, hops? | expanded seed ids (≤2 hops) | auth | 0 | authorized graph ids |
 | `learning_judge` | `POST /api/v2/context/learning/judge` | verdict, attempts, hard_failures? | action | auth | 0 | — |
@@ -50,7 +50,7 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 | `format_certify` | `POST /api/v2/context/format/certify` | kind (spreadsheet\|office\|text\|image\|container\|media), expected[], found[], media: decode_finished? | ok + missingCount | incomplete → ok:false | 0 | planted inventory |
 | `certify_private_upload` | `GET /api/v2/context/private-upload/certify` | — | ok + mode \| not_run reason | missing config → ok:false | 0 | env evidence storage |
 | `certify_retrieve_flag` | `GET /api/v2/context/retrieve/flag` | — | ok + enabled + default_off | always ok (default off) | 0 | CONTEXT_GRAPH_RETRIEVE |
-| `reserve_research_budget` | `POST /api/v2/context/research-runs/:runId/reserve` | run_id, idempotency_key, kind, credits | operationId + replay | missing root refuses | 0 | research run |
+| `reserve_research_budget` | `POST /api/v2/context/research-runs/:runId/reserve` | run_id, idempotency_key, kind, credits | operationId + replay | missing root refuses; flag off → refuse | 0 | research run; `CONTEXT_GRAPH_RESEARCH` |
 | `open_operation_root` | `POST /api/v2/context/operations/open-root` | idempotency_key, kind, max_credits, max_tokens, deadline_ms | root operation | auth / invalid budget | 0 | evidence operation |
 | `reserve_operation` | `POST /api/v2/context/operations/reserve` | idempotency_key, kind, credits, root_operation_id? | operation + replay | auth / insufficient budget | 0 | evidence operation |
 | `get_operation` | `GET /api/v2/context/operations/:operationId` | operation_id | operation row | 404 | 0 | evidence operation |
@@ -74,3 +74,4 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 - Unknown MCP tool / malformed envelope → protocol error; API/business failures → `isError: true`.
 - `private_gold_denied: true` is intentional for A_EVAL_CATALOG transport; gold stays off the wire.
 - Engine rollback: turn off `CONTEXT_GRAPH_RETRIEVE`; sealed revisions remain readable via v2 resolve routes.
+- C3 research HTTP/MCP stays dark until `CONTEXT_GRAPH_RESEARCH=1|true` (default off); create/get/checkpoint/reserve refuse fail-closed.
