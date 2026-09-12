@@ -301,6 +301,8 @@ const ROUTES = {
       },
     ],
     leading_resolver: 'scope_tuple',
+    index_source: 'request',
+    index_size: 1,
     engine: 'context_graph',
   },
   '/api/v2/context/learning/judge': {
@@ -418,6 +420,35 @@ function startStub(options = {}) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ run, engine: 'context_graph' }));
         return;
+      }
+
+      if (url.pathname === '/api/v2/context/resolve-seeds' && body) {
+        try {
+          const parsed = JSON.parse(body);
+          const hasIndex = Array.isArray(parsed.index);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              candidates: hasIndex
+                ? [
+                    {
+                      id: 'n1',
+                      resolver: 'scope_tuple',
+                      pinnedFields: ['entityId', 'metric'],
+                      scopeStatus: 'known',
+                    },
+                  ]
+                : [],
+              leading_resolver: hasIndex ? 'scope_tuple' : null,
+              index_source: hasIndex ? 'request' : 'catalog',
+              index_size: hasIndex ? parsed.index.length : 0,
+              engine: 'context_graph',
+            }),
+          );
+          return;
+        } catch {
+          /* fall through */
+        }
       }
 
       const payload = routes[url.pathname];
@@ -808,6 +839,14 @@ test('every tool round-trips through the real server against the API', async (t)
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/resolve-seeds');
     assert.match(text, /Leading resolver:\*\* scope_tuple/);
+    assert.match(text, /Index source:\*\* request/);
+  });
+
+  await t.test('resolve_seeds omits index to use SQL catalog path', async () => {
+    const text = await call('resolve_seeds', { text: 'catalog only' });
+    assert.equal(seen.at(-1).path, '/api/v2/context/resolve-seeds');
+    assert.equal(seen.at(-1).body.index, undefined);
+    assert.match(text, /Index source:\*\* catalog/);
   });
 
   await t.test('learning judge/apply/placeholder hit E2 routes', async () => {

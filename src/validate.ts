@@ -403,6 +403,8 @@ export function validateResolveSeeds(raw: unknown): ResolveSeedsResponse {
       typeof root.leading_resolver === 'string' || root.leading_resolver === null
         ? (root.leading_resolver as string | null)
         : null,
+    index_source: typeof root.index_source === 'string' ? root.index_source : undefined,
+    index_size: typeof root.index_size === 'number' ? root.index_size : undefined,
     engine: typeof root.engine === 'string' ? root.engine : undefined,
   };
 }

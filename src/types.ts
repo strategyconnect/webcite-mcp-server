@@ -657,7 +657,8 @@ export interface CheckpointResearchRunResponse {
 export interface ResolveSeedsOptions {
   text: string;
   filters?: Record<string, string | null | undefined>;
-  index: Array<{
+  /** Inline vocabulary. Omit to load from the SQL metric-definition catalog. */
+  index?: Array<{
     id: string;
     scope: Record<string, string | null | undefined>;
     terms: string[];
@@ -673,6 +674,8 @@ export interface ResolveSeedsResponse {
     scopeStatus: string;
   }>;
   leading_resolver: string | null;
+  index_source?: 'request' | 'catalog' | string;
+  index_size?: number;
   engine?: string;
 }
 
