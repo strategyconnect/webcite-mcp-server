@@ -67,6 +67,7 @@ import {
   formatVerifyResult,
 } from './formatters.js';
 import { collectStreamEvents } from './stream.js';
+import { renderWebciteGuide } from './guide.js';
 import type {
   FindContradictionsOptions,
   NumberInventoryOptions,
@@ -1315,6 +1316,15 @@ function wrapApi<T>(promise: Promise<T>): Promise<T> {
 }
 
 export const handlers: Record<string, ToolHandler> = {
+  webcite_guide: async (args, _client) => {
+    return ok(
+      renderWebciteGuide({
+        workflow: args?.workflow,
+        question: args?.question,
+      }),
+    );
+  },
+
   verify_claim: async (args, client) => {
     const options = verifyOptions(args);
     const result = await wrapApi(client.verifyClaim(options));

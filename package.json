@@ -1,19 +1,21 @@
 {
   "name": "webcite-mcp-server",
-  "version": "1.6.0",
+  "version": "1.8.0",
   "description": "WebCite MCP Server - verify AI claims against authoritative sources, bind quotes back to their source passage, and extract document figures deterministically. Works with any MCP-compatible agent or tool.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "webcite-mcp": "./dist/index.js"
+    "webcite-mcp": "./dist/index.js",
+    "webcite-mcp-http": "./dist/http-server.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "pretest": "npm run build",
-    "test": "node --test test/*.test.js",
-    "prepublishOnly": "npm run build && npm test"
+    "test": "WEBCITE_MCP_PROFILE=full node --test test/*.test.js",
+    "prepublishOnly": "npm run build && npm test",
+    "start:http": "node dist/http-server.js"
   },
   "keywords": [
     "mcp",

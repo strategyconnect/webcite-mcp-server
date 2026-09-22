@@ -68,8 +68,9 @@ test('context tools map 1:1 to v2 CONTEXT_ENDPOINT_TOOLS', () => {
   assert.equal(CONTEXT_TOOLS.length, Object.keys(CONTEXT_ENDPOINT_TOOLS).length);
 });
 
-test('ALL_TOOLS is TOOLS + CONTEXT_TOOLS without duplicates', () => {
-  assert.equal(ALL_TOOLS.length, TOOLS.length + CONTEXT_TOOLS.length);
+test('ALL_TOOLS is guide + TOOLS + CONTEXT_TOOLS without duplicates', () => {
+  assert.equal(ALL_TOOLS.length, TOOLS.length + CONTEXT_TOOLS.length + 1);
+  assert.equal(ALL_TOOLS[0].name, 'webcite_guide');
   const names = ALL_TOOLS.map((t) => t.name);
   assert.equal(new Set(names).size, names.length);
 });

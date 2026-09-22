@@ -1,0 +1,10 @@
+node_modules
+src
+test
+.git
+.github
+docs
+*.md
+!README.md
+.dockerignore
+tsconfig.json
