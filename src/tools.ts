@@ -2154,7 +2154,28 @@ Credits: 1. HTTP: GET /api/v2/context/evaluations/:runId/cases/:caseId`,
 ];
 
 /** All tools advertised over ListTools (v1 + context v2). */
-export const ALL_TOOLS: ToolDefinition[] = [...TOOLS, ...CONTEXT_TOOLS];
+export const ALL_TOOLS: ToolDefinition[] = [
+  {
+    name: 'webcite_guide',
+    description: `Start here. Returns the next Webcite tools to call and example JSON. Costs 0 credits. Use before verify_claim or document workflows when unsure.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        workflow: {
+          type: 'string',
+          enum: ['quick_verify', 'document_quote', 'numeric', 'choose'],
+          description: 'Which workflow to explain. Default choose lists options.',
+        },
+        question: {
+          type: 'string',
+          description: 'Optional user question or claim to embed in examples',
+        },
+      },
+    },
+  },
+  ...TOOLS,
+  ...CONTEXT_TOOLS,
+];
 
 /** HTTP route each context tool maps to — used by tests and docs. */
 export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
