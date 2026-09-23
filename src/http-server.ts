@@ -88,15 +88,18 @@ export function createRemoteMcpApp(options?: {
 
     const apiKey = extractApiKey(req);
     if (!apiKey) {
+      // Do not send WWW-Authenticate: Bearer — Claude treats that as OAuth and
+      // auto-selects "Sign in now". This server is API-key only (static headers).
       res.writeHead(401, {
         'content-type': 'application/json',
-        'WWW-Authenticate': 'Bearer realm="webcite-mcp"',
       });
       res.end(
         JSON.stringify({
           error: 'unauthorized',
           message: 'Provide Authorization: Bearer <api_key> or x-api-key header',
           get_key: 'https://webcite.co/api-keys',
+          claude:
+            'Choose No sign-in, then add Authorization: Bearer <key> (or x-api-key) under Request headers',
         }),
       );
       return;

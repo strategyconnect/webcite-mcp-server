@@ -33,12 +33,18 @@ Optional later: add GoDaddy A record `mcp` → prod IP and a dedicated vhost; un
 
 ## Auth
 
-Clients send either:
+API key only (no OAuth). Clients send either:
 
 - `Authorization: Bearer <api_key>`
 - `x-api-key: <api_key>`
 
 Keys are created at https://webcite.co/api-keys.
+
+**Claude custom connector:** choose **No sign-in** (not Sign in now), then under
+Request headers add `Authorization` = `Bearer <key>` (or `x-api-key` = `<key>`).
+
+Do **not** send `WWW-Authenticate: Bearer` on 401 — Claude treats that as OAuth
+and auto-selects Sign in now / CIMD registration.
 
 ## Deploy coupling
 

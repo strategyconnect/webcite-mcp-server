@@ -1,6 +1,6 @@
 # WebCite MCP Server
 
-> **v1.8.1:** Remote Streamable HTTP MCP at **https://api.webcite.co/mcp** — no npm for end users. Open **https://webcite.co/connect** (Claude custom connector + Cursor deeplink). Default `WEBCITE_MCP_PROFILE=core` (~11 tools + `webcite_guide`). Free: **100 credits/month**. Local/dev: `npx -y webcite-mcp-server@latest --smoke` or `webcite-mcp-http`.
+> **v1.8.2:** Remote Streamable HTTP MCP at **https://api.webcite.co/mcp** — no npm for end users. Open **https://webcite.co/connect** (Claude custom connector + Cursor deeplink). Default `WEBCITE_MCP_PROFILE=core` (~11 tools + `webcite_guide`). Free: **100 credits/month**. Local/dev: `npx -y webcite-mcp-server@latest --smoke` or `webcite-mcp-http`.
 
 
 MCP (Model Context Protocol) server for WebCite — lets any AI agent verify factual claims against authoritative sources, bind quotes back to the passage they came from, and read the numbers out of documents deterministically.
