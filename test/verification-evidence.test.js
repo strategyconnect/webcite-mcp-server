@@ -13,10 +13,28 @@ const source = {
 };
 const result = {
   citations: [source, { ...source, id: 'unknown-source', credibility_score: null, credibility_basis: 'unknown' }],
-  verdict: { result: 'unverifiable', confidence: 0, confidence_basis: 'heuristic', summary: 'Unknown applicability.' },
+  verdict: { result: 'unverifiable', confidence: 0, confidence_basis: 'heuristic', summary: 'Unknown applicability.',
+    evidence_status: 'context_only', key_findings: [{ finding: 'Background only.', confidence: 90,
+      confidence_basis: 'unknown', evidence_role: 'context' }] },
   citation_id: 'citation-real', request_id: 'request-real', operation_id: 'operation-real',
   metadata: { policy_version: 5 }, custom_backend_field: { preserved: true },
 };
+
+test('verdict separates aggregation, calibrated confidence and contextual findings', () => {
+  const { formatVerdict } = require('../dist/formatters.js');
+  const verdict = { ...result.verdict, confidence: 37, evidence_status: 'context_only',
+    key_findings: [{ finding: 'Highest above sea level.', confidence: 90,
+      confidence_basis: 'unknown', evidence_role: 'context' }] };
+  const text = formatVerdict(verdict);
+  assert.match(text, /Confidence:\*\* unavailable/);
+  assert.match(text, /Aggregation score: 37 \(uncalibrated\)/);
+  assert.match(text, /Evidence:\*\* context_only/);
+  assert.match(text, /Context: Highest above sea level/);
+  assert.doesNotMatch(text, /90%|37%/);
+  assert.match(formatVerdict({ ...verdict, confidence: 0, confidence_basis: 'calibrated', confidence_available: true }), /Calibrated confidence:\*\* 0%/);
+  assert.doesNotMatch(formatVerdict({ ...verdict, confidence_basis: 'calibrated', confidence_available: false }), /Calibrated confidence/);
+  assert.match(formatVerdict({ ...verdict, confidence: null, aggregation_score: 0 }), /Aggregation score: 0/);
+});
 
 test('verification evidence survives HTTP API and MCP transport', async (t) => {
   let mode = 'normal';
@@ -79,6 +97,9 @@ test('verification evidence survives HTTP API and MCP transport', async (t) => {
     assert.match(text, /request-real/);
     assert.match(text, /operation-real/);
     assert.match(text, /Evidence: matched/);
+    assert.match(text, /Evidence:\*\* context_only/);
+    assert.match(text, /Context: Background only/);
+    assert.match(text, /Aggregation score: 0 \(uncalibrated\)/);
     assert.doesNotMatch(text, /undefined|null%|Result URL|Thread ID/);
   });
   for (const storedMode of ['normal', 'object', 'stored-final', 'stored-object-final']) await t.test(`readback ${storedMode}`, async () => {
@@ -89,6 +110,7 @@ test('verification evidence survives HTTP API and MCP transport', async (t) => {
     if (mode === 'stored-final' || mode === 'stored-object-final') {
       assert.deepEqual(response.structuredContent.final_response, result);
       assert.match(response.content[0].text, /UNVERIFIABLE/);
+      assert.match(response.content[0].text, /Context: Background only/);
     } else assert.match(response.content[0].text, /legacy record/);
     assert.match(seen.at(-1), /citations\/citation-real/);
   });

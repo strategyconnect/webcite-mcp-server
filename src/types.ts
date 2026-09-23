@@ -63,6 +63,7 @@ export interface Verdict {
   confidence_available?: boolean;
   calibrated_confidence?: number | null;
   aggregation_score?: number | null;
+  evidence_status?: 'unavailable' | 'claim_evidence' | 'context_only' | 'unassessed';
   summary: string;
   stance_breakdown: {
     supports: number;
@@ -76,6 +77,7 @@ export interface Verdict {
     confidence: number;
     confidence_basis?: 'heuristic' | 'unknown' | 'calibrated';
     confidence_available?: boolean;
+    evidence_role?: 'claim_evidence' | 'context';
   }>;
   corrections?: Array<{
     claimed: string;
