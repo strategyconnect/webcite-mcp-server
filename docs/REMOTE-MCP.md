@@ -27,6 +27,12 @@ Process env:
 - `PORT=8787`
 - `HOST=127.0.0.1`
 
+The remote server's `core` profile is the short default list documented in the
+[package tool profiles](../README.md#tool-profiles). `docs`, `research` and
+`full` are local operator choices, not a promise that every backend context
+feature is enabled in production. The package source version may be ahead of
+the version published on npm; check the registry before recommending a pin.
+
 Frontend: `NEXT_PUBLIC_WEBCITE_MCP_URL=https://api.webcite.co/mcp`
 
 Optional later: add GoDaddy A record `mcp` → prod IP and a dedicated vhost; until then use the API host path above.
