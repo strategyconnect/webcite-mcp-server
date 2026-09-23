@@ -8,7 +8,7 @@ This service is the Streamable HTTP MCP endpoint behind that page.
 ```bash
 cd /path/to/webcite-mcp-server
 npm run build
-PORT=8787 WEBCITE_MCP_PROFILE=core node dist/http-server.js
+PORT=8787 WEBCITE_MCP_PROFILE=public node dist/http-server.js
 # Health: curl http://127.0.0.1:8787/health
 # MCP:   POST http://127.0.0.1:8787/mcp  with Authorization: Bearer <api_key>
 ```
@@ -23,11 +23,11 @@ Live URL (prod nginx proxies to pm2 `webcite-mcp-http` on `:8787`):
 Process env:
 
 - `WEBCITE_API_URL=https://api.webcite.co`
-- `WEBCITE_MCP_PROFILE=core`
+- `WEBCITE_MCP_PROFILE=public`
 - `PORT=8787`
 - `HOST=127.0.0.1`
 
-The remote server's `core` profile is the short default list documented in the
+The remote server's `public` profile exposes supported public API workflows documented in the
 [package tool profiles](../README.md#tool-profiles). `docs`, `research` and
 `full` are local operator choices, not a promise that every backend context
 feature is enabled in production. The package source version may be ahead of

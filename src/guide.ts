@@ -34,7 +34,7 @@ export function renderWebciteGuide(input: {
     '# Webcite guide',
     '',
     'Free plan: **100 credits/month**. This tool costs **0 credits**.',
-    'Default MCP profile is `core` (short tool list). Set `WEBCITE_MCP_PROFILE=docs|research|full` to widen.',
+    'Hosted MCP exposes supported public API tools. Local default is `core`; set `WEBCITE_MCP_PROFILE=public|docs|research|full` to change local discovery.',
     question ? `Your question: ${question}` : '',
     '',
   ]

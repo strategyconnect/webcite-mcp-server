@@ -1,6 +1,6 @@
 # WebCite MCP Server
 
-> Remote Streamable HTTP MCP: **https://api.webcite.co/mcp**. Start at **https://webcite.co/connect**. The remote server uses the focused `core` profile; local operators can choose a wider profile. Check the published npm version before pinning it, because repository changes can precede publication.
+> Remote Streamable HTTP MCP: **https://api.webcite.co/mcp**. Start at **https://webcite.co/connect**. The remote server uses the `public` profile for all supported public API workflows. Check the published npm version before pinning it, because repository changes can precede publication.
 
 
 MCP (Model Context Protocol) server for WebCite — lets any AI agent verify factual claims against authoritative sources, bind quotes back to the passage they came from, and read the numbers out of documents deterministically.
@@ -11,12 +11,13 @@ Works with **any MCP-compatible client** including Claude Desktop, Claude Code, 
 
 | Profile | Tools exposed | When to use it |
 | --- | --- | --- |
-| `core` (default, including remote) | `webcite_guide`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Everyday verification and document evidence. Call `webcite_guide` first. |
+| `core` (local default) | `webcite_guide`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Short local list for everyday verification. |
+| `public` (remote default) | Core plus `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim` | All supported public API workflows, including document questions and anchored evidence. |
 | `docs` | Core plus `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `verify_feedback` | Deeper document work. |
 | `research` | Docs plus `get_answer`, `query_context`, `get_evidence_packet`, `compare_assertions`, `get_change_impact`, `verify_claim_stream` | Context and research workflows where the backend enables them. |
 | `full` | All tools registered by this package | Advanced local integrations and evaluation. Backend permissions and feature flags still apply. |
 
-Set `WEBCITE_MCP_PROFILE=docs|research|full` for a local server. This changes tool discovery; it does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
+Set `WEBCITE_MCP_PROFILE=public|docs|research|full` for a local server. This changes tool discovery; it does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
 
 ## Tool reference
 

@@ -528,6 +528,60 @@ const claimScopeProperties = {
   definition: { type: 'string', description: 'Definition text when known.' },
 };
 
+/** Stable public API workflows missing from the original v1 tool catalog. */
+export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
+  {
+    name: 'ask_document',
+    description: 'Queue a checked answer over supplied document text. Returns a job ID; poll with get_ask_result. Costs 5 credits. Unverified numbers remain null.',
+    inputSchema: { type: 'object', properties: {
+      question: { type: 'string', minLength: 1, maxLength: 2000 },
+      documentText: { type: 'string', minLength: 1, maxLength: 2000000 },
+      documentName: { type: 'string', maxLength: 300 },
+      hasTextLayer: { type: 'boolean' },
+      topK: { type: 'integer', minimum: 1, maximum: 20 },
+    }, required: ['question', 'documentText'] },
+  },
+  {
+    name: 'get_ask_result',
+    description: 'Poll a document question job. Returns queued, running, done or failed status and the checked result when ready. Costs 0 credits.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string', minLength: 1 } }, required: ['id'] },
+  },
+  {
+    name: 'extract_pages',
+    description: 'Extract citation-ready document chunks with page, sheet or section anchors. Returns extraction state and reason even when no chunks exist. Costs 1 credit.',
+    inputSchema: { type: 'object', properties: { ...assetRefProperties } },
+  },
+  {
+    name: 'prepare_ocr_rescue',
+    description: 'Prepare OCR rescue for an owned source representation before previewing unresolved citations. Requires the backend OCR feature; return unavailable states honestly.',
+    inputSchema: { type: 'object', properties: {
+      source_version_id: { type: 'string', minLength: 1 },
+      representation_id: { type: 'string', minLength: 1 },
+    }, required: ['source_version_id', 'representation_id'] },
+  },
+  {
+    name: 'verify_numeric_claim',
+    description: 'Assess arithmetic against one or two retained figures from owned source units. This is arithmetic scope, not full semantic verification.',
+    inputSchema: { type: 'object', properties: {
+      claim: { type: 'string', minLength: 1, maxLength: 10000 },
+      operands: { type: 'array', minItems: 1, maxItems: 2, items: { type: 'object',
+        properties: {
+          source_version_id: { type: 'string' }, representation_id: { type: 'string' },
+          source_unit_id: { type: 'string' }, figure_index: { type: 'integer', minimum: 0, maximum: 10000 },
+        }, required: ['source_version_id', 'representation_id', 'source_unit_id', 'figure_index'],
+      } },
+    }, required: ['claim', 'operands'] },
+  },
+];
+
+export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
+  'POST /api/v1/ask': 'ask_document',
+  'GET /api/v1/ask/:id': 'get_ask_result',
+  'POST /api/v1/extract/pages': 'extract_pages',
+  'POST /api/v2/sources/:versionId/representations/:representationId/prepare-ocr-rescue': 'prepare_ocr_rescue',
+  'POST /api/v2/verify/numeric': 'verify_numeric_claim',
+};
+
 /**
  * W1 context/evidence tools — map to WebCite HTTP v2 routes.
  * Scope always comes from the authenticated API key, never from MCP annotations.
@@ -2174,6 +2228,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
     },
   },
   ...TOOLS,
+  ...PUBLIC_EXTRA_TOOLS,
   ...CONTEXT_TOOLS,
 ];
 

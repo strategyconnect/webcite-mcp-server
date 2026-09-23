@@ -361,6 +361,43 @@ export class WebCiteApiClient {
     });
   }
 
+  async askDocument(options: {
+    question: string;
+    documentText: string;
+    documentName?: string;
+    hasTextLayer?: boolean;
+    topK?: number;
+  }): Promise<Record<string, unknown>> {
+    return this.request('/api/v1/ask', {
+      method: 'POST', body: JSON.stringify(options),
+    });
+  }
+
+  async getAskResult(id: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v1/ask/${encodeURIComponent(id)}`, { method: 'GET' });
+  }
+
+  async extractPages(options: AssetRefOptions): Promise<Record<string, unknown>> {
+    return this.request('/api/v1/extract/pages', {
+      method: 'POST', body: JSON.stringify(options),
+    });
+  }
+
+  async prepareOcrRescue(versionId: string, representationId: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v2/sources/${encodeURIComponent(versionId)}/representations/${encodeURIComponent(representationId)}/prepare-ocr-rescue`, {
+      method: 'POST',
+    });
+  }
+
+  async verifyNumericClaim(options: {
+    claim: string;
+    operands: Array<{ source_version_id: string; representation_id: string; source_unit_id: string; figure_index: number }>;
+  }): Promise<Record<string, unknown>> {
+    return this.request('/api/v2/verify/numeric', {
+      method: 'POST', body: JSON.stringify(options),
+    });
+  }
+
   async accuracyReport(): Promise<AccuracyReport> {
     return this.request('/api/v1/accuracy', { method: 'GET' });
   }
