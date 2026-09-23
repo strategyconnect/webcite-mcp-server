@@ -1,9 +1,9 @@
 /**
- * MCP tool profiles. Default is `core` so Claude/Cursor see a short list.
- * Set WEBCITE_MCP_PROFILE=full|docs|research to widen.
+ * MCP tool profiles. Local default is `core`; hosted default is `public`.
+ * Set WEBCITE_MCP_PROFILE=public|full|docs|research to widen.
  */
 
-export type McpProfile = 'core' | 'docs' | 'research' | 'full';
+export type McpProfile = 'core' | 'docs' | 'research' | 'public' | 'full';
 
 /** Ordered core tools (guide first). Keep ≤12. */
 export const CORE_TOOL_ORDER = [
@@ -37,13 +37,22 @@ const RESEARCH_EXTRA = [
   'verify_claim_stream',
 ] as const;
 
+/** Public API tools only; advanced context and evaluation controls stay opt-in. */
+const PUBLIC_TOOLS = [
+  ...CORE_TOOL_ORDER,
+  'verify_claim_stream', 'verify_feedback', 'analyze_document',
+  'classify_document', 'document_gaps', 'accuracy_report',
+  'ask_document', 'get_ask_result', 'extract_pages',
+  'prepare_ocr_rescue', 'verify_numeric_claim',
+] as const;
+
 export function resolveProfile(raw?: string): McpProfile {
   const source =
     raw !== undefined && raw !== null
       ? raw
       : (process.env.WEBCITE_MCP_PROFILE ?? 'core');
   const v = String(source).trim().toLowerCase();
-  if (v === 'full' || v === 'docs' || v === 'research' || v === 'core') {
+  if (v === 'full' || v === 'public' || v === 'docs' || v === 'research' || v === 'core') {
     return v;
   }
   return 'core';
@@ -51,6 +60,7 @@ export function resolveProfile(raw?: string): McpProfile {
 
 export function allowedToolNames(profile: McpProfile): Set<string> | null {
   if (profile === 'full') return null;
+  if (profile === 'public') return new Set<string>(PUBLIC_TOOLS);
   const names = new Set<string>(CORE_TOOL_ORDER);
   if (profile === 'docs' || profile === 'research') {
     for (const n of DOCS_EXTRA) names.add(n);
@@ -88,7 +98,7 @@ export function profileExclusionMessage(
 ): string {
   return (
     `Tool "${name}" is not available in WEBCITE_MCP_PROFILE=${profile}. ` +
-    `Set WEBCITE_MCP_PROFILE=full (or docs/research) to enable it, ` +
+    `Set WEBCITE_MCP_PROFILE=public|docs|research|full as appropriate, ` +
     `or call webcite_guide for the recommended workflow.`
   );
 }
@@ -104,4 +114,4 @@ Workflows:
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
 Never invent citation URLs. Prefer get_source_preview to show evidence.
-Default profile is core (short tool list). Use WEBCITE_MCP_PROFILE=docs|research|full to widen.`;
+Hosted profile is public. Local default is core; use WEBCITE_MCP_PROFILE=public|docs|research|full to widen.`;

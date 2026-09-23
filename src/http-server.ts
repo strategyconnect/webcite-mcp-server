@@ -47,7 +47,7 @@ export function createRemoteMcpApp(options?: {
   sessions: Map<string, Session>;
 } {
   const apiBaseUrl = options?.apiBaseUrl || process.env.WEBCITE_API_URL || DEFAULT_API_URL;
-  const profile = options?.profile ?? resolveProfile();
+  const profile = options?.profile ?? resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public');
   const sessions = new Map<string, Session>();
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
@@ -204,7 +204,7 @@ async function main() {
   });
   server.listen(port, host, () => {
     console.error(
-      `WebCite remote MCP ${SERVER_VERSION} on http://${host}:${port}/mcp (profile=${resolveProfile()})`,
+      `WebCite remote MCP ${SERVER_VERSION} on http://${host}:${port}/mcp (profile=${resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public')})`,
     );
   });
 }

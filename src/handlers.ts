@@ -1264,16 +1264,18 @@ function assertCreateResearchIdentityComplete(args: Args | undefined): void {
 }
 
 function assetRef(args: Args): AssetRefOptions {
-  const assetId = args?.asset_id as string | undefined;
-  const assetUrl = args?.asset_url as string | undefined;
-  if (!assetId && !assetUrl) {
+  const assetId = args?.asset_id;
+  const assetUrl = args?.asset_url;
+  if ((assetId !== undefined && (typeof assetId !== 'string' || !assetId.trim())) ||
+      (assetUrl !== undefined && (typeof assetUrl !== 'string' || !assetUrl.trim())) ||
+      (!assetId && !assetUrl)) {
     throw new ToolFailure(
       'invalid_argument',
       'provide either asset_id (uploaded file) or asset_url (direct file URL)',
       { actionable: 'Pass asset_id from upload_file, or a direct asset_url.' },
     );
   }
-  return { asset_id: assetId, asset_url: assetUrl };
+  return { asset_id: assetId as string | undefined, asset_url: assetUrl as string | undefined };
 }
 
 function verifyOptions(args: Args): VerifyClaimOptions {
@@ -1550,6 +1552,61 @@ export const handlers: Record<string, ToolHandler> = {
   extract_document: async (args, client) => {
     const result = await wrapApi(client.extractDocument(assetRef(args)));
     return ok(formatExtractedDoc(result));
+  },
+
+  ask_document: async (args, client) => {
+    const question = requireString(args, 'question');
+    const documentText = requireString(args, 'documentText');
+    const documentName = args?.documentName;
+    const hasTextLayer = args?.hasTextLayer;
+    const topK = args?.topK;
+    if (question.length > 2000 || documentText.length > 2000000 ||
+        (documentName !== undefined && (typeof documentName !== 'string' || documentName.length > 300)) ||
+        (hasTextLayer !== undefined && typeof hasTextLayer !== 'boolean') ||
+        (topK !== undefined && (!Number.isInteger(topK) || (topK as number) < 1 || (topK as number) > 20))) {
+      throw new ToolFailure('invalid_argument', 'Invalid document question options');
+    }
+    const result = await wrapApi(client.askDocument({ question, documentText,
+      ...(documentName !== undefined ? { documentName: documentName as string } : {}),
+      ...(hasTextLayer !== undefined ? { hasTextLayer: hasTextLayer as boolean } : {}),
+      ...(topK !== undefined ? { topK: topK as number } : {}),
+    }));
+    return ok(JSON.stringify(result), result);
+  },
+
+  get_ask_result: async (args, client) => {
+    const result = await wrapApi(client.getAskResult(requireString(args, 'id')));
+    return ok(JSON.stringify(result), result);
+  },
+
+  extract_pages: async (args, client) => {
+    const result = await wrapApi(client.extractPages(assetRef(args)));
+    return ok(JSON.stringify(result), result);
+  },
+
+  prepare_ocr_rescue: async (args, client) => {
+    const versionId = requireString(args, 'source_version_id');
+    const representationId = requireString(args, 'representation_id');
+    if (!wakeIdentityComplete(versionId) || !wakeIdentityComplete(representationId)) {
+      throw new ToolFailure('invalid_argument', 'Source IDs cannot have surrounding whitespace');
+    }
+    const result = await wrapApi(client.prepareOcrRescue(versionId, representationId));
+    return ok(JSON.stringify(result), result);
+  },
+
+  verify_numeric_claim: async (args, client) => {
+    const claim = requireString(args, 'claim');
+    const operands = args?.operands;
+    if (claim.length > 10000 || !Array.isArray(operands) || operands.length < 1 || operands.length > 2 ||
+        operands.some((item) => !item || typeof item !== 'object' || Array.isArray(item) ||
+          Object.keys(item).some((key) => !['source_version_id', 'representation_id', 'source_unit_id', 'figure_index'].includes(key)) ||
+          !['source_version_id', 'representation_id', 'source_unit_id'].every((key) =>
+            typeof item[key] === 'string' && wakeIdentityComplete(item[key])) ||
+          !Number.isInteger(item.figure_index) || item.figure_index < 0 || item.figure_index > 10000)) {
+      throw new ToolFailure('invalid_argument', 'Expected one or two owned source figure references');
+    }
+    const result = await wrapApi(client.verifyNumericClaim({ claim, operands }));
+    return ok(JSON.stringify(result), result);
   },
 
   extract_figures: async (args, client) => {

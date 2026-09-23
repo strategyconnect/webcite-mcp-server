@@ -6,8 +6,8 @@
  * tools for any MCP-compatible agent. v1 tools map 1:1 to public API v1; context
  * tools map to API v2. Schemas live in tools.ts, implementations in handlers.ts.
  *
- * Default WEBCITE_MCP_PROFILE=core exposes a short tool list so Claude/Cursor
- * can pick Webcite up. Set full|docs|research to widen.
+ * Local default WEBCITE_MCP_PROFILE=core is short; hosted default is public.
+ * Set public|full|docs|research to widen local discovery.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

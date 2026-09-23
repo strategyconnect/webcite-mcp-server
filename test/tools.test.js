@@ -14,6 +14,8 @@ const {
   CONTEXT_TOOLS,
   ALL_TOOLS,
   CONTEXT_ENDPOINT_TOOLS,
+  PUBLIC_EXTRA_TOOLS,
+  PUBLIC_EXTRA_ENDPOINT_TOOLS,
 } = require('../dist/tools.js');
 const { SERVER_VERSION } = require('../dist/version.js');
 
@@ -68,8 +70,17 @@ test('context tools map 1:1 to v2 CONTEXT_ENDPOINT_TOOLS', () => {
   assert.equal(CONTEXT_TOOLS.length, Object.keys(CONTEXT_ENDPOINT_TOOLS).length);
 });
 
+test('every added public route has a tool and handler', () => {
+  const names = new Set(PUBLIC_EXTRA_TOOLS.map((tool) => tool.name));
+  assert.equal(names.size, Object.keys(PUBLIC_EXTRA_ENDPOINT_TOOLS).length);
+  for (const [route, name] of Object.entries(PUBLIC_EXTRA_ENDPOINT_TOOLS)) {
+    assert.ok(names.has(name), `${route} has no tool`);
+    assert.equal(typeof handlers[name], 'function', `${route} has no handler`);
+  }
+});
+
 test('ALL_TOOLS is guide + TOOLS + CONTEXT_TOOLS without duplicates', () => {
-  assert.equal(ALL_TOOLS.length, TOOLS.length + CONTEXT_TOOLS.length + 1);
+  assert.equal(ALL_TOOLS.length, TOOLS.length + PUBLIC_EXTRA_TOOLS.length + CONTEXT_TOOLS.length + 1);
   assert.equal(ALL_TOOLS[0].name, 'webcite_guide');
   const names = ALL_TOOLS.map((t) => t.name);
   assert.equal(new Set(names).size, names.length);
