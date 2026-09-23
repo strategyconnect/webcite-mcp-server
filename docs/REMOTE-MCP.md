@@ -1,4 +1,4 @@
-# Remote MCP (mcp.webcite.co)
+# Remote MCP (api.webcite.co/mcp)
 
 Non-technical users connect via **https://webcite.co/connect**.  
 This service is the Streamable HTTP MCP endpoint behind that page.
@@ -13,15 +13,23 @@ PORT=8787 WEBCITE_MCP_PROFILE=core node dist/http-server.js
 # MCP:   POST http://127.0.0.1:8787/mcp  with Authorization: Bearer <api_key>
 ```
 
-## Production (suggested)
+## Production (current)
 
-1. DNS: `mcp.webcite.co` → your VM / load balancer.
-2. TLS terminate (Caddy/nginx) → `127.0.0.1:8787`.
-3. Process: `pm2 start dist/http-server.js --name webcite-mcp-http` with:
-   - `WEBCITE_API_URL=https://api.webcite.co`
-   - `WEBCITE_MCP_PROFILE=core`
-   - `PORT=8787`
-4. Frontend: `NEXT_PUBLIC_WEBCITE_MCP_URL=https://mcp.webcite.co/mcp`
+Live URL (prod nginx proxies to pm2 `webcite-mcp-http` on `:8787`):
+
+- MCP: `https://api.webcite.co/mcp`
+- Health: `https://api.webcite.co/mcp-health`
+
+Process env:
+
+- `WEBCITE_API_URL=https://api.webcite.co`
+- `WEBCITE_MCP_PROFILE=core`
+- `PORT=8787`
+- `HOST=127.0.0.1`
+
+Frontend: `NEXT_PUBLIC_WEBCITE_MCP_URL=https://api.webcite.co/mcp`
+
+Optional later: add GoDaddy A record `mcp` → prod IP and a dedicated vhost; until then use the API host path above.
 
 ## Auth
 
