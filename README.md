@@ -1,6 +1,6 @@
 # WebCite MCP Server
 
-> **v1.8.0:** Remote Streamable HTTP MCP at **https://mcp.webcite.co/mcp** — no npm for end users. Open **https://webcite.co/connect** (Claude custom connector + Cursor deeplink). Default `WEBCITE_MCP_PROFILE=core` (~11 tools + `webcite_guide`). Free: **100 credits/month**. Local/dev: `npx -y webcite-mcp-server@latest --smoke` or `webcite-mcp-http`.
+> **v1.8.1:** Remote Streamable HTTP MCP at **https://api.webcite.co/mcp** — no npm for end users. Open **https://webcite.co/connect** (Claude custom connector + Cursor deeplink). Default `WEBCITE_MCP_PROFILE=core` (~11 tools + `webcite_guide`). Free: **100 credits/month**. Local/dev: `npx -y webcite-mcp-server@latest --smoke` or `webcite-mcp-http`.
 
 
 MCP (Model Context Protocol) server for WebCite — lets any AI agent verify factual claims against authoritative sources, bind quotes back to the passage they came from, and read the numbers out of documents deterministically.
@@ -39,7 +39,7 @@ figures rather than asking a model whether the numbers look right.
 
 1. Create an API key at [webcite.co/api-keys](https://webcite.co/api-keys).
 2. Open [webcite.co/connect](https://webcite.co/connect).
-3. **Claude:** Settings → Connectors → Add custom connector → paste `https://mcp.webcite.co/mcp` and your API key.
+3. **Claude:** Settings → Connectors → Add custom connector → paste `https://api.webcite.co/mcp` and your API key.
 4. **Cursor:** use the one-click install button on `/connect`.
 
 No Node, no `npx`, no JSON config files.

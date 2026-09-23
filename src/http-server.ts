@@ -2,7 +2,7 @@
 /**
  * Hosted / remote MCP entry (Streamable HTTP).
  *
- * Intended for mcp.webcite.co so Claude Connectors and Cursor can attach
+ * Intended for api.webcite.co/mcp (remote MCP) so Claude Connectors and Cursor can attach
  * without local Node/npx. Auth: Authorization Bearer <api_key> or x-api-key.
  */
 
@@ -82,7 +82,7 @@ export function createRemoteMcpApp(options?: {
 
     if (url.pathname !== '/mcp') {
       res.writeHead(404, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'not_found', hint: 'POST/GET https://mcp.webcite.co/mcp' }));
+      res.end(JSON.stringify({ error: 'not_found', hint: 'POST/GET https://api.webcite.co/mcp' }));
       return;
     }
 

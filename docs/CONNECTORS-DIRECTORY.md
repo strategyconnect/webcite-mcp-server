@@ -8,7 +8,7 @@ Use this copy when submitting Webcite to Anthropic’s Connectors Directory.
 | --- | --- |
 | Name | Webcite |
 | Short description | Evidence pipeline for AI: verify claims, bind quotes to sources, extract document figures |
-| MCP server URL | `https://mcp.webcite.co/mcp` |
+| MCP server URL | `https://api.webcite.co/mcp` |
 | Auth | API key via Bearer token or `x-api-key` header |
 | Homepage | https://webcite.co |
 | Connect help | https://webcite.co/connect |
@@ -28,7 +28,7 @@ Webcite checks AI claims against sources, opens the passage a quote came from, a
 
 ## Verification checklist (before submit)
 
-- [ ] `curl -s https://mcp.webcite.co/health` returns version + toolCount  
+- [ ] `curl -s https://api.webcite.co/mcp-health` returns version + toolCount  
 - [ ] Claude custom connector works with a Free API key  
 - [ ] Cursor deeplink from /connect works  
 - [ ] Privacy + ToS links live  
