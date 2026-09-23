@@ -1436,8 +1436,21 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   upload_file: async (args, client) => {
-    const filePath = requireString(args, 'file_path');
-    const result = await wrapApi(client.uploadFile(filePath));
+    let result;
+    if (args?.file_base64 !== undefined) {
+      const encoded = requireString(args, 'file_base64');
+      const filename = requireString(args, 'filename');
+      if (encoded.length > 28_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
+        throw new ToolFailure('invalid_argument', 'file_base64 must be valid base64 and at most 20 MB');
+      }
+      const bytes = Buffer.from(encoded, 'base64');
+      if (bytes.length === 0 || bytes.length > 20_000_000 || filename.length > 255) {
+        throw new ToolFailure('invalid_argument', 'Upload must have a filename and 1 to 20 MB of content');
+      }
+      result = await wrapApi(client.uploadBytes(bytes, filename));
+    } else {
+      result = await wrapApi(client.uploadFile(requireString(args, 'file_path')));
+    }
 
     const parts: string[] = [];
     parts.push(`# File Uploaded Successfully\n`);

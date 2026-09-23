@@ -19,6 +19,8 @@ Works with **any MCP-compatible client** including Claude Desktop, Claude Code, 
 
 Set `WEBCITE_MCP_PROFILE=public|docs|research|full` for a local server. This changes tool discovery; it does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
 
+On the hosted connector, `upload_file` accepts `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`.
+
 ## Tool reference
 
 The table below describes common tools across profiles. It is not the remote server's default tool list.

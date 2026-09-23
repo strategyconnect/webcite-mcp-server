@@ -404,10 +404,13 @@ export class WebCiteApiClient {
 
   async uploadFile(filePath: string): Promise<UploadResponse> {
     const fileBuffer = await fs.readFile(filePath);
-    const fileName = path.basename(filePath);
+    return this.uploadBytes(fileBuffer, path.basename(filePath));
+  }
+
+  async uploadBytes(fileBuffer: Uint8Array, fileName: string): Promise<UploadResponse> {
 
     const formData = new FormData();
-    formData.append('file', new Blob([fileBuffer]), fileName);
+    formData.append('file', new Blob([fileBuffer]), path.basename(fileName));
 
     const url = `${this.baseUrl}/api/v1/upload`;
     const response = await fetch(url, {

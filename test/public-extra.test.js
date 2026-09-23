@@ -42,3 +42,14 @@ test('invalid numeric references fail before any paid API call', async () => {
   }, client), /Expected one or two owned source figure references/);
   assert.equal(calls, 0);
 });
+
+test('base64 upload forwards caller bytes without reading a server path', async () => {
+  let bytes;
+  const client = { uploadBytes: async (data, filename) => {
+    bytes = [data.toString(), filename];
+    return { file_id: 'asset-1', filename, mime_type: 'text/plain', size: data.length };
+  } };
+  const result = await handlers.upload_file({ filename: 'note.txt', file_base64: Buffer.from('safe text').toString('base64') }, client);
+  assert.deepEqual(bytes, ['safe text', 'note.txt']);
+  assert.match(result.text, /asset-1/);
+});
