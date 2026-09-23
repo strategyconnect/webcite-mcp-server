@@ -166,7 +166,11 @@ export function formatVerdict(verdict: Verdict): string {
   };
 
   parts.push(`## Verdict: ${resultEmoji[verdict.result] || '?'} ${verdict.result.toUpperCase()}`);
-  parts.push(`**Confidence:** ${verdict.confidence == null || verdict.confidence_available === false ? 'unknown' : `${verdict.confidence}%`} (basis: ${verdict.confidence_basis ?? 'unknown'}; not a calibrated probability unless explicitly calibrated)`);
+  const score = verdict.aggregation_score ?? verdict.confidence;
+  parts.push(verdict.confidence_basis === 'calibrated' && verdict.confidence_available !== false && Number.isFinite(verdict.confidence)
+    ? `**Calibrated confidence:** ${verdict.confidence}%`
+    : `**Confidence:** unavailable. Aggregation score: ${Number.isFinite(score) ? score : 'unavailable'} (uncalibrated).`);
+  if (verdict.evidence_status) parts.push(`**Evidence:** ${verdict.evidence_status}`);
   parts.push(`**Summary:** ${verdict.summary}`);
 
   if (verdict.stance_breakdown) {
@@ -181,7 +185,10 @@ export function formatVerdict(verdict: Verdict): string {
   if (verdict.key_findings && verdict.key_findings.length > 0) {
     parts.push(`\n**Key Findings:**`);
     verdict.key_findings.forEach((finding, i) => {
-      parts.push(`${i + 1}. ${finding.finding} (${finding.confidence == null || finding.confidence_available === false ? 'unknown' : `${finding.confidence}%`} model-reported finding confidence)`);
+      const confidence = finding.confidence_basis === 'calibrated' && finding.confidence_available !== false && Number.isFinite(finding.confidence)
+        ? ` (${finding.confidence}% calibrated confidence)` : '';
+      const context = finding.evidence_role === 'context' ? 'Context: ' : '';
+      parts.push(`${i + 1}. ${context}${finding.finding}${confidence}`);
     });
   }
 
