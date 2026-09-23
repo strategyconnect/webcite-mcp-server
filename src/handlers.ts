@@ -1,3 +1,4 @@
+import { storedVerification, validateBatch, validateVerification } from './verification-response.js';
 /**
  * Tool handlers — one per entry in ALL_TOOLS.
  * Context tools validate API responses before structuredContent and render text
@@ -1328,22 +1329,16 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   verify_claim: async (args, client) => {
-    const options = verifyOptions(args);
-    const result = await wrapApi(client.verifyClaim(options));
-    return ok(formatVerifyResult(options.claim, result));
+    const options = { ...verifyOptions(args), ...(args?.idempotency_key !== undefined ? {idempotency_key: requireString(args, 'idempotency_key')} : {}) };
+    const result = validateVerification(await wrapApi(client.verifyClaim(options)));
+    return ok(formatVerifyResult(options.claim, result), { ...result });
   },
 
   verify_claim_stream: async (args, client) => {
     const options = verifyOptions(args);
     try {
-      const { result, events } = await collectStreamEvents(client.verifyClaimStream(options));
-      if (result) return ok(formatVerifyResult(options.claim, result));
-      const eventSummary = events
-        .map((e) => `[${e.event}] ${typeof e.data === 'string' ? e.data : JSON.stringify(e.data)}`)
-        .join('\n');
-      return ok(
-        `# Streaming Verification: "${options.claim}"\n\nReceived ${events.length} events but could not assemble a structured result.\n\n## Raw Events:\n${eventSummary}`,
-      );
+      const { result } = await collectStreamEvents(client.verifyClaimStream(options));
+      return ok(formatVerifyResult(options.claim, result), { ...result });
     } catch (error) {
       if (error instanceof ApiClientError) throw error.toToolFailure();
       throw error;
@@ -1409,30 +1404,18 @@ export const handlers: Record<string, ToolHandler> = {
     const citationId = requireString(args, 'citation_id');
     const result = await wrapApi(client.getCitation(citationId));
 
-    const parts: string[] = [];
-    parts.push(`# Verification Details\n`);
-    parts.push(`**Prompt:** ${result.data.prompt}\n`);
-
-    let citations: Citation[] = [];
-    if (typeof result.data.citation === 'string') {
-      try {
-        citations = JSON.parse(result.data.citation);
-      } catch {
-        citations = [];
-      }
-    } else if (Array.isArray(result.data.citation)) {
-      citations = result.data.citation;
+    const normalized = storedVerification(result.data);
+    const parts = [
+      '# Verification Details', `**Citation ID:** ${result.data.id ?? citationId}`,
+      `**Prompt:** ${result.data.prompt}`,
+    ];
+    if (normalized.final_response) {
+      parts.push(formatVerifyResult(result.data.prompt, normalized.final_response));
+    } else {
+      parts.push('Stored verdict: unavailable (legacy record).');
+      normalized.citations.forEach((citation, i) => parts.push(formatCitation(citation, i)));
     }
-
-    if (citations.length > 0) {
-      parts.push('## Sources\n');
-      citations.forEach((citation, i) => {
-        parts.push(formatCitation(citation, i));
-        parts.push('');
-      });
-    }
-
-    return ok(parts.join('\n'));
+    return ok(parts.join('\n\n'), { ...result, ...normalized });
   },
 
   upload_file: async (args, client) => {
@@ -1501,8 +1484,8 @@ export const handlers: Record<string, ToolHandler> = {
       );
     }
 
-    const results = await wrapApi(client.verifyBatch(items));
-    return ok(formatBatchResults(results));
+    const results = validateBatch(await wrapApi(client.verifyBatch(items)));
+    return ok(formatBatchResults(results), { results });
   },
 
   verify_feedback: async (args, client) => {

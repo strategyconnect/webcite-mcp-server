@@ -5,6 +5,7 @@
 /* ------------------------------------------------------------------ verify */
 
 export interface VerifyClaimOptions {
+  idempotency_key?: string;
   claim: string;
   thread_id?: string;
   include_stance?: boolean;
@@ -31,15 +32,19 @@ export interface Citation {
   snippet: string;
   author?: string;
   status?: string;
-  credibility_score?: number;
+  credibility_score?: number | null;
+  credibility_basis?: 'measured' | 'heuristic' | 'unknown';
+  snippet_source?: string;
+  evidence?: { version: number; state: string; [key: string]: unknown };
   rank?: number;
-  stance?: 'supports' | 'contradicts' | 'partially_supports' | 'neutral' | 'irrelevant';
-  stance_confidence?: number;
+  stance?: 'supports' | 'contradicts' | 'partially_supports' | 'neutral' | 'irrelevant' | 'inconclusive';
+  stance_confidence?: number | null;
+  stance_confidence_basis?: 'unknown' | 'measured' | 'calibrated';
   stance_explanation?: string;
   ranking_factors?: {
-    source_authority: number;
-    content_relevance: number;
-    recency: number;
+    source_authority: number | null;
+    content_relevance: number | null;
+    recency: number | null;
   };
   source_metadata?: {
     domain: string;
@@ -47,13 +52,17 @@ export interface Citation {
     is_primary_source: boolean;
     is_fact_check_site: boolean;
   };
-  publication_year?: number;
+  publication_year?: number | null;
 }
 
 export interface Verdict {
   claim: string;
   result: 'supported' | 'partially_supported' | 'contradicted' | 'mixed' | 'unverifiable';
-  confidence: number;
+  confidence: number | null;
+  confidence_basis?: 'heuristic' | 'unknown' | 'calibrated';
+  confidence_available?: boolean;
+  calibrated_confidence?: number | null;
+  aggregation_score?: number | null;
   summary: string;
   stance_breakdown: {
     supports: number;
@@ -65,6 +74,8 @@ export interface Verdict {
     finding: string;
     citation_ids: string[];
     confidence: number;
+    confidence_basis?: 'heuristic' | 'unknown' | 'calibrated';
+    confidence_available?: boolean;
   }>;
   corrections?: Array<{
     claimed: string;
@@ -91,6 +102,10 @@ export interface VerifyClaimResponse {
   citations?: Citation[];
   verdict?: Verdict;
   generated_prompts?: string[];
+  citation_id?: string;
+  request_id?: string;
+  operation_id?: string;
+  result_url?: string;
   credit_usage?: {
     credits_used: number;
     credits_remaining: number;
@@ -101,7 +116,8 @@ export interface CitationRecord {
   id: string;
   thread_id: string;
   prompt: string;
-  citation?: string | Citation[];
+  citation?: string | Citation[] | Record<string, unknown>;
+  metadata?: string | Record<string, unknown>;
   created_at?: string;
 }
 
