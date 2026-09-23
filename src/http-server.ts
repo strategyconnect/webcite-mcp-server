@@ -116,8 +116,16 @@ export function createRemoteMcpApp(options?: {
     try {
       if (req.method === 'POST') {
         const chunks: Buffer[] = [];
+        let bodyBytes = 0;
         for await (const chunk of req) {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          bodyBytes += bytes.length;
+          if (bodyBytes > 30_000_000) {
+            res.writeHead(413, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'request_too_large', maxBytes: 30_000_000 }));
+            return;
+          }
+          chunks.push(bytes);
         }
         const raw = Buffer.concat(chunks).toString('utf8');
         let body: unknown = undefined;
@@ -142,7 +150,7 @@ export function createRemoteMcpApp(options?: {
             sessionIdGenerator: () => randomUUID(),
           });
           const client = new WebCiteApiClient(apiKey, apiBaseUrl);
-          const server = createMcpServer(client, profile);
+          const server = createMcpServer(client, profile, true);
           await server.connect(transport);
           transport.onclose = () => {
             const id = transport.sessionId;

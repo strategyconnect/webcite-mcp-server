@@ -50,8 +50,17 @@ export function runSmoke(profile: McpProfile = resolveProfile()): {
 export function createMcpServer(
   client: WebCiteApiClient,
   profile: McpProfile,
+  remote = false,
 ): Server {
-  const tools = filterToolsByProfile(ALL_TOOLS, profile);
+  const tools = filterToolsByProfile(ALL_TOOLS, profile).map((tool) =>
+    remote && tool.name === 'upload_file'
+      ? { ...tool, description: 'Upload caller-provided base64 file content (up to 20 MB). A server file path is not accepted by the hosted connector.',
+          inputSchema: { type: 'object' as const, properties: {
+            filename: { type: 'string', minLength: 1, maxLength: 255 },
+            file_base64: { type: 'string', description: 'Base64-encoded file bytes, maximum 20 MB decoded.' },
+          }, required: ['filename', 'file_base64'] } }
+      : tool,
+  );
   const server = new Server(
     {
       name: 'webcite',
@@ -101,6 +110,9 @@ export function createMcpServer(
     }
 
     try {
+      if (remote && name === 'upload_file' && (args?.file_path !== undefined || args?.file_base64 === undefined)) {
+        throw new ToolFailure('invalid_argument', 'Hosted upload_file accepts filename and file_base64, not file_path');
+      }
       const result = await handler(args, client);
       return {
         content: [{ type: 'text', text: result.text }],
