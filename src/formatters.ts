@@ -126,7 +126,7 @@ export function formatCitation(citation: Citation, index: number): string {
       irrelevant: '—',
     };
     parts.push(
-      `   Stance: ${stanceEmoji[citation.stance] || '?'} ${citation.stance}${citation.stance_confidence != null ? ` (${citation.stance_confidence}% model-reported stance confidence)` : ''}`,
+      `   Stance: ${stanceEmoji[citation.stance] || '?'} ${citation.stance}${citation.stance_confidence != null && citation.stance_confidence_basis !== 'unknown' ? ` (${citation.stance_confidence}% model-reported stance confidence)` : ' (confidence unknown)'}`,
     );
   }
 
@@ -166,7 +166,7 @@ export function formatVerdict(verdict: Verdict): string {
   };
 
   parts.push(`## Verdict: ${resultEmoji[verdict.result] || '?'} ${verdict.result.toUpperCase()}`);
-  parts.push(`**Confidence:** ${verdict.confidence == null ? 'unknown' : `${verdict.confidence}%`} (basis: ${verdict.confidence_basis ?? 'unknown'}; not a calibrated probability unless explicitly calibrated)`);
+  parts.push(`**Confidence:** ${verdict.confidence == null || verdict.confidence_available === false ? 'unknown' : `${verdict.confidence}%`} (basis: ${verdict.confidence_basis ?? 'unknown'}; not a calibrated probability unless explicitly calibrated)`);
   parts.push(`**Summary:** ${verdict.summary}`);
 
   if (verdict.stance_breakdown) {
@@ -181,7 +181,7 @@ export function formatVerdict(verdict: Verdict): string {
   if (verdict.key_findings && verdict.key_findings.length > 0) {
     parts.push(`\n**Key Findings:**`);
     verdict.key_findings.forEach((finding, i) => {
-      parts.push(`${i + 1}. ${finding.finding} (${finding.confidence == null ? 'unknown' : `${finding.confidence}%`} model-reported finding confidence)`);
+      parts.push(`${i + 1}. ${finding.finding} (${finding.confidence == null || finding.confidence_available === false ? 'unknown' : `${finding.confidence}%`} model-reported finding confidence)`);
     });
   }
 

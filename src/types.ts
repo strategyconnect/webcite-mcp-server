@@ -5,6 +5,7 @@
 /* ------------------------------------------------------------------ verify */
 
 export interface VerifyClaimOptions {
+  idempotency_key?: string;
   claim: string;
   thread_id?: string;
   include_stance?: boolean;
@@ -36,8 +37,9 @@ export interface Citation {
   snippet_source?: string;
   evidence?: { version: number; state: string; [key: string]: unknown };
   rank?: number;
-  stance?: 'supports' | 'contradicts' | 'partially_supports' | 'neutral' | 'irrelevant';
+  stance?: 'supports' | 'contradicts' | 'partially_supports' | 'neutral' | 'irrelevant' | 'inconclusive';
   stance_confidence?: number | null;
+  stance_confidence_basis?: 'unknown' | 'measured' | 'calibrated';
   stance_explanation?: string;
   ranking_factors?: {
     source_authority: number | null;
@@ -58,6 +60,9 @@ export interface Verdict {
   result: 'supported' | 'partially_supported' | 'contradicted' | 'mixed' | 'unverifiable';
   confidence: number | null;
   confidence_basis?: 'heuristic' | 'unknown' | 'calibrated';
+  confidence_available?: boolean;
+  calibrated_confidence?: number | null;
+  aggregation_score?: number | null;
   summary: string;
   stance_breakdown: {
     supports: number;
@@ -69,6 +74,8 @@ export interface Verdict {
     finding: string;
     citation_ids: string[];
     confidence: number;
+    confidence_basis?: 'heuristic' | 'unknown' | 'calibrated';
+    confidence_available?: boolean;
   }>;
   corrections?: Array<{
     claimed: string;

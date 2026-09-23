@@ -126,3 +126,21 @@ test('verification evidence survives HTTP API and MCP transport', async (t) => {
     assert.equal(response.structuredContent.code, 'invalid_api_output');
   });
 });
+
+ test('verify idempotency key is an HTTP header and never part of the claim body', async () => {
+ const original = global.fetch; let request;
+ global.fetch = async (_url, init) => { request=init; return {ok:true,json:async()=>result}; };
+ try { const client = new WebCiteApiClient('test-key','https://example.test');
+ await client.verifyClaim({claim:'same claim',idempotency_key:'stable-retry-key'});
+ assert.equal(request.headers['Idempotency-Key'],'stable-retry-key');
+ assert.equal(JSON.parse(request.body).idempotency_key,undefined);
+ } finally { global.fetch=original; }
+ });
+
+ test('unknown stance confidence does not display a placeholder zero as measured', () => {
+  const { formatCitation } = require('../dist/formatters.js');
+  const text = formatCitation({...source, stance:'inconclusive', stance_confidence_basis:'unknown'}, 0);
+  assert.match(text, /confidence unknown/);
+  assert.doesNotMatch(text, /0% model-reported stance confidence/);
+  assert.match(formatCitation({...source, stance_confidence_basis:'measured'}, 0), /0% model-reported stance confidence/);
+});

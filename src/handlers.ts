@@ -1329,7 +1329,7 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   verify_claim: async (args, client) => {
-    const options = verifyOptions(args);
+    const options = { ...verifyOptions(args), ...(args?.idempotency_key !== undefined ? {idempotency_key: requireString(args, 'idempotency_key')} : {}) };
     const result = validateVerification(await wrapApi(client.verifyClaim(options)));
     return ok(formatVerifyResult(options.claim, result), { ...result });
   },

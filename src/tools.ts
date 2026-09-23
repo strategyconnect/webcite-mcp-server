@@ -41,6 +41,7 @@ Credits: 2-4 depending on options (search: 2, +stance: 1, +verdict: 1)`,
     inputSchema: {
       type: 'object' as const,
       properties: {
+        idempotency_key: { type: 'string', description: 'Reuse the same key and arguments for a JSON verify retry. Changed arguments are rejected. If settlement is unresolved, the API returns an error and does not charge again.' },
         claim: {
           type: 'string',
           description: 'The factual claim to verify (e.g., "The Eiffel Tower is 330 meters tall")',

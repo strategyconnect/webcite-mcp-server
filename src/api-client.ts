@@ -183,7 +183,7 @@ export class WebCiteApiClient {
     return this.request('/api/v1/verify', {
       method: 'POST',
       body: this.verifyBody(options),
-    });
+    }, {idempotencyKey: options.idempotency_key});
   }
 
   async *verifyClaimStream(options: VerifyClaimOptions): AsyncGenerator<SSEEvent> {
