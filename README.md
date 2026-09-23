@@ -1,16 +1,30 @@
 # WebCite MCP Server
 
-> **v1.8.2:** Remote Streamable HTTP MCP at **https://api.webcite.co/mcp** — no npm for end users. Open **https://webcite.co/connect** (Claude custom connector + Cursor deeplink). Default `WEBCITE_MCP_PROFILE=core` (~11 tools + `webcite_guide`). Free: **100 credits/month**. Local/dev: `npx -y webcite-mcp-server@latest --smoke` or `webcite-mcp-http`.
+> Remote Streamable HTTP MCP: **https://api.webcite.co/mcp**. Start at **https://webcite.co/connect**. The remote server uses the focused `core` profile; local operators can choose a wider profile. Check the published npm version before pinning it, because repository changes can precede publication.
 
 
 MCP (Model Context Protocol) server for WebCite — lets any AI agent verify factual claims against authoritative sources, bind quotes back to the passage they came from, and read the numbers out of documents deterministically.
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
-## Features
+## Tool profiles
+
+| Profile | Tools exposed | When to use it |
+| --- | --- | --- |
+| `core` (default, including remote) | `webcite_guide`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Everyday verification and document evidence. Call `webcite_guide` first. |
+| `docs` | Core plus `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `verify_feedback` | Deeper document work. |
+| `research` | Docs plus `get_answer`, `query_context`, `get_evidence_packet`, `compare_assertions`, `get_change_impact`, `verify_claim_stream` | Context and research workflows where the backend enables them. |
+| `full` | All tools registered by this package | Advanced local integrations and evaluation. Backend permissions and feature flags still apply. |
+
+Set `WEBCITE_MCP_PROFILE=docs|research|full` for a local server. This changes tool discovery; it does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
+
+## Tool reference
+
+The table below describes common tools across profiles. It is not the remote server's default tool list.
 
 | Tool | Description | Credits |
 |------|-------------|---------|
+| `webcite_guide` | Pick the appropriate verification, document or numeric workflow | 0 |
 | `verify_claim` | Full fact verification with stance analysis and verdict | 2-4 |
 | `verify_claim_stream` | Streaming verification for complex/long-running claims | 2-4 |
 | `search_sources` | Quick citation search without analysis | 2 |
@@ -497,7 +511,7 @@ The "usually also here" checklist for a category: each expected document type fl
 
 ### extract_document
 
-Extract any document into normalized text with provenance: whole-doc markdown, per-page/sheet units, and sheet names for spreadsheets. PDF, spreadsheets, docx, pptx, html and txt. Deterministic-first; scanned PDFs fall back to vision OCR. Never hard-fails — an unreadable asset returns empty text.
+Extract supported documents into normalized text with provenance: whole-doc markdown, per-page/sheet units, and sheet names for spreadsheets. PDF, spreadsheets, DOCX, PPTX, HTML and text have reader paths; coverage and recognition vary by format. Unreadable or partial content must be treated as an explicit limitation, not as an empty successful extraction.
 
 Long documents are truncated in the tool output; use `get_source_preview` for a specific page.
 
