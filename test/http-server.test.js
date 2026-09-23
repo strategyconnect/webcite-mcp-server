@@ -44,7 +44,10 @@ test('mcp without key returns 401', async () => {
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }),
   });
   assert.equal(res.status, 401);
+  // Must not advertise Bearer WWW-Authenticate — Claude OAuth auto-detect
+  assert.equal(res.headers.get('www-authenticate'), null);
   const body = await res.json();
   assert.equal(body.error, 'unauthorized');
+  assert.match(String(body.claude || ''), /No sign-in/);
   await new Promise((resolve) => server.close(resolve));
 });
