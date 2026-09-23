@@ -7,6 +7,22 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.0 release notes (pending publication)
+
+Verification results now include their full evidence alongside the readable summary, so your assistant can inspect source receipts and real reference IDs. A score of zero stays zero; an unknown score stays unknown. Estimated scores are labeled, and source summaries are no longer presented as publisher quotations.
+
+Saved verifications show their stored conclusion when available. Older records explicitly say when that conclusion is unavailable. Damaged records and interrupted streams report an error instead of appearing to be completed checks.
+
+### Verification response contract
+
+- `verify_claim` and `verify_claim_stream` return the backend verification object in MCP `structuredContent`, preserving optional fields, source receipts, and actual citation/request/operation/thread IDs. IDs and result URLs are never synthesized. Text summarizes the same validated object.
+- `verify_batch` returns `{ results: [...] }` with unchanged item records, bindings, evidence and feedback tokens.
+- `get_citation` returns the unchanged API `{ data: ... }` envelope plus normalized `citations` and, when present, `final_response` from `data.metadata.final_response` (or a verdict-bearing legacy object). Citation storage accepts a bare array or an object with `citations` or `claim_groups`, including JSON-encoded storage. It reads history without rerunning verification. Missing stored conclusions remain unavailable; malformed JSON or shapes return `invalid_api_output`.
+- Source `evidence` is an optional versioned backend receipt. Receipt details remain intact, including unknown fields added by later backend versions. Missing legacy receipts do not imply that the publisher was read. `credibility_score` and verdict `confidence` can be `null`; `credibility_basis` and `confidence_basis` identify the backend's basis. Heuristic scores are not calibrated truth probabilities. Provider-generated snippets remain labeled by `snippet_source`.
+- A stream requires a full result followed by an explicit completion marker. Partial groups, disconnected streams, backend errors and accounting failures return `partial_result`. Successful usage receipts are retained as `stream_usage`. Retrying a paid call is a new action unless the backend explicitly provides idempotency protection.
+
+These changes do not repair or regenerate historical evidence. Backend policy and cache versions determine which evidence policy produced a result; this package preserves that metadata.
+
 ## Tool profiles
 
 | Profile | Tools exposed | When to use it |

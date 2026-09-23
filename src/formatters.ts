@@ -126,18 +126,22 @@ export function formatCitation(citation: Citation, index: number): string {
       irrelevant: '—',
     };
     parts.push(
-      `   Stance: ${stanceEmoji[citation.stance] || '?'} ${citation.stance}${citation.stance_confidence ? ` (${citation.stance_confidence}% confidence)` : ''}`,
+      `   Stance: ${stanceEmoji[citation.stance] || '?'} ${citation.stance}${citation.stance_confidence != null ? ` (${citation.stance_confidence}% model-reported stance confidence)` : ''}`,
     );
   }
 
-  if (citation.credibility_score) {
-    parts.push(`   Credibility: ${citation.credibility_score}/100`);
+  parts.push(`   Credibility: ${citation.credibility_score == null ? 'unknown' : `${citation.credibility_score}/100`} (basis: ${citation.credibility_basis ?? 'unknown'})`);
+  if (citation.id) parts.push(`   Source ID: ${citation.id}`);
+  if (citation.evidence) {
+    parts.push(`   Evidence: ${citation.evidence.state}; receipt ${JSON.stringify(citation.evidence)}`);
+  } else {
+    parts.push('   Evidence receipt: unavailable (legacy or undisclosed)');
   }
 
   if (citation.snippet) {
     const truncatedSnippet =
       citation.snippet.length > 200 ? citation.snippet.substring(0, 200) + '...' : citation.snippet;
-    parts.push(`   Snippet: "${truncatedSnippet}"`);
+    parts.push(`   Snippet (${citation.snippet_source ?? 'origin unknown'}): ${truncatedSnippet}`);
   }
 
   if (citation.stance_explanation) {
@@ -162,7 +166,7 @@ export function formatVerdict(verdict: Verdict): string {
   };
 
   parts.push(`## Verdict: ${resultEmoji[verdict.result] || '?'} ${verdict.result.toUpperCase()}`);
-  parts.push(`**Confidence:** ${verdict.confidence}%`);
+  parts.push(`**Confidence:** ${verdict.confidence == null ? 'unknown' : `${verdict.confidence}%`} (basis: ${verdict.confidence_basis ?? 'unknown'}; not a calibrated probability unless explicitly calibrated)`);
   parts.push(`**Summary:** ${verdict.summary}`);
 
   if (verdict.stance_breakdown) {
@@ -177,7 +181,7 @@ export function formatVerdict(verdict: Verdict): string {
   if (verdict.key_findings && verdict.key_findings.length > 0) {
     parts.push(`\n**Key Findings:**`);
     verdict.key_findings.forEach((finding, i) => {
-      parts.push(`${i + 1}. ${finding.finding} (${finding.confidence}% confidence)`);
+      parts.push(`${i + 1}. ${finding.finding} (${finding.confidence == null ? 'unknown' : `${finding.confidence}%`} model-reported finding confidence)`);
     });
   }
 
@@ -230,6 +234,12 @@ export function formatVerifyResult(claim: string, result: VerifyClaimResponse): 
   const parts: string[] = [];
   parts.push(`# Fact Check: "${claim}"\n`);
 
+  for (const [label, id] of Object.entries({
+    'Citation ID': result.citation_id, 'Request ID': result.request_id,
+    'Operation ID': result.operation_id, 'Thread ID': result.thread_id, 'Result URL': result.result_url,
+  })) { if (id) parts.push(`**${label}:** ${id}`); }
+  if (result.verdict) parts.push(formatVerdict(result.verdict));
+
   // Show claim groups (unified structure)
   if (result.claim_groups && result.claim_groups.length > 0) {
     if (result.claim_groups.length === 1) {
@@ -256,10 +266,6 @@ export function formatVerifyResult(claim: string, result: VerifyClaimResponse): 
     }
   } else if (result.citations && result.citations.length > 0) {
     // Legacy format - direct citations
-    if (result.verdict) {
-      parts.push(formatVerdict(result.verdict));
-      parts.push('');
-    }
     parts.push('## Sources\n');
     result.citations.forEach((citation, i) => {
       parts.push(formatCitation(citation, i));
@@ -300,13 +306,13 @@ export function formatBatchResults(items: BatchResultItem[]): string {
     } else {
       const b = item.binding ?? { grounded: false, method: 'unbound' };
       parts.push(
-        `   Binding: ${b.grounded ? 'grounded' : 'not grounded'} (${b.method}${b.score !== undefined ? `, score ${b.score}` : ''})`,
+        `   Binding: ${b.grounded ? 'grounded' : 'not grounded'} (${b.method}${b.score != null ? `, score ${b.score}` : ''})`,
       );
       if (b.matched_text) parts.push(`   Matched: "${truncate(b.matched_text, 300)}"`);
       const v = item.verification;
       if (v) {
         parts.push(
-          `   Verification: ${v.band} | layer ${v.layer} | confidence ${v.confidence}${v.review_reason ? ` | review: ${v.review_reason}` : ''}`,
+          `   Verification: ${v.band} | layer ${v.layer} | confidence ${v.confidence ?? 'unknown'}${v.review_reason ? ` | review: ${v.review_reason}` : ''}`,
         );
       }
       if (item.feedback_token) parts.push(`   Feedback token: ${item.feedback_token}`);

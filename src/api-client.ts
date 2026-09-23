@@ -12,6 +12,7 @@ import type {
   ChangeImpactOptions,
   ChangeImpactResponse,
   Citation,
+  CitationRecord,
   ClassifyOptions,
   ClassifyResult,
   CompareAssertionsOptions,
@@ -210,58 +211,31 @@ export class WebCiteApiClient {
     const decoder = new TextDecoder();
     let buffer = '';
 
+    let currentEvent = 'message';
+    let currentData: string[] = [];
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
-
         const lines = buffer.split('\n');
-        // Keep the last potentially incomplete line in the buffer
         buffer = lines.pop() ?? '';
-
-        let currentEvent = 'message';
-        let currentData = '';
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith('data: ')) {
-            currentData = line.slice(6);
-          } else if (line === '' && currentData) {
-            // Empty line marks end of an SSE event
-            try {
-              yield { event: currentEvent, data: JSON.parse(currentData) };
-            } catch {
-              yield { event: currentEvent, data: currentData };
-            }
+        for (const rawLine of lines) {
+          const line = rawLine.replace(/\r$/, '');
+          if (line.startsWith('event:')) currentEvent = line.slice(6).trim();
+          else if (line.startsWith('data:')) currentData.push(line.slice(5).replace(/^ /, ''));
+          else if (line === '' && currentData.length) {
+            const raw = currentData.join('\n');
+            let data: unknown;
+            try { data = JSON.parse(raw); } catch { data = raw; }
+            yield { event: currentEvent, data };
             currentEvent = 'message';
-            currentData = '';
+            currentData = [];
           }
         }
       }
+      // An unterminated event is incomplete, including an unterminated done marker.
 
-      // Process any remaining data in buffer
-      if (buffer.trim()) {
-        const lines = buffer.split('\n');
-        let currentEvent = 'message';
-        let currentData = '';
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith('data: ')) {
-            currentData = line.slice(6);
-          }
-        }
-        if (currentData) {
-          try {
-            yield { event: currentEvent, data: JSON.parse(currentData) };
-          } catch {
-            yield { event: currentEvent, data: currentData };
-          }
-        }
-      }
     } finally {
       reader.releaseLock();
     }
@@ -286,7 +260,7 @@ export class WebCiteApiClient {
     return this.request(`/api/v1/citations${qs ? `?${qs}` : ''}`, { method: 'GET' });
   }
 
-  async getCitation(citationId: string): Promise<{ data: { prompt: string; citation: string | Citation[] } }> {
+  async getCitation(citationId: string): Promise<{ data: CitationRecord }> {
     return this.request(`/api/v1/citations/${encodeURIComponent(citationId)}`, { method: 'GET' });
   }
 
