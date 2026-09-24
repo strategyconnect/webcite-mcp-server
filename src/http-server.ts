@@ -217,12 +217,7 @@ async function main() {
   });
 }
 
-const isDirectRun =
-  typeof process.argv[1] === 'string' &&
-  (process.argv[1].endsWith('http-server.js') ||
-    process.argv[1].endsWith('http-server.ts'));
-
-if (isDirectRun) {
+if (require.main === module) {
   main().catch((error) => {
     console.error('Fatal error:', error);
     process.exit(1);

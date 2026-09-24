@@ -7,7 +7,9 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
-## 1.9.0 release notes (pending publication)
+## 1.9.1 release notes
+
+The `npx webcite-mcp-server` command now starts the local MCP server as documented. The `webcite-mcp` and `webcite-mcp-http` npm commands also start correctly.
 
 Verification results now include their full evidence alongside the readable summary, so your assistant can inspect source receipts and real reference IDs. A score of zero stays zero; an unknown score stays unknown. Estimated scores are labeled, and source summaries are no longer presented as publisher quotations.
 
