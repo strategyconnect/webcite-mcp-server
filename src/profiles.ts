@@ -44,6 +44,8 @@ const PUBLIC_TOOLS = [
   'classify_document', 'document_gaps', 'accuracy_report',
   'ask_document', 'get_ask_result', 'extract_pages',
   'prepare_ocr_rescue', 'verify_numeric_claim',
+  'publish_text_representation', 'get_latest_representation',
+  'register_source', 'read_source_unit',
 ] as const;
 
 export function resolveProfile(raw?: string): McpProfile {

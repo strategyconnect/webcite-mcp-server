@@ -413,6 +413,11 @@ export function formatDocumentAnalysis(result: DocumentAnalysisResponse): string
     );
   }
   parts.push(formatAnalyzeResult(result));
+  if (result.unavailableValues?.length) {
+    parts.push(`\n## Unavailable source values (${result.unavailableValues.length})\n`);
+    for (const value of result.unavailableValues)
+      parts.push(`- ${value.sheet}!${value.cell}: ${value.reason} (source: ${value.rawLexeme})`);
+  }
   parts.push(`\n## Figures (${result.figures?.length ?? 0})\n`);
   if (result.figures?.length) {
     result.figures.forEach((f, i) => parts.push(formatFigureLine(f, i)));
@@ -444,6 +449,9 @@ export function formatClassify(result: ClassifyResult): string {
   parts.push(`# Document Classification\n`);
   parts.push(`**Category:** ${result.category || '(uncategorised)'}`);
   parts.push(`**Covers:** ${result.covers?.length ? result.covers.join(', ') : '(none detected)'}`);
+  if (result.confidence !== undefined) parts.push(`**Confidence:** ${result.confidence === null ? 'unavailable' : result.confidence}`);
+  if (result.basis) parts.push(`**Basis:** ${result.basis}`);
+  if (result.sufficiency?.status) parts.push(`**Sufficiency:** ${result.sufficiency.status}${result.sufficiency.reason ? ` (${result.sufficiency.reason})` : ''}`);
   return parts.join('\n');
 }
 

@@ -139,10 +139,10 @@ export interface SSEEvent {
 }
 
 export interface UploadResponse {
-  success: boolean;
-  file_id: string;
+  asset_id: string;
+  asset_url?: string;
+  source_version_id?: string;
   filename: string;
-  mime_type: string;
   size: number;
 }
 
@@ -283,6 +283,7 @@ export interface AnalyzeResult {
 
 export interface DocumentAnalysisResponse extends AnalyzeResult {
   figures: ExtractedFigure[];
+  unavailableValues?: Array<{ sheet: string; cell: string; reason: string; rawLexeme: string }>;
   category?: string;
   covers?: string[];
 }
@@ -323,6 +324,13 @@ export interface ClassifyOptions extends AssetRefOptions {
 export interface ClassifyResult {
   category: string;
   covers: string[];
+  state?: string;
+  reason?: string | null;
+  code?: string | null;
+  confidence?: number | null;
+  basis?: string;
+  confidenceAssessment?: { basis?: string; calibrated?: boolean; languageBasis?: string | null };
+  sufficiency?: { status?: string; reason?: string };
 }
 
 export interface GapDoc {

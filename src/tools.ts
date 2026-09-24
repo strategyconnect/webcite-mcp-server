@@ -532,6 +532,38 @@ const claimScopeProperties = {
 /** Stable public API workflows missing from the original v1 tool catalog. */
 export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   {
+    name: 'register_source',
+    description: 'Register original text or CSV bytes for an uploaded, owned asset. Returns a retained sourceVersionId for source representation and numeric verification.',
+    inputSchema: { type: 'object', properties: {
+      asset_id: { type: 'string', minLength: 1 },
+      filename: { type: 'string', minLength: 1 },
+      file_base64: { type: 'string', minLength: 4 },
+    }, required: ['asset_id', 'filename', 'file_base64'] },
+  },
+  {
+    name: 'read_source_unit',
+    description: 'Read one owned immutable source unit by the IDs returned from a source representation. Inspect its numeric content before choosing figure_index.',
+    inputSchema: { type: 'object', properties: {
+      source_version_id: { type: 'string', minLength: 1 },
+      representation_id: { type: 'string', minLength: 1 },
+      source_unit_id: { type: 'string', minLength: 1 },
+    }, required: ['source_version_id', 'representation_id', 'source_unit_id'] },
+  },
+  {
+    name: 'publish_text_representation',
+    description: 'Publish a deterministic text or CSV representation of an owned retained source. Returns representation and source unit IDs for verify_numeric_claim. No model call.',
+    inputSchema: { type: 'object', properties: {
+      source_version_id: { type: 'string', minLength: 1 },
+    }, required: ['source_version_id'] },
+  },
+  {
+    name: 'get_latest_representation',
+    description: 'Locate the latest representation and source unit IDs of an owned retained source. Use these IDs to read evidence or verify a numeric claim.',
+    inputSchema: { type: 'object', properties: {
+      source_version_id: { type: 'string', minLength: 1 },
+    }, required: ['source_version_id'] },
+  },
+  {
     name: 'ask_document',
     description: 'Queue a checked answer over supplied document text. Returns a job ID; poll with get_ask_result. Costs 5 credits. Unverified numbers remain null.',
     inputSchema: { type: 'object', properties: {
@@ -576,6 +608,10 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
 ];
 
 export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
+  'POST /api/v2/sources': 'register_source',
+  'GET /api/v2/sources/:versionId/representations/:representationId/units/:unitId': 'read_source_unit',
+  'POST /api/v2/sources/:versionId/representations/text': 'publish_text_representation',
+  'GET /api/v2/sources/:versionId/representations/latest': 'get_latest_representation',
   'POST /api/v1/ask': 'ask_document',
   'GET /api/v1/ask/:id': 'get_ask_result',
   'POST /api/v1/extract/pages': 'extract_pages',
