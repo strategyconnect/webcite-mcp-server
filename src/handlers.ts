@@ -160,6 +160,17 @@ function requireString(args: Args, key: string): string {
   return value;
 }
 
+function base64File(args: Args) {
+  const encoded = requireString(args, 'file_base64');
+  const filename = requireString(args, 'filename');
+  if (encoded.length > 28_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded))
+    throw new ToolFailure('invalid_argument', 'file_base64 must be valid base64 and at most 20 MB');
+  const bytes = Buffer.from(encoded, 'base64');
+  if (bytes.length === 0 || bytes.length > 20_000_000 || filename.length > 255)
+    throw new ToolFailure('invalid_argument', 'Upload must have a filename and 1 to 20 MB of content');
+  return { bytes, filename };
+}
+
 /**
  * Backend #268/#281: non-blank, non-padded wake identity.
  * Surrounding-whitespace ids (id !== trim) never wake — same honesty as W2 #276 / W3 #279.
@@ -1421,15 +1432,7 @@ export const handlers: Record<string, ToolHandler> = {
   upload_file: async (args, client) => {
     let result;
     if (args?.file_base64 !== undefined) {
-      const encoded = requireString(args, 'file_base64');
-      const filename = requireString(args, 'filename');
-      if (encoded.length > 28_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
-        throw new ToolFailure('invalid_argument', 'file_base64 must be valid base64 and at most 20 MB');
-      }
-      const bytes = Buffer.from(encoded, 'base64');
-      if (bytes.length === 0 || bytes.length > 20_000_000 || filename.length > 255) {
-        throw new ToolFailure('invalid_argument', 'Upload must have a filename and 1 to 20 MB of content');
-      }
+      const { bytes, filename } = base64File(args);
       result = await wrapApi(client.uploadBytes(bytes, filename));
     } else {
       result = await wrapApi(client.uploadFile(requireString(args, 'file_path')));
@@ -1437,12 +1440,12 @@ export const handlers: Record<string, ToolHandler> = {
 
     const parts: string[] = [];
     parts.push(`# File Uploaded Successfully\n`);
-    parts.push(`**File ID:** ${result.file_id}`);
+    parts.push(`**Asset ID:** ${result.asset_id}`);
     parts.push(`**Filename:** ${result.filename}`);
-    parts.push(`**Type:** ${result.mime_type}`);
     parts.push(`**Size:** ${result.size} bytes`);
+    if (result.source_version_id) parts.push(`**Source version ID:** ${result.source_version_id}`);
 
-    return ok(parts.join('\n'));
+    return ok(parts.join('\n'), { ...result });
   },
 
   get_source_preview: async (args, client) => {
@@ -1518,7 +1521,7 @@ export const handlers: Record<string, ToolHandler> = {
   analyze_document: async (args, client) => {
     const assetId = requireString(args, 'asset_id');
     const result = await wrapApi(client.analyzeDocument(assetId));
-    return ok(formatDocumentAnalysis(result));
+    return ok(formatDocumentAnalysis(result), { ...result });
   },
 
   classify_document: async (args, client) => {
@@ -1528,7 +1531,7 @@ export const handlers: Record<string, ToolHandler> = {
         taxonomy: args?.taxonomy as Taxonomy | undefined,
       }),
     );
-    return ok(formatClassify(result));
+    return ok(formatClassify(result), { ...result });
   },
 
   document_gaps: async (args, client) => {
@@ -1572,6 +1575,35 @@ export const handlers: Record<string, ToolHandler> = {
 
   get_ask_result: async (args, client) => {
     const result = await wrapApi(client.getAskResult(requireString(args, 'id')));
+    return ok(JSON.stringify(result), result);
+  },
+
+  publish_text_representation: async (args, client) => {
+    const id = requireString(args, 'source_version_id');
+    if (!wakeIdentityComplete(id)) throw new ToolFailure('invalid_argument', 'Source version ID is incomplete');
+    const result = await wrapApi(client.publishTextRepresentation(id));
+    return ok(JSON.stringify(result), result);
+  },
+
+  get_latest_representation: async (args, client) => {
+    const id = requireString(args, 'source_version_id');
+    if (!wakeIdentityComplete(id)) throw new ToolFailure('invalid_argument', 'Source version ID is incomplete');
+    const result = await wrapApi(client.getLatestRepresentation(id));
+    return ok(JSON.stringify(result), result);
+  },
+
+  register_source: async (args, client) => {
+    const assetId = requireString(args, 'asset_id');
+    const { bytes, filename } = base64File(args);
+    const result = await wrapApi(client.registerSourceBytes(assetId, bytes, filename));
+    return ok(JSON.stringify(result), result);
+  },
+
+  read_source_unit: async (args, client) => {
+    const ids = ['source_version_id','representation_id','source_unit_id'].map(key => requireString(args,key));
+    if (ids.some(id => !wakeIdentityComplete(id)))
+      throw new ToolFailure('invalid_argument', 'Source IDs are incomplete');
+    const result = await wrapApi(client.readSourceUnit(ids[0]!, ids[1]!, ids[2]!));
     return ok(JSON.stringify(result), result);
   },
 

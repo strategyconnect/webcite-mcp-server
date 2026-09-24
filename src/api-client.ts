@@ -351,6 +351,18 @@ export class WebCiteApiClient {
     return this.request(`/api/v1/ask/${encodeURIComponent(id)}`, { method: 'GET' });
   }
 
+  async publishTextRepresentation(versionId: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v2/sources/${encodeURIComponent(versionId)}/representations/text`, { method: 'POST' });
+  }
+
+  async getLatestRepresentation(versionId: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v2/sources/${encodeURIComponent(versionId)}/representations/latest`, { method: 'GET' });
+  }
+
+  async readSourceUnit(versionId: string, representationId: string, unitId: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v2/sources/${encodeURIComponent(versionId)}/representations/${encodeURIComponent(representationId)}/units/${encodeURIComponent(unitId)}`, { method: 'GET' });
+  }
+
   async extractPages(options: AssetRefOptions): Promise<Record<string, unknown>> {
     return this.request('/api/v1/extract/pages', {
       method: 'POST', body: JSON.stringify(options),
@@ -381,12 +393,12 @@ export class WebCiteApiClient {
     return this.uploadBytes(fileBuffer, path.basename(filePath));
   }
 
-  async uploadBytes(fileBuffer: Uint8Array, fileName: string): Promise<UploadResponse> {
-
+  private async postFile(endpoint: string, fileBuffer: Uint8Array, fileName: string, assetId?: string): Promise<unknown> {
     const formData = new FormData();
     formData.append('file', new Blob([fileBuffer]), path.basename(fileName));
+    if (assetId) formData.append('assetId', assetId);
 
-    const url = `${this.baseUrl}/api/v1/upload`;
+    const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -400,7 +412,32 @@ export class WebCiteApiClient {
       throw new ApiClientError(response.status, errorBody);
     }
 
-    return response.json() as Promise<UploadResponse>;
+    return response.json();
+  }
+
+  async uploadBytes(fileBuffer: Uint8Array, fileName: string): Promise<UploadResponse> {
+    const result = await this.postFile('/api/v1/upload', fileBuffer, fileName) as {
+      successCode?: number;
+      data?: { asset_id?: unknown; asset_url?: unknown; source_version_id?: unknown };
+    };
+    const data = result?.data;
+    if (result.successCode !== 200 || typeof data?.asset_id !== 'string' || !data.asset_id) {
+      throw new ApiClientError(502, 'Upload response did not contain a usable asset_id');
+    }
+    return {
+      asset_id: data.asset_id,
+      ...(typeof data.asset_url === 'string' ? { asset_url: data.asset_url } : {}),
+      ...(typeof data.source_version_id === 'string' ? { source_version_id: data.source_version_id } : {}),
+      filename: path.basename(fileName),
+      size: fileBuffer.length,
+    };
+  }
+
+  async registerSourceBytes(assetId: string, fileBuffer: Uint8Array, fileName: string): Promise<Record<string, unknown>> {
+    const result = await this.postFile('/api/v2/sources', fileBuffer, fileName, assetId) as Record<string, unknown>;
+    if (typeof result?.sourceVersionId !== 'string' || !result.sourceVersionId || result.assetId !== assetId)
+      throw new ApiClientError(502, 'Source registration returned no usable sourceVersionId or a mismatched assetId');
+    return result;
   }
 
   /* ---------------------------------------------------------- context graph (v2) */
