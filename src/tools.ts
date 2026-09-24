@@ -586,7 +586,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'prepare_ocr_rescue',
-    description: 'Prepare OCR rescue for an owned source representation before previewing unresolved citations. Requires the backend OCR feature; return unavailable states honestly.',
+    description: 'Prepare judged OCR rescue for an owned OCR source representation before previewing unresolved citations. A new successful preparation costs 5 credits; retained replays are free. Requires the backend OCR feature; return unavailable states honestly.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1 },
       representation_id: { type: 'string', minLength: 1 },
