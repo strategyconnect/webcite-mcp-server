@@ -204,11 +204,7 @@ async function main() {
   );
 }
 
-const isDirectRun =
-  typeof process.argv[1] === 'string' &&
-  (process.argv[1].endsWith('index.js') || process.argv[1].endsWith('index.ts'));
-
-if (isDirectRun) {
+if (require.main === module) {
   main().catch((error) => {
     console.error('Fatal error:', error);
     process.exit(1);
