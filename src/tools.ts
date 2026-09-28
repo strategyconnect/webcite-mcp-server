@@ -569,7 +569,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
       thread_id: { type: 'string', minLength: 1, description: 'Stable ID for this review. Reuse the same value and exact inputs to resume.' },
-      source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Official HTTPS reports, including PDFs, that each claim must be checked against.' },
+      source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, description: 'Official HTTPS reports, including PDFs, that each claim must be checked against.' },
       filters: sourceFiltersInput,
       include_stance: { type: 'boolean', default: true, description: 'Analyze source stance; adds 1 credit per claim.' },
       include_verdict: { type: 'boolean', default: true, description: 'Generate a verdict; adds 1 credit per claim.' },

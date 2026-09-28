@@ -1471,7 +1471,7 @@ export const handlers: Record<string, ToolHandler> = {
     if (!wakeIdentityComplete(threadId) || !Array.isArray(assetIds) || assetIds.length === 0 ||
         assetIds.some((id) => typeof id !== 'string' || !wakeIdentityComplete(id)) ||
         new Set(assetIds).size !== assetIds.length ||
-        (sourceUrls !== undefined && (!Array.isArray(sourceUrls) || sourceUrls.length > 5 ||
+        (sourceUrls !== undefined && (!Array.isArray(sourceUrls) ||
           sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://')))) ||
         (filters !== undefined && (!filters || typeof filters !== 'object' || Array.isArray(filters))) ||
         (args?.include_stance !== undefined && typeof args.include_stance !== 'boolean') ||

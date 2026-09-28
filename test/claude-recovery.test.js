@@ -205,17 +205,19 @@ test('document review returns saved progress when credits stop the stream', asyn
 });
 
 test('document review resumes as complete only after every result and done', async () => {
+  const officialSources = Array.from({ length: 6 }, (_, index) => `https://example.test/report-${index}.pdf`);
   const frames = [
     { type: 'claims-extracted', data: { review_id: 'review-1', claims: [{ id: 'c1', claim: 'One' }] } },
     { type: 'claim-verification-result', data: { claim_id: 'c1', claim: 'One', result: 'supported' } },
     { type: 'done' },
   ];
-  const result = await handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+  const result = await handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1'], thread_id: 'thread-1', source_urls: officialSources }, {
     reviewDocumentStream: async function* () { for (const data of frames) yield { event: 'message', data }; },
   });
   assert.equal(result.isError, false);
   assert.equal(result.structuredContent.status, 'complete');
   assert.equal(result.structuredContent.pending_claims, 0);
+  assert.deepEqual(result.structuredContent.resume_input.source_urls, officialSources);
 
   let called = false;
   await assert.rejects(() => handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1', 'asset-1'], thread_id: 'thread-1' }, {
