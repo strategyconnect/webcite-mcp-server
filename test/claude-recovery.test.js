@@ -90,7 +90,8 @@ test('credit balance uses the authenticated read-only route', async () => {
   let request;
   global.fetch = async (url, options) => {
     request = { url, options };
-    return { ok: true, json: async () => ({ credits: { used: 96, remaining: 4, total: 100 }, allow_overage: false }) };
+    return { ok: true, json: async () => ({ credits: { used: 96, remaining: 4, total: 100 }, allow_overage: false,
+      monthly_allocation: '10', current_balance: '-342', consumed: '352', overage_amount: 342 }) };
   };
   try {
     const client = new WebCiteApiClient('test-only', 'https://example.test');
@@ -98,6 +99,8 @@ test('credit balance uses the authenticated read-only route', async () => {
     assert.equal(new URL(request.url).pathname, '/api/v1/payment/credits/balance');
     assert.equal(request.options.method, 'GET');
     assert.equal(balance.structuredContent.credits.remaining, 4);
+    assert.equal(balance.structuredContent.current_balance, undefined);
+    assert.equal(balance.structuredContent.overage_amount, undefined);
     assert.match(balance.text, /Credits remaining: 4 of 100/);
   } finally { global.fetch = previous; }
 });

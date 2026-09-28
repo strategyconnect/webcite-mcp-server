@@ -1419,7 +1419,13 @@ export const handlers: Record<string, ToolHandler> = {
     if (!credits || typeof credits.remaining !== 'number' || typeof credits.used !== 'number' || typeof credits.total !== 'number') {
       throw new ToolFailure('invalid_api_output', 'Credit balance response is incomplete');
     }
-    return ok(`Credits remaining: ${credits.remaining} of ${credits.total} (used: ${credits.used}).${result.allow_overage === true ? ' Overage is enabled.' : ' Overage is off or unavailable.'}`, result);
+    const balance = {
+      credits,
+      ...(result.usage_breakdown && typeof result.usage_breakdown === 'object' ? { usage_breakdown: result.usage_breakdown } : {}),
+      ...(typeof result.allow_overage === 'boolean' ? { allow_overage: result.allow_overage } : {}),
+      ...(typeof result.billing_period_end === 'string' ? { billing_period_end: result.billing_period_end } : {}),
+    };
+    return ok(`Credits remaining: ${credits.remaining} of ${credits.total} (used: ${credits.used}).${result.allow_overage === true ? ' Overage is enabled.' : ' Overage is off or unavailable.'}`, balance);
   },
 
   get_document_review: async (args, client) => {
