@@ -7,7 +7,7 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { WebCiteApiClient } from './api-client.js';
@@ -37,7 +37,12 @@ export function extractApiKey(req: IncomingMessage): string | undefined {
 type Session = {
   transport: StreamableHTTPServerTransport;
   server: ReturnType<typeof createMcpServer>;
+  keyDigest: Buffer;
 };
+
+function keyDigest(key: string): Buffer {
+  return createHash('sha256').update(key).digest();
+}
 
 export function createRemoteMcpApp(options?: {
   apiBaseUrl?: string;
@@ -86,6 +91,14 @@ export function createRemoteMcpApp(options?: {
       return;
     }
 
+    const xKey = req.headers['x-api-key'];
+    const headerKey = (Array.isArray(xKey) ? xKey[0] : xKey)?.trim();
+    const bearerKey = req.headers.authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+    if (headerKey && bearerKey && headerKey !== bearerKey) {
+      res.writeHead(400, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'conflicting_api_keys', message: 'Authorization and x-api-key identify different accounts. Send one key.' }));
+      return;
+    }
     const apiKey = extractApiKey(req);
     if (!apiKey) {
       // Do not send WWW-Authenticate: Bearer — Claude treats that as OAuth and
@@ -112,6 +125,13 @@ export function createRemoteMcpApp(options?: {
         : Array.isArray(sessionHeader)
           ? sessionHeader[0]
           : undefined;
+
+    const activeSession = sessionId ? sessions.get(sessionId) : undefined;
+    if (activeSession && !timingSafeEqual(activeSession.keyDigest, keyDigest(apiKey))) {
+      res.writeHead(403, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'session_key_mismatch', message: 'This session belongs to another API key. Initialize a new MCP session.' }));
+      return;
+    }
 
     try {
       if (req.method === 'POST') {
@@ -158,7 +178,7 @@ export function createRemoteMcpApp(options?: {
           };
           await transport.handleRequest(req, res, body);
           if (transport.sessionId) {
-            sessions.set(transport.sessionId, { transport, server });
+            sessions.set(transport.sessionId, { transport, server, keyDigest: keyDigest(apiKey) });
           }
           return;
         }

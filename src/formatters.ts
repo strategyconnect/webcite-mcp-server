@@ -105,6 +105,7 @@ export function formatSourcePreview(p: SourcePreviewResponse): string {
   if (p.text) {
     parts.push(`\n---\n`);
     parts.push(truncate(p.text));
+    if (p.text.length > MAX_TEXT_CHARS) parts.push(`Full preview text is in structuredContent (${p.text.length} characters).`);
   }
 
   return parts.join('\n');
@@ -366,10 +367,19 @@ function formatConflict(c: Conflict, index: number): string {
 }
 
 function formatRecomputation(r: Recomputation, index: number): string {
+  if (r.state && r.state !== 'comparable') {
+    const reason = r.state === 'comparison_unavailable' ? `comparison unavailable${r.missing?.length ? `; missing ${r.missing.join(', ')}` : ''}`
+      : r.state === 'conflicting' ? `conflicting ${r.conflictKind ?? 'source'} values${r.observationIds?.length ? `; observations ${r.observationIds.join(', ')}` : ''}`
+        : `incompatible ${r.mismatches?.join(', ') || 'scope or units'}`;
+    return `${index + 1}. ? **${r.metric}** — ${reason}`;
+  }
+  const computed = r.value ?? r.computed;
+  if (computed === undefined) return `${index + 1}. ? **${r.metric}** — comparison unavailable; computed value absent`;
   const mark = r.withinTolerance ? '✓' : '✗';
+  const stated = r.reported ?? r.stated;
   const parts: string[] = [];
   parts.push(
-    `${index + 1}. ${mark} **${r.metric}** — computed ${r.computed} ${r.unit}${r.stated !== undefined ? `, stated ${r.stated}` : ', not stated in the document'}`,
+    `${index + 1}. ${mark} **${r.metric}** — computed ${computed} ${r.unit}${stated !== undefined ? `, stated ${stated}` : ', not stated in the document'}`,
   );
   r.inputs.forEach((input) => {
     parts.push(`   - ${input.key} = ${input.value} from ${provenanceLabel(input.provenance)}`);

@@ -54,7 +54,7 @@ export function createMcpServer(
 ): Server {
   const tools = filterToolsByProfile(ALL_TOOLS, profile).map((tool) =>
     remote && tool.name === 'upload_file'
-      ? { ...tool, description: 'Upload caller-provided base64 file content (up to 20 MB). A server file path is not accepted by the hosted connector.',
+      ? { ...tool, description: 'Upload caller-provided base64 file content (up to 20 MB). A server file path is not accepted by the hosted connector. A Claude chat attachment is not automatically sent as file_base64; provide raw bytes through the client or upload in Webcite and use its asset_id.',
           inputSchema: { type: 'object' as const, properties: {
             filename: { type: 'string', minLength: 1, maxLength: 255 },
             file_base64: { type: 'string', description: 'Base64-encoded file bytes, maximum 20 MB decoded.' },
@@ -147,7 +147,7 @@ export function createMcpServer(
           code: 'api_error',
           message,
           actionable:
-            'Inspect the error text; retry chargeable calls with the same Idempotency-Key.',
+            'Inspect the error and any saved operation before repeating a chargeable call. If retrying a JSON verification, reuse its original Idempotency-Key and identical inputs.',
         },
         isError: true,
       };

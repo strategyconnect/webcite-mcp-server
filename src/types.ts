@@ -285,9 +285,17 @@ export interface Conflict {
 export interface Recomputation {
   metric: string;
   stated?: number;
-  computed: number;
+  computed?: number;
   unit: FigureUnit;
-  withinTolerance: boolean;
+  withinTolerance?: boolean;
+  state?: 'comparable' | 'comparison_unavailable' | 'conflicting' | 'incompatible';
+  outcome?: 'matched' | 'mismatch';
+  value?: string;
+  reported?: string;
+  missing?: string[];
+  conflictKind?: 'input' | 'reported' | 'identity';
+  observationIds?: string[];
+  mismatches?: string[];
   inputs: Array<{ key: string; value: number; provenance: FigureProvenance }>;
 }
 
