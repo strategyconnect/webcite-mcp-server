@@ -72,6 +72,7 @@ test('full slide audits and image numerics route to supported tools', () => {
   assert.match(description('review_document'), /check every figure on this slide/i);
   assert.match(description('analyze_document'), /JPEG\/PNG image slides are unsupported/);
   assert.match(description('verify_claim'), /one specific claim/);
+  assert.match(description('extract_document'), /full markdown and per-page units remain in structuredContent/);
   const numericGuide = require('../dist/guide.js').renderWebciteGuide({ workflow: 'numeric' });
   assert.match(numericGuide, /zero metrics does not mean/);
   assert.match(numericGuide, /JPEG\/PNG.*review_document/);

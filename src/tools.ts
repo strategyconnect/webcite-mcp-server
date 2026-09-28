@@ -495,7 +495,7 @@ Credits: 1`,
 
 Handles PDF, spreadsheets, docx, pptx, html and txt. Deterministic-first; scanned PDFs fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.
 
-Long documents are truncated in the tool output; use get_source_preview or extract_pages to inspect every omitted page before claiming full coverage.
+Only the text display is truncated. The full markdown and per-page units remain in structuredContent; inspect those first. Use extract_pages or get_source_preview only when the needed content is absent or a cited passage needs checking.
 
 Credits: 1`,
     inputSchema: {
