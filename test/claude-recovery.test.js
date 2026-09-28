@@ -112,6 +112,7 @@ test('document review guide tells Claude to resume with saved work and no count 
   assert.match(guide, /review_document.*exact resume_input/);
   assert.match(guide, /chat attachment is not automatically available/);
   assert.match(guide, /found with `search_sources` in source_urls/);
+  assert.match(guide, /Repeating `extract_document` or `extract_figures` incurs the stated per-call credits/);
 });
 
 test('paginated citation history remains available as structured recovery data', async () => {

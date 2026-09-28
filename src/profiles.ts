@@ -111,6 +111,7 @@ export function profileExclusionMessage(
 export const SERVER_INSTRUCTIONS = `Webcite verifies claims and binds quotes to sources. Free plan: 100 credits/month.
 
 When a user asks to audit an entire uploaded document or every figure on a slide, use review_document after extract_document. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review has no pending claims and all readable material was inspected.
+Keep returned extraction structuredContent and reuse it in the conversation; repeated extract calls incur the stated per-call credits.
 
 START: call webcite_guide with workflow=quick_verify (or document_quote / document_review / numeric).
 
