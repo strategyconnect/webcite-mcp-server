@@ -37,10 +37,10 @@ export function renderWebciteGuide(input: {
     '',
     'Free plan: **100 credits/month**. This tool costs **0 credits**.',
     'Hosted MCP exposes supported public API tools. Local default is `core`; set `WEBCITE_MCP_PROFILE=public|docs|research|full` to change local discovery.',
-    question ? `Your question: ${question}` : '',
+    ...(question ? [`Your question: ${question}`] : []),
+    '',
     '',
   ]
-    .filter(Boolean)
     .join('\n');
 
   if (workflow === 'quick_verify') {
@@ -86,12 +86,12 @@ export function renderWebciteGuide(input: {
       header +
       [
         '## Workflow: document_review',
-        '1. `upload_file`, then `extract_document` with its asset_id. Check read status and the number of pages/sheets. If text is truncated or units are missing, read those pages with `get_source_preview` or `extract_pages` before claiming full coverage.',
-        '2. Build a checklist from every material figure, period, comparison, and stated relationship in the extracted text. Keep its page/sheet for each item. `extract_figures` can add recognized financial metrics, but zero results does not mean there are no numbers.',
-        '3. Call `verify_claim` for each independently checkable checklist item. Reuse a thread_id and use distinct idempotency keys. Supply an authoritative source URL or filters when the user requires them. A source must address the same metric, period, unit, and geography.',
-        '4. Use `get_source_preview` to inspect cited passages. `verify_batch` checks whether quotes appear in sources; it does not fact-check the underlying claims.',
-        '5. Report checklist count, checked count, supported/contradicted/unverified counts, missing pages, and any items not checked. Continue in batches until every item is accounted for. Never label a partial read a full review.',
-        'Credits: extraction costs 1; each full claim verification usually costs 4. Check usage before a large batch.',
+        '1. Call `get_credit_balance` (0 credits), then `upload_file` and `extract_document`. Save the asset_id. Check read status and lost units. The text display may stop at 8,000 characters; use the full structuredContent units and `extract_pages` or `get_source_preview` for omitted pages. Never call a partial read complete.',
+        '2. Call `review_document` with a clear prompt, asset_ids and a stable thread_id. Save its review_id. There is no fixed claim count. The server charges per claim, saves each completed result and stops when credits run out.',
+        '3. Compare the extracted claim list against every material figure, period, comparison and relationship in all readable pages/sheets. `extract_figures` can add recognized financial metrics, but zero results does not mean there are no numbers. Check omitted claims individually with `verify_claim` using distinct stable idempotency keys. Pass a user-supplied official PDF as source_urls when publicly fetchable, and report a read failure instead of substituting secondary sources. Evidence must address the same metric, period, unit and geography.',
+        '4. Call `get_document_review` with review_id to recover completed and pending claims at zero credits. Follow next_offset until all pages are read. Inspect important citations with `get_source_preview`; `verify_batch` checks quote binding, not claim truth.',
+        '5. If credits run out or a call fails, give the user the completed results, unchecked claims and missing pages now. Include review_id, thread_id, total, completed and pending counts, and required/remaining credits when known. After credits are available, call `review_document` with the same prompt, asset_ids and thread_id. Completed claims replay without a new charge. Do not repeat separate `verify_claim` calls that already completed.',
+        'Credits: extraction costs 1; document review charges per claim. Balance and saved-review readback cost 0.',
       ].join('\n')
     );
   }

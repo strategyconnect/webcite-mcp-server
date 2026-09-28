@@ -8,6 +8,7 @@ export type McpProfile = 'core' | 'docs' | 'research' | 'public' | 'full';
 /** Ordered core tools (guide first). Keep ≤12. */
 export const CORE_TOOL_ORDER = [
   'webcite_guide',
+  'get_credit_balance',
   'verify_claim',
   'search_sources',
   'get_source_preview',
@@ -40,6 +41,8 @@ const RESEARCH_EXTRA = [
 /** Public API tools only; advanced context and evaluation controls stay opt-in. */
 const PUBLIC_TOOLS = [
   ...CORE_TOOL_ORDER,
+  'get_document_review',
+  'review_document',
   'verify_claim_stream', 'verify_feedback', 'analyze_document',
   'classify_document', 'document_gaps', 'accuracy_report',
   'ask_document', 'get_ask_result', 'extract_pages',
@@ -113,7 +116,7 @@ Workflows:
 1) Plain fact → verify_claim({ claim })
 2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch
 3) Figures / conflicts → extract_figures → analyze_conflicts
-4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); inventory every material claim from extract_document, then verify_claim per claim. extract_figures only recognizes known metrics.
+4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); get_credit_balance, upload/extract, review_document with stable thread_id, then get_document_review for free saved progress. No fixed claim count. Preserve completed results and unchecked items on errors or credit exhaustion. extract_figures only recognizes known metrics.
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
 Never invent citation URLs. Prefer get_source_preview to show evidence.

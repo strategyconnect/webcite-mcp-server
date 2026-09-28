@@ -1610,6 +1610,7 @@ export type ToolFailureCode =
   | 'not_found'
   | 'integrity_error'
   | 'unauthorized'
+  | 'credit_exhausted'
   | 'partial_result';
 
 export interface ToolFailurePayload {
