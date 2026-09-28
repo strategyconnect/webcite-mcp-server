@@ -405,6 +405,7 @@ export interface FiguresResponse {
   state?: 'complete' | 'partial' | 'error';
   reason?: string | null;
   code?: string | null;
+  coverage?: { status: 'partial'; reason: string };
 }
 
 /* ---------------------------------------------------------- context graph (v2) */
