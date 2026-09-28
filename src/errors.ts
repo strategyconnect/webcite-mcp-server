@@ -43,13 +43,13 @@ export class ApiClientError extends Error {
   }
 
   toToolFailure(): ToolFailure {
-    if ((this.status === 400 || this.status === 402 || this.status === 429) && /insufficient credits|credit.balance.exhausted|credit limit exceeded/i.test(this.body)) {
-      const required = /Required:\s*(\d+)/i.exec(this.body)?.[1];
-      const remaining = /Available:\s*(\d+)/i.exec(this.body)?.[1];
+    if ((this.status === 400 || this.status === 402 || this.status === 429) && /insufficient credits|credit.balance.exhausted|credit limit exceeded|INSUFFICIENT_CREDITS/i.test(this.body)) {
+      const required = /Required:\s*(\d+)|"credits_required"\s*:\s*(\d+)/i.exec(this.body);
+      const remaining = /Available:\s*(\d+)|"credits_remaining"\s*:\s*(\d+)/i.exec(this.body);
       return new ToolFailure('credit_exhausted', 'Webcite credits are exhausted for this request.', {
         details: { status: this.status, body: this.body,
-          ...(required ? { required: Number(required) } : {}),
-          ...(remaining ? { remaining: Number(remaining) } : {}) },
+          ...(required ? { required: Number(required[1] ?? required[2]) } : {}),
+          ...(remaining ? { remaining: Number(remaining[1] ?? remaining[2]) } : {}) },
         actionable: 'Stop chargeable calls. Give the user all completed results and the unchecked items. An account owner can add credits or enable overage if their plan allows it; resume only the unchecked work with the same idempotency keys for any uncertain retries.',
       });
     }
@@ -86,7 +86,7 @@ export class ApiClientError extends Error {
     }
     return new ToolFailure('api_error', this.message, {
       details: { status: this.status, body: this.body },
-      actionable: 'Retry with the same Idempotency-Key if the call was chargeable; inspect the API body.',
+      actionable: 'Inspect the API body and any saved operation before repeating a chargeable call. For a JSON verification retry, reuse the original Idempotency-Key and identical inputs.',
     });
   }
 }

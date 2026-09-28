@@ -153,6 +153,12 @@ function ok(text: string, structuredContent?: Record<string, unknown>): ToolSucc
   return structuredContent ? { text, structuredContent } : { text };
 }
 
+function requireApiShape(valid: boolean, tool: string): void {
+  if (!valid) throw new ToolFailure('invalid_api_output', `${tool} response is incomplete`, {
+    actionable: 'Do not infer missing data from this response or repeat a chargeable call. Inspect the saved result and API response.',
+  });
+}
+
 function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions, transportError?: string): ToolSuccess {
   let reviewId: string | undefined;
   let claims: Array<Record<string, unknown>> | undefined;
@@ -1355,8 +1361,8 @@ function assetRef(args: Args): AssetRefOptions {
 function verifyOptions(args: Args): VerifyClaimOptions {
   const sourceUrls = args?.source_urls;
   if (sourceUrls !== undefined &&
-      (!Array.isArray(sourceUrls) || sourceUrls.length > 5 || sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://'))))
-    throw new ToolFailure('invalid_argument', 'source_urls must contain up to five public HTTPS URLs');
+      (!Array.isArray(sourceUrls) || sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://'))))
+    throw new ToolFailure('invalid_argument', 'source_urls must contain public HTTPS URLs');
   return {
     claim: requireString(args, 'claim'),
     source_urls: sourceUrls as string[] | undefined,
@@ -1509,8 +1515,8 @@ export const handlers: Record<string, ToolHandler> = {
   verify_claim_stream: async (args, client) => {
     const options = verifyOptions(args);
     try {
-      const { result } = await collectStreamEvents(client.verifyClaimStream(options));
-      return ok(formatVerifyResult(options.claim, result), { ...result });
+      const { result, events } = await collectStreamEvents(client.verifyClaimStream(options));
+      return ok(formatVerifyResult(options.claim, result), { ...result, stream_events: events });
     } catch (error) {
       if (error instanceof ApiClientError) throw error.toToolFailure();
       throw error;
@@ -1521,22 +1527,29 @@ export const handlers: Record<string, ToolHandler> = {
     const query = requireString(args, 'query');
     const limit = clamp(args?.limit, 10, 1, 20);
     const result = await wrapApi(client.searchSources({ query, limit, filters: args?.filters as SourceFilters | undefined }));
+    if (!Array.isArray(result?.citations) && !Array.isArray(result?.claim_groups)) {
+      throw new ToolFailure('invalid_api_output', 'Source search returned no citation list', {
+        actionable: 'Do not treat this as no sources or repeat a chargeable search. Inspect the API response.',
+      });
+    }
 
     const parts: string[] = [];
     parts.push(`# Search Results: "${query}"\n`);
 
-    const citations = result.claim_groups?.[0]?.citations || result.citations || [];
+    const groupedCitations = result.claim_groups?.flatMap((group) => group.citations ?? []) ?? [];
+    const citations = result.citations?.length ? result.citations : groupedCitations;
     if (citations.length > 0) {
       parts.push(`Found ${citations.length} sources:\n`);
       citations.slice(0, limit).forEach((citation, i) => {
         parts.push(formatCitation(citation, i));
         parts.push('');
       });
+      if (citations.length > limit) parts.push(`Showing ${limit} here; the full source list is in structuredContent.`);
     } else {
       parts.push('No sources found for this query.');
     }
 
-    return ok(parts.join('\n'));
+    return ok(parts.join('\n'), { ...result });
   },
 
   list_citations: async (args, client) => {
@@ -1549,6 +1562,8 @@ export const handlers: Record<string, ToolHandler> = {
         thread_id: args?.thread_id as string | undefined,
       }),
     );
+    requireApiShape(Array.isArray(result?.data) && Number.isInteger(result?.pagination?.page) &&
+      Number.isInteger(result?.pagination?.totalPages) && Number.isInteger(result?.pagination?.total), 'list_citations');
 
     const parts: string[] = [];
     parts.push(`# Your Verification History\n`);
@@ -1629,8 +1644,10 @@ export const handlers: Record<string, ToolHandler> = {
         quote: args?.quote as string | undefined,
       }),
     );
+    requireApiShape(typeof result?.deep_link === 'string' && typeof result?.binding?.grounded === 'boolean' &&
+      typeof result?.binding?.method === 'string', 'get_source_preview');
 
-    return ok(formatSourcePreview(result));
+    return ok(formatSourcePreview(result), { ...result });
   },
 
   verify_batch: async (args, client) => {
@@ -1661,9 +1678,11 @@ export const handlers: Record<string, ToolHandler> = {
       });
     }
 
-    await wrapApi(client.verifyFeedback(token, verdict, args?.note as string | undefined));
+    const recorded = await wrapApi(client.verifyFeedback(token, verdict, args?.note as string | undefined));
+    requireApiShape(recorded?.recorded === true, 'verify_feedback');
     return ok(
       `# Feedback Recorded\n\n**Verdict:** ${verdict}${args?.note ? `\n**Note:** ${args.note}` : ''}`,
+      { ...recorded, verdict },
     );
   },
 
@@ -1676,13 +1695,29 @@ export const handlers: Record<string, ToolHandler> = {
     }
 
     const result = await wrapApi(client.analyzeConflicts(figures));
-    return ok(`# Numeric Analysis: ${figures.length} figure(s)\n\n${formatAnalyzeResult(result)}`);
+    requireApiShape(Array.isArray(result?.conflicts) && Array.isArray(result?.recomputations) &&
+      typeof result?.review?.needs_review === 'boolean' && Array.isArray(result?.review?.reasons), 'analyze_conflicts');
+    return ok(`# Numeric Analysis: ${figures.length} figure(s)\n\n${formatAnalyzeResult(result)}`, { ...result });
   },
 
   analyze_document: async (args, client) => {
     const assetId = requireString(args, 'asset_id');
-    const result = await wrapApi(client.analyzeDocument(assetId));
-    return ok(formatDocumentAnalysis(result), { ...result });
+    try {
+      const result = await client.analyzeDocument(assetId);
+      requireApiShape(Array.isArray(result?.figures) && Array.isArray(result?.conflicts) &&
+        Array.isArray(result?.recomputations) && typeof result?.review?.needs_review === 'boolean' &&
+        Array.isArray(result?.review?.reasons), 'analyze_document');
+      return ok(formatDocumentAnalysis(result), { ...result });
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 400 && /Unsupported document type/i.test(error.body)) {
+        throw new ToolFailure('invalid_argument', 'analyze_document rejected this file format on the current backend.', {
+          details: { status: error.status, body: error.body },
+          actionable: 'If this image format is unsupported here, use extract_document to inspect its text, then review_document for a saved full review. Do not retry analyze_document on the same unsupported file.',
+        });
+      }
+      if (error instanceof ApiClientError) throw error.toToolFailure();
+      throw error;
+    }
   },
 
   classify_document: async (args, client) => {
@@ -1692,6 +1727,7 @@ export const handlers: Record<string, ToolHandler> = {
         taxonomy: args?.taxonomy as Taxonomy | undefined,
       }),
     );
+    requireApiShape(typeof result?.category === 'string' && Array.isArray(result?.covers), 'classify_document');
     return ok(formatClassify(result), { ...result });
   },
 
@@ -1706,11 +1742,14 @@ export const handlers: Record<string, ToolHandler> = {
         stage: args?.stage as 'early' | 'growth' | undefined,
       }),
     );
-    return ok(formatGaps(category, result));
+    requireApiShape(Array.isArray(result?.items), 'document_gaps');
+    return ok(formatGaps(category, result), { ...result });
   },
 
   extract_document: async (args, client) => {
     const result = await wrapApi(client.extractDocument(assetRef(args)));
+    requireApiShape(typeof result?.format === 'string' && typeof result?.markdown === 'string' &&
+      Array.isArray(result?.units), 'extract_document');
     return ok(formatExtractedDoc(result), { ...result });
   },
 
@@ -1735,7 +1774,13 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   get_ask_result: async (args, client) => {
-    const result = await wrapApi(client.getAskResult(requireString(args, 'id')));
+    const id = requireString(args, 'id');
+    if (/^[a-f0-9]{64}$/i.test(id)) {
+      throw new ToolFailure('invalid_argument', 'This is a saved document review ID, not an ask job ID.', {
+        actionable: 'Call get_document_review with review_id to recover the saved claims at zero credits.',
+      });
+    }
+    const result = await wrapApi(client.getAskResult(id));
     return ok(JSON.stringify(result), result);
   },
 
@@ -1800,12 +1845,14 @@ export const handlers: Record<string, ToolHandler> = {
 
   extract_figures: async (args, client) => {
     const result = await wrapApi(client.extractFigures(assetRef(args)));
+    requireApiShape(Array.isArray(result?.figures), 'extract_figures');
     return ok(formatFigures(result), { ...result });
   },
 
   accuracy_report: async (_args, client) => {
     const result = await wrapApi(client.accuracyReport());
-    return ok(formatAccuracyReport(result));
+    requireApiShape(typeof result?.pass === 'boolean' && result?.totals != null, 'accuracy_report');
+    return ok(formatAccuracyReport(result), { ...result });
   },
 
   get_answer: async (args, client) => {
