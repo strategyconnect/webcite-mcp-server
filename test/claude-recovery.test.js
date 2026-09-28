@@ -130,7 +130,8 @@ test('saved review pages expose completed and pending work without a total claim
     credits_required_next: 4, extraction_cursor: 2, chunk_count: 3,
     next_offset: 50, claims: [{ id: 'claim-1', claim: 'Revenue was 10', page_number: 1,
       result: 'supported', summary: 'Source agrees.', citation_id: 'citation-1',
-      top_citations: [{ url: 'https://example.test/report.pdf' }] }] };
+      top_citations: [{ url: 'https://example.test/report.pdf' }],
+      citations: [{ url: 'https://example.test/report.pdf' }, { url: 'https://example.test/second.pdf' }] }] };
   let requested;
   const result = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 50 }, {
     getDocumentReview: async (...args) => { requested = args; return snapshot; },
@@ -142,6 +143,7 @@ test('saved review pages expose completed and pending work without a total claim
   assert.match(result.text, /Next offset: 50/);
   assert.match(result.text, /Extraction chunks: 2\/3/);
   assert.match(result.text, /https:\/\/example.test\/report.pdf/);
+  assert.match(result.text, /https:\/\/example.test\/second.pdf/);
 
   let calls = 0;
   await assert.rejects(() => handlers.get_document_review({ review_id: ' review-1 ' }, {
@@ -202,6 +204,18 @@ test('document review resumes as complete only after every result and done', asy
     reviewDocumentStream: async function* () { called = true; },
   }), /distinct uploaded asset_ids/);
   assert.equal(called, false);
+
+  const incomplete = await handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+    reviewDocumentStream: async function* () {
+      yield { event: 'message', data: { type: 'document-review-progress', data: {
+        review_id: 'review-1', total_claims: 1, extraction_complete: false,
+        extraction_cursor: 1, chunk_count: 2,
+      } } };
+      for (const data of frames) yield { event: 'message', data };
+    },
+  });
+  assert.equal(incomplete.structuredContent.status, 'partial');
+  assert.match(incomplete.text, /Extraction chunks: 1\/2/);
 });
 
 test('document review stream posts the stable replay identity to the API', async () => {

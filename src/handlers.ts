@@ -177,7 +177,8 @@ function documentReviewOutput(events: SSEEvent[], threadId: string, transportErr
   const total = extractedTotal ?? (typeof progress?.total_claims === 'number' ? progress.total_claims : claims?.length ?? null);
   const completed = results.size;
   const status = failure?.code === 'INSUFFICIENT_CREDITS' ? 'credit_exhausted'
-    : failure || transportError ? 'partial' : done && reviewId && total !== null && completed === total ? 'complete' : 'partial';
+    : failure || transportError ? 'partial'
+      : done && reviewId && progress?.extraction_complete !== false && total !== null && completed === total ? 'complete' : 'partial';
   const pending = total === null ? null : Math.max(0, total - completed);
   const rows = [...results.values()].map((result) => {
     const sources = Array.isArray(result.top_citations) ? result.top_citations
@@ -196,6 +197,7 @@ function documentReviewOutput(events: SSEEvent[], threadId: string, transportErr
     typeof failure?.credits_remaining === 'number' ? `Credits remaining: ${failure.credits_remaining}.` : '',
     ...rows,
     ...unchecked,
+    reviewId ? 'Use get_document_review for the saved claim list and full citations.' : '',
     failure || transportError ? `Stopped: ${failure?.message ?? transportError}. Saved results remain available through get_document_review when a review ID is present.` : '',
   ].filter(Boolean).join('\n');
   return { text, isError: status !== 'complete', structuredContent: {
@@ -1415,8 +1417,8 @@ export const handlers: Record<string, ToolHandler> = {
     if (!wakeIdentityComplete(reviewId)) throw new ToolFailure('invalid_argument', 'review_id cannot have surrounding whitespace');
     const offset = args?.offset ?? 0;
     const limit = args?.limit ?? 50;
-    if (!Number.isInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1) {
-      throw new ToolFailure('invalid_argument', 'offset must be >= 0 and limit must be >= 1');
+    if (!Number.isInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 100) {
+      throw new ToolFailure('invalid_argument', 'offset must be >= 0 and page limit must be 1 to 100');
     }
     const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number));
     if (result.review_id !== reviewId || !Array.isArray(result.claims) ||
@@ -1431,7 +1433,8 @@ export const handlers: Record<string, ToolHandler> = {
       }
       const verdict = typeof claim.result === 'string' ? claim.result : 'unchecked';
       const page = Number.isInteger(claim.page_number) ? `, page ${claim.page_number}` : '';
-      const urls = Array.isArray(claim.top_citations) ? claim.top_citations
+      const citations = Array.isArray(claim.citations) ? claim.citations : claim.top_citations;
+      const urls = Array.isArray(citations) ? citations
         .map((source) => source && typeof source === 'object' ? (source as Record<string, unknown>).url : undefined)
         .filter((url): url is string => typeof url === 'string') : [];
       return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Sources: ${urls.join(', ')}` : ''}`;

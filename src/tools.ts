@@ -559,7 +559,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 },
       offset: { type: 'integer', minimum: 0 },
-      limit: { type: 'integer', minimum: 1 },
+      limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Claims per page, 1 to 100. Continue with next_offset until all claims are read.' },
     }, required: ['review_id'] },
   },
   {
