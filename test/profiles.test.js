@@ -9,9 +9,18 @@ const { ALL_TOOLS } = require('../dist/tools.js');
 const { runSmoke } = require('../dist/index.js');
 const { handlers } = require('../dist/handlers.js');
 
-test('invalid profile names fall back to core', () => {
-  assert.equal(resolveProfile(''), 'core');
-  assert.equal(resolveProfile('nope'), 'core');
+test('local profile defaults to all public tools', () => {
+  assert.equal(resolveProfile(''), 'public');
+  assert.equal(resolveProfile('nope'), 'public');
+  const previous = process.env.WEBCITE_MCP_PROFILE;
+  delete process.env.WEBCITE_MCP_PROFILE;
+  try { assert.equal(resolveProfile(), 'public'); }
+  finally {
+    if (previous === undefined) delete process.env.WEBCITE_MCP_PROFILE;
+    else process.env.WEBCITE_MCP_PROFILE = previous;
+  }
+  assert.equal(filterToolsByProfile(ALL_TOOLS, resolveProfile('')).length,
+    filterToolsByProfile(ALL_TOOLS, 'public').length);
 });
 
 test('core profile is short and starts with guide', () => {

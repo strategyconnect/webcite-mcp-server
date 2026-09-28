@@ -36,7 +36,7 @@ export function renderWebciteGuide(input: {
     '# Webcite guide',
     '',
     'Free plan: **100 credits/month**. This tool costs **0 credits**.',
-    'Hosted MCP exposes supported public API tools. Local default is `core`; set `WEBCITE_MCP_PROFILE=public|docs|research|full` to change local discovery.',
+    'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.',
     ...(question ? [`Your question: ${question}`] : []),
     '',
     '',

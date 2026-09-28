@@ -1,6 +1,6 @@
 /**
- * MCP tool profiles. Local default is `core`; hosted default is `public`.
- * Set WEBCITE_MCP_PROFILE=public|full|docs|research to widen.
+ * MCP tool profiles. Local and hosted default to `public`.
+ * Set WEBCITE_MCP_PROFILE=core|docs|research|full to change discovery.
  */
 
 export type McpProfile = 'core' | 'docs' | 'research' | 'public' | 'full';
@@ -55,12 +55,12 @@ export function resolveProfile(raw?: string): McpProfile {
   const source =
     raw !== undefined && raw !== null
       ? raw
-      : (process.env.WEBCITE_MCP_PROFILE ?? 'core');
+      : (process.env.WEBCITE_MCP_PROFILE ?? 'public');
   const v = String(source).trim().toLowerCase();
   if (v === 'full' || v === 'public' || v === 'docs' || v === 'research' || v === 'core') {
     return v;
   }
-  return 'core';
+  return 'public';
 }
 
 export function allowedToolNames(profile: McpProfile): Set<string> | null {
@@ -122,4 +122,4 @@ Workflows:
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
 Never invent citation URLs. Prefer get_source_preview to show evidence.
-Hosted profile is public. Local default is core; use WEBCITE_MCP_PROFILE=public|docs|research|full to widen.`;
+Local and hosted profiles default to public. Use WEBCITE_MCP_PROFILE=core|docs|research|full to change local discovery.`;
