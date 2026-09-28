@@ -48,6 +48,7 @@ test('verification evidence survives HTTP API and MCP transport', async (t) => {
         ? [{ type: 'claim_group', data: { claim: 'claim', citations: [source] } }]
         : [{ type: 'result', data: result }, ...(mode === 'missing-done' ? [] : [
           ...(mode === 'accounting-error' ? [{ type: 'accounting_error', message: 'failed' }] : []),
+          ...(mode === 'credit-exhausted' ? [{ type: 'error', code: 'INSUFFICIENT_CREDITS', message: 'Insufficient credits. Required: 4, Available: 1.' }] : []),
           { type: 'usage', operation_id: 'operation-real', usage: { credits: 2 } }, { type: 'done' },
         ])];
       // Force field and UTF-8 boundaries across network chunks, including CRLF.
@@ -135,6 +136,18 @@ test('verification evidence survives HTTP API and MCP transport', async (t) => {
     const response = await call('verify_claim_stream', { claim: 'claim' });
     assert.equal(response.isError, true);
     assert.equal(response.structuredContent.code, 'partial_result');
+    assert.ok(response.structuredContent.details.partial_events.length > 0);
+    if (failure === 'missing-done' || failure === 'accounting-error') {
+      assert.equal(response.structuredContent.details.unconfirmed_result.citation_id, 'citation-real');
+    }
+  });
+  await t.test('stream credit exhaustion preserves preceding result as unconfirmed', async () => {
+    mode = 'credit-exhausted';
+    const response = await call('verify_claim_stream', { claim: 'claim' });
+    assert.equal(response.isError, true);
+    assert.equal(response.structuredContent.code, 'credit_exhausted');
+    assert.equal(response.structuredContent.details.unconfirmed_result.citation_id, 'citation-real');
+    assert.match(response.content[0].text, /Stop chargeable calls/);
   });
   await t.test('named SSE events survive chunk boundaries', async () => {
     mode = 'named-stream';

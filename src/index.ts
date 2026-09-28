@@ -116,6 +116,7 @@ export function createMcpServer(
       const result = await handler(args, client);
       return {
         content: [{ type: 'text', text: result.text }],
+        ...(result.isError ? { isError: true } : {}),
         ...(result.structuredContent
           ? { structuredContent: result.structuredContent }
           : {}),

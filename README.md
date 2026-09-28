@@ -21,7 +21,7 @@ Saved verifications show their stored conclusion when available. Older records e
 - `verify_batch` returns `{ results: [...] }` with unchanged item records, bindings, evidence and feedback tokens.
 - `get_citation` returns the unchanged API `{ data: ... }` envelope plus normalized `citations` and, when present, `final_response` from `data.metadata.final_response` (or a verdict-bearing legacy object). Citation storage accepts a bare array or an object with `citations` or `claim_groups`, including JSON-encoded storage. It reads history without rerunning verification. Missing stored conclusions remain unavailable; malformed JSON or shapes return `invalid_api_output`.
 - Source `evidence` is an optional versioned backend receipt. Receipt details remain intact, including unknown fields added by later backend versions. Missing legacy receipts do not imply that the publisher was read. `credibility_score` and verdict `confidence` can be `null`; `credibility_basis` and `confidence_basis` identify the backend's basis. `confidence_available: false` means calibrated confidence is unknown, even when a legacy `aggregation_score` is present. Heuristic scores are not calibrated truth probabilities. Provider-generated snippets remain labeled by `snippet_source`.
-- A stream requires a full result followed by an explicit completion marker. Partial groups, disconnected streams, backend errors and accounting failures return `partial_result`. Successful usage receipts are retained as `stream_usage`. JSON `verify_claim` accepts optional `idempotency_key`, forwarded as `Idempotency-Key`. Policy 5 backends retain same-key, same-payload checkpoints for 24 hours; changed payloads return 409 and unresolved work returns 503 without repeating generation or charging. This does not promise idempotent streaming or batch retries.
+- A stream requires a full result followed by an explicit completion marker. Interrupted streams return an error with `partial_events`; a result without a completion marker is labeled `unconfirmed_result`. Credit refusals return `credit_exhausted` with required and remaining credits when the API supplies them. Successful usage receipts are retained as `stream_usage`. JSON `verify_claim` accepts optional `idempotency_key`, forwarded as `Idempotency-Key`. Policy 5 backends retain same-key, same-payload checkpoints for 24 hours; changed payloads return 409 and unresolved work returns 503 without repeating generation or charging. This does not promise idempotent streaming or batch retries.
 
 These changes do not repair or regenerate historical evidence. Backend policy and cache versions determine which evidence policy produced a result; this package preserves that metadata.
 
@@ -29,8 +29,8 @@ These changes do not repair or regenerate historical evidence. Backend policy an
 
 | Profile | Tools exposed | When to use it |
 | --- | --- | --- |
-| `core` (local default) | `webcite_guide`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Short local list for everyday verification. |
-| `public` (remote default) | Core plus `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim` | All supported public API workflows, including document questions and anchored evidence. |
+| `core` (local default) | `webcite_guide`, `get_credit_balance`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Short local list for everyday verification. |
+| `public` (remote default) | Core plus `review_document`, `get_document_review`, `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim` | All supported public API workflows, including saved document reviews and anchored evidence. |
 | `docs` | Core plus `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `verify_feedback` | Deeper document work. |
 | `research` | Docs plus `get_answer`, `query_context`, `get_evidence_packet`, `compare_assertions`, `get_change_impact`, `verify_claim_stream` | Context and research workflows where the backend enables them. |
 | `full` | All tools registered by this package | Advanced local integrations and evaluation. Backend permissions and feature flags still apply. |
@@ -47,6 +47,9 @@ The table below describes common tools across profiles. It is not the remote ser
 |------|-------------|---------|
 | `webcite_guide` | Pick the appropriate verification, document or numeric workflow | 0 |
 | `verify_claim` | Full fact verification with stance analysis and verdict | 2-4 |
+| `get_credit_balance` | Read remaining, used and total credits | 0 |
+| `get_document_review` | Read a saved review and page through completed and pending claims | 0 |
+| `review_document` | Start or resume a full review of uploaded assets; completed claims replay | Per claim |
 | `verify_claim_stream` | Streaming verification for complex/long-running claims | 2-4 |
 | `search_sources` | Quick citation search without analysis | 2 |
 | `list_citations` | List your past verifications | 1 |
@@ -60,7 +63,7 @@ The table below describes common tools across profiles. It is not the remote ser
 | `classify_document` | Category + covered types for an uploaded document | 1 |
 | `document_gaps` | "Usually also here" checklist for a category | 1 |
 | `extract_document` | Any format to normalized text + units with provenance | 1 |
-| `extract_figures` | Every number as a tagged, source-grounded figure | 2 |
+| `extract_figures` | Recognized financial metrics as tagged, source-grounded figures | 2 |
 | `accuracy_report` | The engine's measured accuracy against its gold set | 1 |
 
 Verification tools bind a quote back to its source and report **how** it matched
@@ -534,7 +537,7 @@ The "usually also here" checklist for a category: each expected document type fl
 
 Extract supported documents into normalized text with provenance: whole-doc markdown, per-page/sheet units, and sheet names for spreadsheets. PDF, spreadsheets, DOCX, PPTX, HTML and text have reader paths; coverage and recognition vary by format. Unreadable or partial content must be treated as an explicit limitation, not as an empty successful extraction.
 
-Long documents are truncated in the tool output; use `get_source_preview` for a specific page.
+The readable text preview stops at 8,000 characters. The full backend extraction, including page and sheet units and any lost-unit status, is returned in MCP `structuredContent`. Check every unit before calling a review complete. If units are unreadable, report that gap rather than treating it as no claims.
 
 **Parameters:**
 - `asset_id` or `asset_url` (one required)

@@ -60,7 +60,8 @@ test('document review guide covers every claim without treating metric extractio
   assert.match(result.text, /every material figure/);
   assert.match(result.text, /zero results does not mean there are no numbers/);
   assert.match(result.text, /verify_claim/);
-  assert.match(result.text, /every item is accounted for/);
+  assert.match(result.text, /get_document_review/);
+  assert.match(result.text, /There is no fixed claim count/);
   assert.match(SERVER_INSTRUCTIONS, /document_review/);
 });
 

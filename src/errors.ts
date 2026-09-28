@@ -43,6 +43,16 @@ export class ApiClientError extends Error {
   }
 
   toToolFailure(): ToolFailure {
+    if ((this.status === 400 || this.status === 402 || this.status === 429) && /insufficient credits|credit.balance.exhausted|credit limit exceeded/i.test(this.body)) {
+      const required = /Required:\s*(\d+)/i.exec(this.body)?.[1];
+      const remaining = /Available:\s*(\d+)/i.exec(this.body)?.[1];
+      return new ToolFailure('credit_exhausted', 'Webcite credits are exhausted for this request.', {
+        details: { status: this.status, body: this.body,
+          ...(required ? { required: Number(required) } : {}),
+          ...(remaining ? { remaining: Number(remaining) } : {}) },
+        actionable: 'Stop chargeable calls. Give the user all completed results and the unchecked items. An account owner can add credits or enable overage if their plan allows it; resume only the unchecked work with the same idempotency keys for any uncertain retries.',
+      });
+    }
     if (this.status === 404) {
       return new ToolFailure('not_found', this.message, {
         details: { status: this.status, body: this.body },
@@ -52,7 +62,7 @@ export class ApiClientError extends Error {
     if (this.status === 401 || this.status === 403) {
       return new ToolFailure('unauthorized', this.message, {
         details: { status: this.status, body: this.body },
-        actionable: 'Check WEBCITE_API_KEY and tenant permissions. Scope is never taken from MCP annotations.',
+        actionable: 'Check that the Webcite API key belongs to this environment. In Claude, choose No sign-in and set Authorization: Bearer <key> in Request headers. Scope is never taken from MCP annotations.',
       });
     }
     if (this.status === 503 && /integrity/i.test(this.body)) {

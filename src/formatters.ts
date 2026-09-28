@@ -483,6 +483,9 @@ export function formatExtractedDoc(doc: ExtractedDoc): string {
   if (doc.sheets?.length) {
     parts.push(`**Sheets:** ${doc.sheets.map((s) => s.name).join(', ')}`);
   }
+  if (doc.markdown?.length > MAX_TEXT_CHARS) {
+    parts.push(`**Display limit:** Showing the first ${MAX_TEXT_CHARS} of ${doc.markdown.length} characters here. The full extraction, including page/sheet units, is in structuredContent. This display is not a complete review.`);
+  }
   parts.push(`\n---\n`);
   parts.push(doc.markdown ? truncate(doc.markdown) : 'No readable text was returned. Do not treat this as a complete review.');
   return parts.join('\n');

@@ -8,6 +8,11 @@ test('public MCP tools forward validated inputs to the matching API routes', asy
   const originalFetch = global.fetch;
   global.fetch = async (url, options) => {
     calls.push({ url, method: options.method, body: options.body && JSON.parse(options.body) });
+    if (String(url).includes('/document-reviews/')) return { ok: true, json: async () => ({
+      review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check', asset_ids: ['asset-1'],
+      status: 'running', total_claims: 0,
+      completed_claims: 0, pending_claims: 0, claims: [],
+    }) };
     return { ok: true, json: async () => ({ status: 'queued', id: 'job-1' }) };
   };
   try {
@@ -18,6 +23,7 @@ test('public MCP tools forward validated inputs to the matching API routes', asy
     await handlers.get_latest_representation({source_version_id:'version-1'}, client);
     await handlers.read_source_unit({source_version_id:'version-1',representation_id:'rep-1',source_unit_id:'unit-1'}, client);
     await handlers.extract_pages({ asset_id: 'asset-1' }, client);
+    await handlers.get_document_review({ review_id: 'review-1', offset: 2, limit: 5 }, client);
     await handlers.prepare_ocr_rescue({ source_version_id: 'version-1', representation_id: 'rep-1' }, client);
     await handlers.verify_numeric_claim({ claim: 'Revenue was 10', operands: [{
       source_version_id: 'version-1', representation_id: 'rep-1', source_unit_id: 'unit-1', figure_index: 0,
@@ -28,11 +34,13 @@ test('public MCP tools forward validated inputs to the matching API routes', asy
       ['GET', '/api/v2/sources/version-1/representations/latest'],
       ['GET', '/api/v2/sources/version-1/representations/rep-1/units/unit-1'],
       ['POST', '/api/v1/extract/pages'],
+      ['GET', '/api/v1/playground/chat/document-reviews/review-1'],
       ['POST', '/api/v2/sources/version-1/representations/rep-1/prepare-ocr-rescue'],
       ['POST', '/api/v2/verify/numeric'],
     ]);
     assert.deepEqual(calls[5].body, { asset_id: 'asset-1' });
-    assert.deepEqual(calls[7].body.operands[0], {
+    assert.equal(new URL(calls[6].url).search, '?offset=2&limit=5');
+    assert.deepEqual(calls[8].body.operands[0], {
       source_version_id: 'version-1', representation_id: 'rep-1', source_unit_id: 'unit-1', figure_index: 0,
     });
   } finally {

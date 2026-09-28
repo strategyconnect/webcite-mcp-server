@@ -58,7 +58,7 @@ Credits: 2-4 depending on options (search: 2, +stance: 1, +verdict: 1)`,
           type: 'string',
           description: 'The factual claim to verify (e.g., "The Eiffel Tower is 330 meters tall")',
         },
-        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs to read directly.' },
+        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs, including readable PDFs, to read directly. Pass a user-provided official report here rather than relying on search.' },
         filters: sourceFiltersInput,
         thread_id: {
           type: 'string',
@@ -104,7 +104,7 @@ Returns the same formatted output as verify_claim. Credits: same as verify_claim
           type: 'string',
           description: 'The factual claim to verify',
         },
-        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs to read directly.' },
+        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs, including readable PDFs, to read directly. Pass a user-provided official report here rather than relying on search.' },
         filters: sourceFiltersInput,
         thread_id: {
           type: 'string',
@@ -549,6 +549,33 @@ const claimScopeProperties = {
 /** Stable public API workflows missing from the original v1 tool catalog. */
 export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   {
+    name: 'get_credit_balance',
+    description: 'Read the authenticated account credit balance before a document review or after a credit refusal. Costs 0 credits. Returns remaining, used and total credits; no billing change is made.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_document_review',
+    description: 'Read a saved document review by review_id without new analysis or credits. Returns completed claim results and pending claims. Use offset and limit to page through all claims; there is no total claim cap. The API key must own the review.',
+    inputSchema: { type: 'object', properties: {
+      review_id: { type: 'string', minLength: 1 },
+      offset: { type: 'integer', minimum: 0 },
+      limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Claims per page, 1 to 100. Continue with next_offset until all claims are read.' },
+    }, required: ['review_id'] },
+  },
+  {
+    name: 'review_document',
+    description: 'Start or resume a durable full document fact-check using uploaded asset IDs. Reuse the exact resume_input, including prompt, asset_ids, thread_id, source URLs, filters and billing flags, to replay completed claims without charging again. There is no fixed claim count; charges are per claim and stop when credits run out. Returns completed results, pending count and review_id even when interrupted. Then call get_document_review at zero credits to restore saved work.',
+    inputSchema: { type: 'object', properties: {
+      prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
+      asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
+      thread_id: { type: 'string', minLength: 1, description: 'Stable ID for this review. Reuse the same value and exact inputs to resume.' },
+      source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, description: 'Official HTTPS reports, including PDFs, that each claim must be checked against.' },
+      filters: sourceFiltersInput,
+      include_stance: { type: 'boolean', default: true, description: 'Analyze source stance; adds 1 credit per claim.' },
+      include_verdict: { type: 'boolean', default: true, description: 'Generate a verdict; adds 1 credit per claim.' },
+    }, required: ['prompt', 'asset_ids', 'thread_id'] },
+  },
+  {
     name: 'register_source',
     description: 'Register original text or CSV bytes for an uploaded, owned asset. Returns a retained sourceVersionId for source representation and numeric verification.',
     inputSchema: { type: 'object', properties: {
@@ -625,6 +652,9 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
 ];
 
 export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
+  'GET /api/v1/payment/credits/balance': 'get_credit_balance',
+  'GET /api/v1/playground/chat/document-reviews/:reviewId': 'get_document_review',
+  'POST /api/v1/playground/chat/stream': 'review_document',
   'POST /api/v2/sources': 'register_source',
   'GET /api/v2/sources/:versionId/representations/:representationId/units/:unitId': 'read_source_unit',
   'POST /api/v2/sources/:versionId/representations/text': 'publish_text_representation',

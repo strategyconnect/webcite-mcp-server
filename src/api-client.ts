@@ -122,6 +122,7 @@ import type {
   SourcePreviewOptions,
   SourcePreviewResponse,
   SSEEvent,
+  ReviewDocumentOptions,
   UploadResponse,
   VerifyClaimOptions,
   VerifyClaimResponse,
@@ -188,8 +189,28 @@ export class WebCiteApiClient {
     }, {idempotencyKey: options.idempotency_key});
   }
 
+  async getCreditBalance(): Promise<Record<string, unknown>> {
+    return this.request('/api/v1/payment/credits/balance', { method: 'GET' });
+  }
+
+  async getDocumentReview(reviewId: string, offset?: number, limit?: number): Promise<Record<string, unknown>> {
+    const query = new URLSearchParams();
+    if (offset !== undefined) query.set('offset', String(offset));
+    if (limit !== undefined) query.set('limit', String(limit));
+    const suffix = query.size ? `?${query}` : '';
+    return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}${suffix}`, { method: 'GET' });
+  }
+
   async *verifyClaimStream(options: VerifyClaimOptions): AsyncGenerator<SSEEvent> {
-    const url = `${this.baseUrl}/api/v1/verify/stream`;
+    yield* this.streamRequest('/api/v1/verify/stream', this.verifyBody(options));
+  }
+
+  async *reviewDocumentStream(options: ReviewDocumentOptions): AsyncGenerator<SSEEvent> {
+    yield* this.streamRequest('/api/v1/playground/chat/stream', JSON.stringify(options));
+  }
+
+  private async *streamRequest(endpoint: string, body: string): AsyncGenerator<SSEEvent> {
+    const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -197,7 +218,7 @@ export class WebCiteApiClient {
         'x-api-key': this.apiKey,
         Accept: 'text/event-stream',
       },
-      body: this.verifyBody(options),
+      body,
     });
 
     if (!response.ok) {
