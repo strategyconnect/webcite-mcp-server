@@ -59,6 +59,7 @@ import type {
   CertifyRetrieveFlagResponse,
   ExtractedDoc,
   ExtractedFigure,
+  FiguresResponse,
   FigureProvenance,
   GapsResponse,
   Recomputation,
@@ -427,11 +428,14 @@ export function formatDocumentAnalysis(result: DocumentAnalysisResponse): string
   return parts.join('\n');
 }
 
-export function formatFigures(figures: ExtractedFigure[]): string {
+export function formatFigures(result: FiguresResponse): string {
+  const figures = result.figures ?? [];
   const parts: string[] = [];
   parts.push(`# Extracted Figures (${figures.length})\n`);
+  if (result.state) parts.push(`**Read status:** ${result.state}`);
+  if (result.reason) parts.push(`**Read issue:** ${result.reason}`);
   if (!figures.length) {
-    parts.push('No known metrics found in this document.');
+    parts.push('No recognized metrics were extracted. This does not mean the document has no numbers. Use extract_document and inspect every page for a full numerical review.');
     return parts.join('\n');
   }
   const modelReads = figures.filter((f) => f.provenance?.method === 'model').length;
@@ -473,11 +477,14 @@ export function formatExtractedDoc(doc: ExtractedDoc): string {
   parts.push(`# Extracted Document\n`);
   parts.push(`**Format:** ${doc.format}`);
   parts.push(`**Units:** ${doc.units?.length ?? 0} page(s)/sheet(s)`);
+  if (doc.state) parts.push(`**Read status:** ${doc.state}`);
+  if (doc.reason) parts.push(`**Read issue:** ${doc.reason}`);
+  if (doc.lost?.length) parts.push(`**Unreturned units:** ${doc.lost.map((unit) => `${unit.kind} ${unit.index}`).join(', ')}`);
   if (doc.sheets?.length) {
     parts.push(`**Sheets:** ${doc.sheets.map((s) => s.name).join(', ')}`);
   }
   parts.push(`\n---\n`);
-  parts.push(truncate(doc.markdown ?? ''));
+  parts.push(doc.markdown ? truncate(doc.markdown) : 'No readable text was returned. Do not treat this as a complete review.');
   return parts.join('\n');
 }
 

@@ -5,6 +5,7 @@
 export type GuideWorkflow =
   | 'quick_verify'
   | 'document_quote'
+  | 'document_review'
   | 'numeric'
   | 'choose';
 
@@ -12,6 +13,7 @@ export function resolveGuideWorkflow(raw: unknown): GuideWorkflow {
   if (
     raw === 'quick_verify' ||
     raw === 'document_quote' ||
+    raw === 'document_review' ||
     raw === 'numeric' ||
     raw === 'choose'
   ) {
@@ -79,6 +81,21 @@ export function renderWebciteGuide(input: {
     );
   }
 
+  if (workflow === 'document_review') {
+    return (
+      header +
+      [
+        '## Workflow: document_review',
+        '1. `upload_file`, then `extract_document` with its asset_id. Check read status and the number of pages/sheets. If text is truncated or units are missing, read those pages with `get_source_preview` or `extract_pages` before claiming full coverage.',
+        '2. Build a checklist from every material figure, period, comparison, and stated relationship in the extracted text. Keep its page/sheet for each item. `extract_figures` can add recognized financial metrics, but zero results does not mean there are no numbers.',
+        '3. Call `verify_claim` for each independently checkable checklist item. Reuse a thread_id and use distinct idempotency keys. Supply an authoritative source URL or filters when the user requires them. A source must address the same metric, period, unit, and geography.',
+        '4. Use `get_source_preview` to inspect cited passages. `verify_batch` checks whether quotes appear in sources; it does not fact-check the underlying claims.',
+        '5. Report checklist count, checked count, supported/contradicted/unverified counts, missing pages, and any items not checked. Continue in batches until every item is accounted for. Never label a partial read a full review.',
+        'Credits: extraction costs 1; each full claim verification usually costs 4. Check usage before a large batch.',
+      ].join('\n')
+    );
+  }
+
   if (workflow === 'numeric') {
     return (
       header +
@@ -105,9 +122,10 @@ export function renderWebciteGuide(input: {
       '## Choose a workflow',
       '- `quick_verify` — fact-check a sentence (most common cold start)',
       '- `document_quote` — bind a quote inside an uploaded document',
+      '- `document_review` — check every material claim in an uploaded document',
       '- `numeric` — figures and conflict analysis',
       '',
-      'Re-call `webcite_guide` with `{ "workflow": "quick_verify" }` (or document_quote / numeric).',
+      'Re-call `webcite_guide` with `{ "workflow": "quick_verify" }` (or document_quote / document_review / numeric).',
     ].join('\n')
   );
 }
@@ -120,7 +138,7 @@ export const WEBCITE_GUIDE_TOOL = {
     properties: {
       workflow: {
         type: 'string',
-        enum: ['quick_verify', 'document_quote', 'numeric', 'choose'],
+        enum: ['quick_verify', 'document_quote', 'document_review', 'numeric', 'choose'],
         description: 'Which workflow to explain. Default choose lists options.',
       },
       question: {
