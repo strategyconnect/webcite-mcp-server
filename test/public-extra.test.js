@@ -9,7 +9,8 @@ test('public MCP tools forward validated inputs to the matching API routes', asy
   global.fetch = async (url, options) => {
     calls.push({ url, method: options.method, body: options.body && JSON.parse(options.body) });
     if (String(url).includes('/document-reviews/')) return { ok: true, json: async () => ({
-      review_id: 'review-1', status: 'running', total_claims: 0,
+      review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check', asset_ids: ['asset-1'],
+      status: 'running', total_claims: 0,
       completed_claims: 0, pending_claims: 0, claims: [],
     }) };
     return { ok: true, json: async () => ({ status: 'queued', id: 'job-1' }) };

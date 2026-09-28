@@ -86,6 +86,7 @@ import type {
   VerifyClaimOptions,
   SourceFilters,
   SSEEvent,
+  ReviewDocumentOptions,
 } from './types.js';
 import {
   validateChangeImpact,
@@ -152,7 +153,7 @@ function ok(text: string, structuredContent?: Record<string, unknown>): ToolSucc
   return structuredContent ? { text, structuredContent } : { text };
 }
 
-function documentReviewOutput(events: SSEEvent[], threadId: string, transportError?: string): ToolSuccess {
+function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions, transportError?: string): ToolSuccess {
   let reviewId: string | undefined;
   let claims: Array<Record<string, unknown>> | undefined;
   let extractedTotal: number | undefined;
@@ -198,10 +199,12 @@ function documentReviewOutput(events: SSEEvent[], threadId: string, transportErr
     ...rows,
     ...unchecked,
     reviewId ? 'Use get_document_review for the saved claim list and full citations.' : '',
+    status !== 'complete' ? `Resume input: ${JSON.stringify(options)}` : '',
     failure || transportError ? `Stopped: ${failure?.message ?? transportError}. Saved results remain available through get_document_review when a review ID is present.` : '',
   ].filter(Boolean).join('\n');
   return { text, isError: status !== 'complete', structuredContent: {
-    review_id: reviewId ?? null, thread_id: threadId, status, total_claims: total,
+    review_id: reviewId ?? null, thread_id: options.thread_id, resume_input: options,
+    status, total_claims: total,
     completed_claims: completed, pending_claims: pending, claims: claims ?? null,
     results: [...results.values()], error: failure ?? (transportError ? { message: transportError } : null), events,
   } };
@@ -1423,9 +1426,19 @@ export const handlers: Record<string, ToolHandler> = {
     const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number));
     if (result.review_id !== reviewId || !Array.isArray(result.claims) ||
         !Number.isInteger(result.total_claims) || !Number.isInteger(result.completed_claims) ||
-        !Number.isInteger(result.pending_claims) || typeof result.status !== 'string') {
+        !Number.isInteger(result.pending_claims) || typeof result.status !== 'string' ||
+        typeof result.prompt !== 'string' || typeof result.thread_id !== 'string' ||
+        !Array.isArray(result.asset_ids)) {
       throw new ToolFailure('invalid_api_output', 'Stored document review is incomplete');
     }
+    const resumeInput: ReviewDocumentOptions = {
+      prompt: result.prompt, asset_ids: result.asset_ids as string[], thread_id: result.thread_id,
+      ...(Array.isArray(result.source_urls) ? { source_urls: result.source_urls as string[] } : {}),
+      ...(result.source_filters && typeof result.source_filters === 'object' && !Array.isArray(result.source_filters)
+        ? { filters: result.source_filters as SourceFilters } : {}),
+      ...(typeof result.use_stance_analysis === 'boolean' ? { include_stance: result.use_stance_analysis } : {}),
+      ...(typeof result.use_verdict === 'boolean' ? { include_verdict: result.use_verdict } : {}),
+    };
     const claims = result.claims as Array<Record<string, unknown>>;
     const rows = claims.map((claim, index) => {
       if (typeof claim.id !== 'string' || typeof claim.claim !== 'string') {
@@ -1444,22 +1457,35 @@ export const handlers: Record<string, ToolHandler> = {
     const needed = typeof result.credits_required_next === 'number' ? `\nCredits needed for next step: ${result.credits_required_next}` : '';
     const extraction = Number.isInteger(result.extraction_cursor) && Number.isInteger(result.chunk_count)
       ? `\nExtraction chunks: ${result.extraction_cursor}/${result.chunk_count}` : '';
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${credits}${needed}${extraction}\n${rows.join('\n')}${next}`, result);
+    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${credits}${needed}${extraction}\n${rows.join('\n')}${next}\nResume input: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
   },
 
   review_document: async (args, client) => {
     const prompt = requireString(args, 'prompt');
     const threadId = requireString(args, 'thread_id');
     const assetIds = args?.asset_ids;
+    const sourceUrls = args?.source_urls;
+    const filters = args?.filters;
     if (!wakeIdentityComplete(threadId) || !Array.isArray(assetIds) || assetIds.length === 0 ||
         assetIds.some((id) => typeof id !== 'string' || !wakeIdentityComplete(id)) ||
-        new Set(assetIds).size !== assetIds.length) {
-      throw new ToolFailure('invalid_argument', 'Pass a stable unpadded thread_id and distinct uploaded asset_ids');
+        new Set(assetIds).size !== assetIds.length ||
+        (sourceUrls !== undefined && (!Array.isArray(sourceUrls) || sourceUrls.length > 5 ||
+          sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://')))) ||
+        (filters !== undefined && (!filters || typeof filters !== 'object' || Array.isArray(filters))) ||
+        (args?.include_stance !== undefined && typeof args.include_stance !== 'boolean') ||
+        (args?.include_verdict !== undefined && typeof args.include_verdict !== 'boolean')) {
+      throw new ToolFailure('invalid_argument', 'Pass distinct asset_ids, a stable thread_id, and valid HTTPS source URLs, filters and billing flags');
     }
+    const options: ReviewDocumentOptions = { prompt, asset_ids: assetIds as string[], thread_id: threadId,
+      ...(sourceUrls !== undefined ? { source_urls: sourceUrls as string[] } : {}),
+      ...(filters !== undefined ? { filters: filters as SourceFilters } : {}),
+      include_stance: args?.include_stance !== false,
+      include_verdict: args?.include_verdict !== false,
+    };
     const events: SSEEvent[] = [];
     let transportError: string | undefined;
     try {
-      for await (const event of client.reviewDocumentStream({ prompt, asset_ids: assetIds as string[], thread_id: threadId })) {
+      for await (const event of client.reviewDocumentStream(options)) {
         events.push(event);
       }
     } catch (error) {
@@ -1467,7 +1493,7 @@ export const handlers: Record<string, ToolHandler> = {
       if (!events.length) throw error;
       transportError = error instanceof Error ? error.message : 'stream disconnected';
     }
-    return documentReviewOutput(events, threadId, transportError);
+    return documentReviewOutput(events, options, transportError);
   },
 
   verify_claim: async (args, client) => {

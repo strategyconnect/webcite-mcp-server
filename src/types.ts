@@ -30,6 +30,16 @@ export interface SourceFilters {
   domain?: string[];
 }
 
+export interface ReviewDocumentOptions {
+  prompt: string;
+  asset_ids: string[];
+  thread_id: string;
+  source_urls?: string[];
+  filters?: SourceFilters;
+  include_stance?: boolean;
+  include_verdict?: boolean;
+}
+
 export interface ListCitationsOptions {
   page?: number;
   limit?: number;

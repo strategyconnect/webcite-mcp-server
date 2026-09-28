@@ -122,6 +122,7 @@ import type {
   SourcePreviewOptions,
   SourcePreviewResponse,
   SSEEvent,
+  ReviewDocumentOptions,
   UploadResponse,
   VerifyClaimOptions,
   VerifyClaimResponse,
@@ -204,7 +205,7 @@ export class WebCiteApiClient {
     yield* this.streamRequest('/api/v1/verify/stream', this.verifyBody(options));
   }
 
-  async *reviewDocumentStream(options: { prompt: string; asset_ids: string[]; thread_id: string }): AsyncGenerator<SSEEvent> {
+  async *reviewDocumentStream(options: ReviewDocumentOptions): AsyncGenerator<SSEEvent> {
     yield* this.streamRequest('/api/v1/playground/chat/stream', JSON.stringify(options));
   }
 

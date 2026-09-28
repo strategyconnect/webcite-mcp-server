@@ -109,7 +109,7 @@ test('document review guide tells Claude to resume with saved work and no count 
   assert.match(guide, /Completed claims replay without a new charge/);
   assert.match(guide, /full structuredContent units/);
   assert.match(guide, /get_document_review.*review_id.*zero credits/);
-  assert.match(guide, /review_document.*same prompt, asset_ids and thread_id/);
+  assert.match(guide, /review_document.*exact resume_input/);
 });
 
 test('paginated citation history remains available as structured recovery data', async () => {
@@ -125,7 +125,10 @@ test('paginated citation history remains available as structured recovery data',
 });
 
 test('saved review pages expose completed and pending work without a total claim cap', async () => {
-  const snapshot = { review_id: 'review-1', thread_id: 'thread-1', status: 'credit_exhausted',
+  const snapshot = { review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check the report',
+    asset_ids: ['asset-1'], source_urls: ['https://example.test/official.pdf'],
+    source_filters: { is_primary_source: true }, use_stance_analysis: true, use_verdict: false,
+    status: 'credit_exhausted',
     total_claims: 101, completed_claims: 51, pending_claims: 50, credits_remaining: 0,
     credits_required_next: 4, extraction_cursor: 2, chunk_count: 3,
     next_offset: 50, claims: [{ id: 'claim-1', claim: 'Revenue was 10', page_number: 1,
@@ -139,11 +142,17 @@ test('saved review pages expose completed and pending work without a total claim
   assert.deepEqual(requested, ['review-1', 0, 50]);
   assert.equal(result.structuredContent.total_claims, 101);
   assert.equal(result.structuredContent.claims[0].citation_id, 'citation-1');
+  assert.deepEqual(result.structuredContent.resume_input, {
+    prompt: 'Check the report', asset_ids: ['asset-1'], thread_id: 'thread-1',
+    source_urls: ['https://example.test/official.pdf'], filters: { is_primary_source: true },
+    include_stance: true, include_verdict: false,
+  });
   assert.match(result.text, /Completed: 51\/101; pending: 50/);
   assert.match(result.text, /Next offset: 50/);
   assert.match(result.text, /Extraction chunks: 2\/3/);
   assert.match(result.text, /https:\/\/example.test\/report.pdf/);
   assert.match(result.text, /https:\/\/example.test\/second.pdf/);
+  assert.match(result.text, /Resume input: .*official.pdf/);
 
   let calls = 0;
   await assert.rejects(() => handlers.get_document_review({ review_id: ' review-1 ' }, {
@@ -178,7 +187,12 @@ test('document review returns saved progress when credits stop the stream', asyn
     assert.equal(result.structuredContent.completed_claims, 2);
     assert.equal(result.structuredContent.pending_claims, 99);
     assert.equal(result.structuredContent.results[1].result, 'contradicted');
+    assert.deepEqual(result.structuredContent.resume_input, {
+      prompt: 'Check the slide', asset_ids: ['asset-1'], thread_id: 'thread-1',
+      include_stance: true, include_verdict: true,
+    });
     assert.match(result.content[0].text, /Credits needed for next claim: 4/);
+    assert.match(result.content[0].text, /Resume input: .*thread-1/);
     assert.match(result.content[0].text, /\[unchecked\] Claim 2/);
   } finally {
     await client.close();
@@ -202,7 +216,7 @@ test('document review resumes as complete only after every result and done', asy
   let called = false;
   await assert.rejects(() => handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1', 'asset-1'], thread_id: 'thread-1' }, {
     reviewDocumentStream: async function* () { called = true; },
-  }), /distinct uploaded asset_ids/);
+  }), /distinct asset_ids/);
   assert.equal(called, false);
 
   const incomplete = await handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
@@ -231,10 +245,14 @@ test('document review stream posts the stable replay identity to the API', async
     const frames = [];
     for await (const event of client.reviewDocumentStream({
       prompt: 'Check the slide', asset_ids: ['asset-1'], thread_id: 'thread-1',
+      source_urls: ['https://example.test/official.pdf'], filters: { is_primary_source: true },
+      include_stance: true, include_verdict: true,
     })) frames.push(event.data);
     assert.equal(new URL(request.url).pathname, '/api/v1/playground/chat/stream');
     assert.deepEqual(JSON.parse(request.options.body), {
       prompt: 'Check the slide', asset_ids: ['asset-1'], thread_id: 'thread-1',
+      source_urls: ['https://example.test/official.pdf'], filters: { is_primary_source: true },
+      include_stance: true, include_verdict: true,
     });
     assert.deepEqual(frames, [{ type: 'done' }]);
   } finally { global.fetch = previous; }
