@@ -39,6 +39,8 @@ Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change a local server's too
 
 On the hosted connector, `upload_file` accepts `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`.
 
+A file attached to a Claude chat is not automatically passed to a remote MCP tool. For the hosted connector, upload the document to Webcite and use its asset ID, or use a client that explicitly supplies the file bytes to `upload_file`.
+
 ## Tool reference
 
 The table below describes common tools across profiles. It is not the remote server's default tool list.
