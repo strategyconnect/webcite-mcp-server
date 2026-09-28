@@ -65,6 +65,18 @@ test('document review guide covers every claim without treating metric extractio
   assert.match(SERVER_INSTRUCTIONS, /document_review/);
 });
 
+test('full slide audits and image numerics route to supported tools', () => {
+  const publicTools = filterToolsByProfile(ALL_TOOLS, 'public');
+  const description = (name) => publicTools.find((tool) => tool.name === name)?.description ?? '';
+  assert.match(SERVER_INSTRUCTIONS, /every figure on a slide.*review_document/i);
+  assert.match(description('review_document'), /check every figure on this slide/i);
+  assert.match(description('analyze_document'), /JPEG\/PNG image slides are unsupported/);
+  assert.match(description('verify_claim'), /one specific claim/);
+  const numericGuide = require('../dist/guide.js').renderWebciteGuide({ workflow: 'numeric' });
+  assert.match(numericGuide, /zero metrics does not mean/);
+  assert.match(numericGuide, /JPEG\/PNG.*review_document/);
+});
+
 test('runSmoke reports core defaults', () => {
   const smoke = runSmoke('core');
   assert.equal(smoke.ok, true);

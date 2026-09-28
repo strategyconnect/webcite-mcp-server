@@ -45,7 +45,7 @@ export const TOOLS: ToolDefinition[] = [
     description: `Verify a factual claim against authoritative sources. Returns sources with stance analysis (supports/contradicts/neutral) and an overall verdict.
 
 Use this when you need to:
-- Fact-check a specific claim
+- Fact-check one specific claim. For every claim in an uploaded document, use review_document instead.
 - Find sources that support or contradict a statement
 - Get a confidence score for a claim's accuracy
 
@@ -351,7 +351,7 @@ Credits: 1`,
 
 Deterministic — no model calls, so a conflict either exists or it does not. Credits: 1.
 
-Prefer analyze_document when you have a file rather than a figure list.`,
+Prefer analyze_document for a PDF or spreadsheet file. It does not accept JPEG/PNG images.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -403,7 +403,7 @@ Prefer analyze_document when you have a file rather than a figure list.`,
   },
   {
     name: 'analyze_document',
-    description: `Document-in numeric analysis. Give an uploaded asset ID; the file is downloaded, its figures extracted, then recomputed and cross-checked. Returns the figures alongside conflicts, recomputations, a review flag, and the document's category.
+    description: `PDF and spreadsheet numeric analysis only. JPEG/PNG image slides are unsupported; use extract_document and review_document for a full slide audit. Give an uploaded PDF or spreadsheet asset ID; its figures are extracted, recomputed and cross-checked. Returns figures, conflicts, recomputations, a review flag and category.
 
 - **Spreadsheets** (xlsx/xls/csv): extracted deterministically with exact cell provenance. No model calls.
 - **PDFs**: a vision model reads the printed figures (it never computes); those are model reads, capped at needs_review. Requires a configured vision model.
@@ -564,7 +564,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'review_document',
-    description: 'Start or resume a durable full document fact-check using uploaded asset IDs. Reuse the exact resume_input, including prompt, asset_ids, thread_id, source URLs, filters and billing flags, to replay completed claims without charging again. There is no fixed claim count; charges are per claim and stop when credits run out. Returns completed results, pending count and review_id even when interrupted. Then call get_document_review at zero credits to restore saved work.',
+    description: 'Use for "audit this document", "check every figure on this slide", or full due diligence of an uploaded asset. Starts or resumes a durable full document fact-check. Use after extract_document, including for JPEG/PNG slides. Reuse the exact resume_input, including prompt, asset_ids, thread_id, source URLs, filters and billing flags, to replay completed claims without charging again. There is no fixed claim count; charges are per claim and stop when credits run out. Returns completed results, pending count and review_id even when interrupted. Then call get_document_review at zero credits to restore saved work.',
     inputSchema: { type: 'object', properties: {
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
