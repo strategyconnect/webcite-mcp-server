@@ -52,6 +52,18 @@ test('webcite_guide handler is zero-API', async () => {
   assert.match(result.text, /verify_claim/);
 });
 
+test('document review guide covers every claim without treating metric extraction as complete', async () => {
+  const result = await handlers.webcite_guide(
+    { workflow: 'document_review' },
+    /** @type {any} */ ({}),
+  );
+  assert.match(result.text, /every material figure/);
+  assert.match(result.text, /zero results does not mean there are no numbers/);
+  assert.match(result.text, /verify_claim/);
+  assert.match(result.text, /every item is accounted for/);
+  assert.match(SERVER_INSTRUCTIONS, /document_review/);
+});
+
 test('runSmoke reports core defaults', () => {
   const smoke = runSmoke('core');
   assert.equal(smoke.ok, true);

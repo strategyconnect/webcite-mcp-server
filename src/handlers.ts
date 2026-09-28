@@ -1646,7 +1646,7 @@ export const handlers: Record<string, ToolHandler> = {
 
   extract_figures: async (args, client) => {
     const result = await wrapApi(client.extractFigures(assetRef(args)));
-    return ok(formatFigures(result.figures ?? []));
+    return ok(formatFigures(result));
   },
 
   accuracy_report: async (_args, client) => {

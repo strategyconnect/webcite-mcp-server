@@ -107,12 +107,13 @@ export function profileExclusionMessage(
 
 export const SERVER_INSTRUCTIONS = `Webcite verifies claims and binds quotes to sources. Free plan: 100 credits/month.
 
-START: call webcite_guide with workflow=quick_verify (or document_quote / numeric).
+START: call webcite_guide with workflow=quick_verify (or document_quote / document_review / numeric).
 
 Workflows:
 1) Plain fact → verify_claim({ claim })
 2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch
 3) Figures / conflicts → extract_figures → analyze_conflicts
+4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); inventory every material claim from extract_document, then verify_claim per claim. extract_figures only recognizes known metrics.
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
 Never invent citation URLs. Prefer get_source_preview to show evidence.

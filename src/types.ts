@@ -375,10 +375,18 @@ export interface ExtractedDoc {
   markdown: string;
   units: ExtractionUnit[];
   sheets?: Array<{ name: string }>;
+  state?: 'complete' | 'partial' | 'error';
+  reason?: string | null;
+  code?: string | null;
+  complete?: boolean;
+  lost?: Array<{ kind: string; index: number; reason?: string; code?: string }>;
 }
 
 export interface FiguresResponse {
   figures: ExtractedFigure[];
+  state?: 'complete' | 'partial' | 'error';
+  reason?: string | null;
+  code?: string | null;
 }
 
 /* ---------------------------------------------------------- context graph (v2) */

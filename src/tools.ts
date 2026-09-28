@@ -493,9 +493,9 @@ Credits: 1`,
     name: 'extract_document',
     description: `Extract any document into normalized text with provenance: whole-doc markdown, per-page/sheet units carrying their page or sheet, and (for spreadsheets) sheet names.
 
-Handles PDF, spreadsheets, docx, pptx, html and txt. Deterministic-first; scanned PDFs fall back to vision OCR. Extraction never hard-fails — an unreadable asset returns empty text.
+Handles PDF, spreadsheets, docx, pptx, html and txt. Deterministic-first; scanned PDFs fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.
 
-Long documents are truncated in the tool output; use get_source_preview for a specific page.
+Long documents are truncated in the tool output; use get_source_preview or extract_pages to inspect every omitted page before claiming full coverage.
 
 Credits: 1`,
     inputSchema: {
@@ -505,7 +505,7 @@ Credits: 1`,
   },
   {
     name: 'extract_figures',
-    description: `Extract every number from a document as a tagged, source-grounded figure: the value normalized to its canonical unit, what it means (\`metric\`), \`unit\`, optional \`entity\`/\`period\`, a confidence \`band\`, whether it was confirmed against the cited cell (\`bound\`), and full \`provenance\` (asset, sheet, cell, page).
+    description: `Extract recognized financial metrics from a document as tagged, source-grounded figures: the value normalized to its canonical unit, what it means (\`metric\`), \`unit\`, optional \`entity\`/\`period\`, a confidence \`band\`, whether it was confirmed against the cited cell (\`bound\`), and full \`provenance\` (asset, sheet, cell, page). This is not a complete inventory of every number.
 
 This is deterministic financial-model reading: header scale ("$M" / "'000"), accounting negatives, period columns (FY2023 vs FY2024) and unit declarations are all honoured, so a percentage is never mis-read as a currency.
 
