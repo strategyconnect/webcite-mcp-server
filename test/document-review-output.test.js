@@ -20,3 +20,12 @@ test('zero recognized figures does not become a no-numbers claim', () => {
   assert.match(text, /No recognized metrics/);
   assert.match(text, /does not mean the document has no numbers/);
 });
+
+test('partial image figure coverage stays visible in Claude output', () => {
+  const text = formatFigures({
+    figures: [], state: 'complete',
+    coverage: { status: 'partial', reason: 'OCR lost table columns' },
+  });
+  assert.match(text, /Numeric coverage:\*\* partial/);
+  assert.match(text, /OCR lost table columns/);
+});

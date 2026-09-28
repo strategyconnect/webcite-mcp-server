@@ -444,6 +444,7 @@ export function formatFigures(result: FiguresResponse): string {
   parts.push(`# Extracted Figures (${figures.length})\n`);
   if (result.state) parts.push(`**Read status:** ${result.state}`);
   if (result.reason) parts.push(`**Read issue:** ${result.reason}`);
+  if (result.coverage) parts.push(`**Numeric coverage:** ${result.coverage.status}. ${result.coverage.reason}`);
   if (!figures.length) {
     parts.push('No recognized metrics were extracted. This does not mean the document has no numbers. Use extract_document and inspect every page for a full numerical review.');
     return parts.join('\n');
