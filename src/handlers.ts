@@ -205,7 +205,7 @@ function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions
     status === 'credit_exhausted' ? 'Add credits or enable overage if available, then resume with the exact input below.' : '',
     ...rows,
     ...unchecked,
-    reviewId ? 'Use get_document_review for the saved claim list and full citations.' : '',
+    reviewId ? 'Use get_document_review for the saved claim list and source URLs; inspect important citations with get_source_preview.' : '',
     status !== 'complete' ? `Resume input: ${JSON.stringify(options)}` : '',
     failure || transportError ? `Stopped: ${failure?.message ?? transportError}. Saved results remain available through get_document_review when a review ID is present.` : '',
   ].filter(Boolean).join('\n');

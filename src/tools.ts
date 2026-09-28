@@ -496,7 +496,7 @@ Credits: 1`,
 
 Handles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deterministic-first; scanned PDFs and images fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.
 
-Only the text display is truncated. The full markdown and per-page units remain in structuredContent; inspect those first. Use extract_pages or get_source_preview only when the needed content is absent or a cited passage needs checking.
+Only the text display is truncated. Some Claude connectors omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.
 
 Credits: 1`,
     inputSchema: {

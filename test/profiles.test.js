@@ -81,7 +81,7 @@ test('full slide audits and image numerics route to supported tools', () => {
   assert.match(description('review_document'), /check every figure on this slide/i);
   assert.match(description('analyze_document'), /JPEG\/PNG\/WebP image/);
   assert.match(description('verify_claim'), /one specific claim/);
-  assert.match(description('extract_document'), /full markdown and per-page units remain in structuredContent/);
+  assert.match(description('extract_document'), /Claude connectors omit structuredContent.*read_source_unit/);
   for (const name of ['verify_claim', 'verify_claim_stream']) {
     assert.equal(publicTools.find((tool) => tool.name === name).inputSchema.properties.source_urls.maxItems, undefined);
   }
