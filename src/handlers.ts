@@ -1444,7 +1444,9 @@ export const handlers: Record<string, ToolHandler> = {
       if (typeof claim.id !== 'string' || typeof claim.claim !== 'string') {
         throw new ToolFailure('invalid_api_output', 'Stored document review has an invalid claim');
       }
-      const verdict = typeof claim.result === 'string' ? claim.result : 'unchecked';
+      const verdict = claim.result_state === 'result_saved'
+        ? `saved, settlement pending${typeof claim.result === 'string' ? `: ${claim.result}` : ''}`
+        : typeof claim.result === 'string' ? claim.result : 'unchecked';
       const page = Number.isInteger(claim.page_number) ? `, page ${claim.page_number}` : '';
       const citations = Array.isArray(claim.citations) ? claim.citations : claim.top_citations;
       const urls = Array.isArray(citations) ? citations

@@ -134,7 +134,9 @@ test('saved review pages expose completed and pending work without a total claim
     next_offset: 50, claims: [{ id: 'claim-1', claim: 'Revenue was 10', page_number: 1,
       result: 'supported', summary: 'Source agrees.', citation_id: 'citation-1',
       top_citations: [{ url: 'https://example.test/report.pdf' }],
-      citations: [{ url: 'https://example.test/report.pdf' }, { url: 'https://example.test/second.pdf' }] }] };
+      citations: [{ url: 'https://example.test/report.pdf' }, { url: 'https://example.test/second.pdf' }] },
+    { id: 'claim-2', claim: 'Profit grew', result: 'supported', result_state: 'result_saved',
+      citations: [{ url: 'https://example.test/third.pdf' }] }] };
   let requested;
   const result = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 50 }, {
     getDocumentReview: async (...args) => { requested = args; return snapshot; },
@@ -152,6 +154,8 @@ test('saved review pages expose completed and pending work without a total claim
   assert.match(result.text, /Extraction chunks: 2\/3/);
   assert.match(result.text, /https:\/\/example.test\/report.pdf/);
   assert.match(result.text, /https:\/\/example.test\/second.pdf/);
+  assert.match(result.text, /saved, settlement pending: supported/);
+  assert.match(result.text, /https:\/\/example.test\/third.pdf/);
   assert.match(result.text, /Resume input: .*official.pdf/);
 
   let calls = 0;
