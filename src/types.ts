@@ -7,6 +7,8 @@
 export interface VerifyClaimOptions {
   idempotency_key?: string;
   claim: string;
+  source_urls?: string[];
+  filters?: SourceFilters;
   thread_id?: string;
   include_stance?: boolean;
   include_verdict?: boolean;
@@ -17,6 +19,15 @@ export interface VerifyClaimOptions {
 export interface SearchSourcesOptions {
   query: string;
   limit?: number;
+  filters?: SourceFilters;
+}
+
+export interface SourceFilters {
+  source_type?: string[];
+  is_primary_source?: boolean;
+  official_country?: string;
+  publication_year?: { from?: number; to?: number };
+  domain?: string[];
 }
 
 export interface ListCitationsOptions {

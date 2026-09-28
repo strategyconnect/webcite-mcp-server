@@ -172,6 +172,8 @@ export class WebCiteApiClient {
   private verifyBody(options: VerifyClaimOptions): string {
     return JSON.stringify({
       claim: options.claim,
+      source_urls: options.source_urls,
+      filters: options.filters,
       thread_id: options.thread_id,
       include_stance: options.include_stance !== false,
       include_verdict: options.include_verdict !== false,
@@ -247,6 +249,7 @@ export class WebCiteApiClient {
       body: JSON.stringify({
         query: options.query,
         limit: options.limit ?? 10,
+        filters: options.filters,
       }),
     });
   }
