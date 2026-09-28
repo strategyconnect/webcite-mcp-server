@@ -6,7 +6,7 @@
  * tools for any MCP-compatible agent. v1 tools map 1:1 to public API v1; context
  * tools map to API v2. Schemas live in tools.ts, implementations in handlers.ts.
  *
- * Local default WEBCITE_MCP_PROFILE=core is short; hosted default is public.
+ * Local and hosted default to the public tool profile.
  * Set public|full|docs|research to widen local discovery.
  */
 

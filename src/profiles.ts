@@ -1,6 +1,6 @@
 /**
- * MCP tool profiles. Local default is `core`; hosted default is `public`.
- * Set WEBCITE_MCP_PROFILE=public|full|docs|research to widen.
+ * MCP tool profiles. Local and hosted default to `public`.
+ * Set WEBCITE_MCP_PROFILE=core|docs|research|full to change discovery.
  */
 
 export type McpProfile = 'core' | 'docs' | 'research' | 'public' | 'full';
@@ -55,12 +55,12 @@ export function resolveProfile(raw?: string): McpProfile {
   const source =
     raw !== undefined && raw !== null
       ? raw
-      : (process.env.WEBCITE_MCP_PROFILE ?? 'core');
+      : (process.env.WEBCITE_MCP_PROFILE ?? 'public');
   const v = String(source).trim().toLowerCase();
   if (v === 'full' || v === 'public' || v === 'docs' || v === 'research' || v === 'core') {
     return v;
   }
-  return 'core';
+  return 'public';
 }
 
 export function allowedToolNames(profile: McpProfile): Set<string> | null {
@@ -110,14 +110,16 @@ export function profileExclusionMessage(
 
 export const SERVER_INSTRUCTIONS = `Webcite verifies claims and binds quotes to sources. Free plan: 100 credits/month.
 
+When a user asks to audit an entire uploaded document or every figure on a slide, use review_document after extract_document. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review has no pending claims and all readable material was inspected.
+
 START: call webcite_guide with workflow=quick_verify (or document_quote / document_review / numeric).
 
 Workflows:
 1) Plain fact → verify_claim({ claim })
 2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch
-3) Figures / conflicts → extract_figures → analyze_conflicts
+3) Figures / conflicts → extract_document first; analyze_document accepts PDF, spreadsheet and JPEG/PNG/WebP images. Image figures are OCR/model reads and need source review. extract_figures finds recognized metrics only; zero metrics is not a full numeric audit.
 4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); get_credit_balance, upload/extract, review_document with stable thread_id, then get_document_review for free saved progress. No fixed claim count. Preserve completed results and unchecked items on errors or credit exhaustion. extract_figures only recognizes known metrics.
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
 Never invent citation URLs. Prefer get_source_preview to show evidence.
-Hosted profile is public. Local default is core; use WEBCITE_MCP_PROFILE=public|docs|research|full to widen.`;
+Local and hosted profiles default to public. Use WEBCITE_MCP_PROFILE=core|docs|research|full to change local discovery.`;

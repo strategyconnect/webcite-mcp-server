@@ -36,7 +36,7 @@ export function renderWebciteGuide(input: {
     '# Webcite guide',
     '',
     'Free plan: **100 credits/month**. This tool costs **0 credits**.',
-    'Hosted MCP exposes supported public API tools. Local default is `core`; set `WEBCITE_MCP_PROFILE=public|docs|research|full` to change local discovery.',
+    'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.',
     ...(question ? [`Your question: ${question}`] : []),
     '',
     '',
@@ -71,7 +71,7 @@ export function renderWebciteGuide(input: {
       header +
       [
         '## Workflow: document_quote',
-        '1. `upload_file` (content_base64 + filename)',
+        '1. If the file is already in Webcite, use its asset_id. Otherwise call `upload_file` with filename and file_base64. A Claude chat attachment is not automatically available to a remote MCP server; use bytes only when the client supplies them.',
         '2. `extract_document` on the uploaded asset',
         '3. `get_source_preview` with the quote and asset_id / versioned ids',
         '4. Optional: `verify_batch` for many quotes',
@@ -86,7 +86,7 @@ export function renderWebciteGuide(input: {
       header +
       [
         '## Workflow: document_review',
-        '1. Call `get_credit_balance` (0 credits), then `upload_file` and `extract_document`. Save the asset_id. Check read status and lost units. The text display may stop at 8,000 characters; use the full structuredContent units and `extract_pages` or `get_source_preview` for omitted pages. Never call a partial read complete.',
+        '1. Call `get_credit_balance` (0 credits). If the file is already in Webcite, use its asset_id; otherwise call `upload_file` only when the client supplies filename and file_base64. A Claude chat attachment is not automatically available to a remote MCP server. Then call `extract_document`. Save the asset_id. Check read status and lost units. The text display may stop at 8,000 characters; use the full structuredContent units and `extract_pages` or `get_source_preview` for omitted pages. Never call a partial read complete.',
         '2. Call `review_document` with a clear prompt, asset_ids and a stable thread_id. Pass a user-supplied official PDF in source_urls and the required source filters. Save its review_id and resume_input. There is no fixed claim count. The server charges per claim, saves each completed result and stops when credits run out.',
         '3. Compare the extracted claim list against every material figure, period, comparison and relationship in all readable pages/sheets. `extract_figures` can add recognized financial metrics, but zero results does not mean there are no numbers. Check omitted claims individually with `verify_claim` using distinct stable idempotency keys. Report an official PDF read failure instead of substituting secondary sources. Evidence must address the same metric, period, unit and geography.',
         '4. Call `get_document_review` with review_id to recover completed and pending claims at zero credits. Follow next_offset until all pages are read. Inspect important citations with `get_source_preview`; `verify_batch` checks quote binding, not claim truth.',
@@ -101,8 +101,8 @@ export function renderWebciteGuide(input: {
       header +
       [
         '## Workflow: numeric',
-        '1. `extract_figures` from the document',
-        '2. `analyze_conflicts` (or document analyze) for mismatches',
+        '1. `extract_document` to read every page and identify its file format. `extract_figures` only finds recognized metrics; zero metrics does not mean the page has no numbers.',
+        '2. Use `analyze_document` for PDF, spreadsheet or JPEG/PNG/WebP numeric analysis. Image figures are OCR/model reads and need source review. For a whole-slide external fact-check, also use `review_document`; use `analyze_conflicts` only when you have figures to compare.',
         '```json',
         JSON.stringify(
           {
