@@ -128,7 +128,7 @@ test('saved review pages expose completed and pending work without a total claim
   const snapshot = { review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check the report',
     asset_ids: ['asset-1'], source_urls: ['https://example.test/official.pdf'],
     source_filters: { is_primary_source: true }, use_stance_analysis: true, use_verdict: false,
-    status: 'credit_exhausted',
+    status: 'credits_exhausted',
     total_claims: 101, completed_claims: 51, pending_claims: 50, credits_remaining: 0,
     credits_required_next: 4, extraction_cursor: 2, chunk_count: 3,
     next_offset: 50, claims: [{ id: 'claim-1', claim: 'Revenue was 10', page_number: 1,
@@ -150,6 +150,7 @@ test('saved review pages expose completed and pending work without a total claim
     include_stance: true, include_verdict: false,
   });
   assert.match(result.text, /Completed: 51\/101; pending: 50/);
+  assert.match(result.text, /Add credits or enable overage/);
   assert.match(result.text, /Next offset: 50/);
   assert.match(result.text, /Extraction chunks: 2\/3/);
   assert.match(result.text, /https:\/\/example.test\/report.pdf/);
@@ -186,6 +187,7 @@ test('document review returns saved progress when credits stop the stream', asyn
     } });
     assert.equal(result.isError, true);
     assert.equal(result.structuredContent.status, 'credit_exhausted');
+    assert.match(result.content[0].text, /Add credits or enable overage/);
     assert.equal(result.structuredContent.review_id, 'review-1');
     assert.equal(result.structuredContent.total_claims, 101);
     assert.equal(result.structuredContent.completed_claims, 2);

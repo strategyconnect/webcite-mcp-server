@@ -196,6 +196,7 @@ function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions
       ? `Extraction chunks: ${progress?.extraction_cursor}/${progress?.chunk_count}.` : '',
     typeof failure?.credits_required === 'number' ? `Credits needed for next claim: ${failure.credits_required}.` : '',
     typeof failure?.credits_remaining === 'number' ? `Credits remaining: ${failure.credits_remaining}.` : '',
+    status === 'credit_exhausted' ? 'Add credits or enable overage if available, then resume with the exact input below.' : '',
     ...rows,
     ...unchecked,
     reviewId ? 'Use get_document_review for the saved claim list and full citations.' : '',
@@ -1457,9 +1458,10 @@ export const handlers: Record<string, ToolHandler> = {
     const next = Number.isInteger(result.next_offset) ? `\nNext offset: ${result.next_offset}` : '';
     const credits = typeof result.credits_remaining === 'number' ? `\nCredits remaining: ${result.credits_remaining}` : '';
     const needed = typeof result.credits_required_next === 'number' ? `\nCredits needed for next step: ${result.credits_required_next}` : '';
+    const creditAction = result.status === 'credits_exhausted' ? '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
     const extraction = Number.isInteger(result.extraction_cursor) && Number.isInteger(result.chunk_count)
       ? `\nExtraction chunks: ${result.extraction_cursor}/${result.chunk_count}` : '';
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${credits}${needed}${extraction}\n${rows.join('\n')}${next}\nResume input: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}\nResume input: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
   },
 
   review_document: async (args, client) => {
