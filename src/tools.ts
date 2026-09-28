@@ -27,6 +27,18 @@ const assetRefProperties = {
   },
 };
 
+const sourceFiltersInput = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    source_type: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 20 },
+    is_primary_source: { type: 'boolean' },
+    official_country: { type: 'string', pattern: '^[a-z]{2}$' },
+    publication_year: { type: 'object', additionalProperties: false, properties: { from: { type: 'integer' }, to: { type: 'integer' } } },
+    domain: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 20 },
+  },
+};
+
 export const TOOLS: ToolDefinition[] = [
   {
     name: 'verify_claim',
@@ -46,6 +58,8 @@ Credits: 2-4 depending on options (search: 2, +stance: 1, +verdict: 1)`,
           type: 'string',
           description: 'The factual claim to verify (e.g., "The Eiffel Tower is 330 meters tall")',
         },
+        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs to read directly.' },
+        filters: sourceFiltersInput,
         thread_id: {
           type: 'string',
           description:
@@ -90,6 +104,8 @@ Returns the same formatted output as verify_claim. Credits: same as verify_claim
           type: 'string',
           description: 'The factual claim to verify',
         },
+        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs to read directly.' },
+        filters: sourceFiltersInput,
         thread_id: {
           type: 'string',
           description:
@@ -131,6 +147,7 @@ Credits: 2 (search only)`,
           type: 'string',
           description: 'Search query or claim to find sources for',
         },
+        filters: sourceFiltersInput,
         limit: {
           type: 'number',
           description: 'Maximum number of sources to return (1-20)',

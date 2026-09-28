@@ -84,6 +84,7 @@ import type {
   GapDoc,
   Taxonomy,
   VerifyClaimOptions,
+  SourceFilters,
 } from './types.js';
 import {
   validateChangeImpact,
@@ -1291,8 +1292,14 @@ function assetRef(args: Args): AssetRefOptions {
 }
 
 function verifyOptions(args: Args): VerifyClaimOptions {
+  const sourceUrls = args?.source_urls;
+  if (sourceUrls !== undefined &&
+      (!Array.isArray(sourceUrls) || sourceUrls.length > 5 || sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://'))))
+    throw new ToolFailure('invalid_argument', 'source_urls must contain up to five public HTTPS URLs');
   return {
     claim: requireString(args, 'claim'),
+    source_urls: sourceUrls as string[] | undefined,
+    filters: args?.filters as SourceFilters | undefined,
     thread_id: args?.thread_id as string | undefined,
     include_stance: args?.include_stance !== false,
     include_verdict: args?.include_verdict !== false,
@@ -1359,7 +1366,7 @@ export const handlers: Record<string, ToolHandler> = {
   search_sources: async (args, client) => {
     const query = requireString(args, 'query');
     const limit = clamp(args?.limit, 10, 1, 20);
-    const result = await wrapApi(client.searchSources({ query, limit }));
+    const result = await wrapApi(client.searchSources({ query, limit, filters: args?.filters as SourceFilters | undefined }));
 
     const parts: string[] = [];
     parts.push(`# Search Results: "${query}"\n`);
