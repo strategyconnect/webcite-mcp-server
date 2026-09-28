@@ -105,7 +105,7 @@ export function formatSourcePreview(p: SourcePreviewResponse): string {
   if (p.text) {
     parts.push(`\n---\n`);
     parts.push(truncate(p.text));
-    if (p.text.length > MAX_TEXT_CHARS) parts.push(`Full preview text is in structuredContent (${p.text.length} characters).`);
+    if (p.text.length > MAX_TEXT_CHARS) parts.push(`Full preview text is in structuredContent (${p.text.length} characters) when the client exposes it. Otherwise read the saved source unit by its representation IDs; this display is incomplete.`);
   }
 
   return parts.join('\n');
@@ -495,7 +495,7 @@ export function formatExtractedDoc(doc: ExtractedDoc): string {
     parts.push(`**Sheets:** ${doc.sheets.map((s) => s.name).join(', ')}`);
   }
   if (doc.markdown?.length > MAX_TEXT_CHARS) {
-    parts.push(`**Display limit:** Showing the first ${MAX_TEXT_CHARS} of ${doc.markdown.length} characters here. The full extraction, including page/sheet units, is in structuredContent. This display is not a complete review.`);
+    parts.push(`**Display limit:** Showing the first ${MAX_TEXT_CHARS} of ${doc.markdown.length} characters here. If your client omits structuredContent, use the saved source_version_id with get_latest_representation and read_source_unit to read later units. If those IDs are unavailable, extract_pages costs 1 credit. This display is not a complete review.`);
   }
   parts.push(`\n---\n`);
   parts.push(doc.markdown ? truncate(doc.markdown) : 'No readable text was returned. Do not treat this as a complete review.');

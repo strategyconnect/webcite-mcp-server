@@ -19,7 +19,7 @@ test('document and figure extraction preserve full backend data for Claude', asy
   assert.equal(extracted.structuredContent.markdown, markdown);
   assert.equal(extracted.structuredContent.units[1].text, 'final figure 42');
   assert.deepEqual(extracted.structuredContent.lost, document.lost);
-  assert.match(extracted.text, /Display limit.*structuredContent/);
+  assert.match(extracted.text, /Display limit.*client omits structuredContent.*read_source_unit/);
   assert.match(extracted.text, /Unreturned units.*page 3/);
 
   const figures = { figures: [], state: 'partial', reason: 'OCR pending' };
@@ -110,7 +110,9 @@ test('document review guide tells Claude to resume with saved work and no count 
   assert.match(guide, /no fixed claim count/i);
   assert.match(guide, /get_credit_balance/);
   assert.match(guide, /Completed claims replay without a new charge/);
-  assert.match(guide, /full structuredContent units/);
+  assert.match(guide, /connectors show only MCP text and omit structuredContent/);
+  assert.match(guide, /get_latest_representation.*read_source_unit/);
+  assert.match(guide, /extract_pages.*costs 1 credit/);
   assert.match(guide, /get_document_review.*review_id.*zero credits/);
   assert.match(guide, /review_document.*exact resume_input/);
   assert.match(guide, /chat attachment is not automatically available/);
