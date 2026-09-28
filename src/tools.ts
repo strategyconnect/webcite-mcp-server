@@ -351,7 +351,7 @@ Credits: 1`,
 
 Deterministic — no model calls, so a conflict either exists or it does not. Credits: 1.
 
-Prefer analyze_document for a PDF or spreadsheet file. It does not accept JPEG/PNG images.`,
+Prefer analyze_document for an uploaded PDF, spreadsheet or JPEG/PNG/WebP image.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -403,18 +403,19 @@ Prefer analyze_document for a PDF or spreadsheet file. It does not accept JPEG/P
   },
   {
     name: 'analyze_document',
-    description: `PDF and spreadsheet numeric analysis only. JPEG/PNG image slides are unsupported; use extract_document and review_document for a full slide audit. Give an uploaded PDF or spreadsheet asset ID; its figures are extracted, recomputed and cross-checked. Returns figures, conflicts, recomputations, a review flag and category.
+    description: `Analyze figures in an uploaded PDF, spreadsheet or JPEG/PNG/WebP image. Image figures are OCR/model reads that need source review; an absent or ambiguous figure is not a verified zero. Returns figures, conflicts, recomputations, a review flag and category. For external fact-checking of every slide claim, also use review_document.
 
 - **Spreadsheets** (xlsx/xls/csv): extracted deterministically with exact cell provenance. No model calls.
 - **PDFs**: a vision model reads the printed figures (it never computes); those are model reads, capped at needs_review. Requires a configured vision model.
+- **JPEG/PNG/WebP**: OCR reads the image, then source-grounded finance analysis checks recognized figures. Incompatible or missing arithmetic scope remains unresolved.
 
-Credits: 3. The document is downloaded, parsed and — for PDFs — read page by page by a vision model. Rate-limited more strictly than compute-only endpoints.`,
+Credits: 3. The document is downloaded and parsed. PDFs and images may require vision reads. Rate-limited more strictly than compute-only endpoints.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         asset_id: {
           type: 'string',
-          description: 'The uploaded asset ID (from upload_file) to analyze. Spreadsheet or PDF.',
+          description: 'The uploaded PDF, spreadsheet or JPEG/PNG/WebP asset ID from upload_file.',
         },
       },
       required: ['asset_id'],
@@ -493,7 +494,7 @@ Credits: 1`,
     name: 'extract_document',
     description: `Extract any document into normalized text with provenance: whole-doc markdown, per-page/sheet units carrying their page or sheet, and (for spreadsheets) sheet names.
 
-Handles PDF, spreadsheets, docx, pptx, html and txt. Deterministic-first; scanned PDFs fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.
+Handles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deterministic-first; scanned PDFs and images fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.
 
 Only the text display is truncated. The full markdown and per-page units remain in structuredContent; inspect those first. Use extract_pages or get_source_preview only when the needed content is absent or a cited passage needs checking.
 

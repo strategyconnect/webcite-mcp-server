@@ -102,7 +102,7 @@ export function renderWebciteGuide(input: {
       [
         '## Workflow: numeric',
         '1. `extract_document` to read every page and identify its file format. `extract_figures` only finds recognized metrics; zero metrics does not mean the page has no numbers.',
-        '2. For a PDF or spreadsheet, use `analyze_document` for recomputation. It does not accept JPEG/PNG images. For a whole image slide, use `review_document` after extraction; use `analyze_conflicts` only when you have figures to compare.',
+        '2. Use `analyze_document` for PDF, spreadsheet or JPEG/PNG/WebP numeric analysis. Image figures are OCR/model reads and need source review. For a whole-slide external fact-check, also use `review_document`; use `analyze_conflicts` only when you have figures to compare.',
         '```json',
         JSON.stringify(
           {

@@ -117,7 +117,7 @@ START: call webcite_guide with workflow=quick_verify (or document_quote / docume
 Workflows:
 1) Plain fact → verify_claim({ claim })
 2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch
-3) Figures / conflicts → extract_document first; extract_figures finds recognized metrics only. analyze_document accepts PDF or spreadsheet, not JPEG/PNG. For an image slide, use review_document for full coverage.
+3) Figures / conflicts → extract_document first; analyze_document accepts PDF, spreadsheet and JPEG/PNG/WebP images. Image figures are OCR/model reads and need source review. extract_figures finds recognized metrics only; zero metrics is not a full numeric audit.
 4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); get_credit_balance, upload/extract, review_document with stable thread_id, then get_document_review for free saved progress. No fixed claim count. Preserve completed results and unchecked items on errors or credit exhaustion. extract_figures only recognizes known metrics.
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
