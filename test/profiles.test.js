@@ -73,6 +73,9 @@ test('full slide audits and image numerics route to supported tools', () => {
   assert.match(description('analyze_document'), /JPEG\/PNG image slides are unsupported/);
   assert.match(description('verify_claim'), /one specific claim/);
   assert.match(description('extract_document'), /full markdown and per-page units remain in structuredContent/);
+  for (const name of ['verify_claim', 'verify_claim_stream']) {
+    assert.equal(publicTools.find((tool) => tool.name === name).inputSchema.properties.source_urls.maxItems, undefined);
+  }
   const numericGuide = require('../dist/guide.js').renderWebciteGuide({ workflow: 'numeric' });
   assert.match(numericGuide, /zero metrics does not mean/);
   assert.match(numericGuide, /JPEG\/PNG.*review_document/);

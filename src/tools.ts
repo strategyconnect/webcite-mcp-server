@@ -58,7 +58,7 @@ Credits: 2-4 depending on options (search: 2, +stance: 1, +verdict: 1)`,
           type: 'string',
           description: 'The factual claim to verify (e.g., "The Eiffel Tower is 330 meters tall")',
         },
-        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs, including readable PDFs, to read directly. Pass a user-provided official report here rather than relying on search.' },
+        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, description: 'Public HTTPS source URLs, including readable PDFs, to read directly. Pass user-provided official reports here rather than relying on search.' },
         filters: sourceFiltersInput,
         thread_id: {
           type: 'string',
@@ -104,7 +104,7 @@ Returns the same formatted output as verify_claim. Credits: same as verify_claim
           type: 'string',
           description: 'The factual claim to verify',
         },
-        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, maxItems: 5, description: 'Public HTTPS source URLs, including readable PDFs, to read directly. Pass a user-provided official report here rather than relying on search.' },
+        source_urls: { type: 'array', items: { type: 'string', format: 'uri' }, description: 'Public HTTPS source URLs, including readable PDFs, to read directly. Pass user-provided official reports here rather than relying on search.' },
         filters: sourceFiltersInput,
         thread_id: {
           type: 'string',
