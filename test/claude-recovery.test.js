@@ -8,9 +8,9 @@ const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { InMemoryTransport } = require('@modelcontextprotocol/sdk/inMemory.js');
 
 test('document and figure extraction preserve full backend data for Claude', async () => {
-  const markdown = 'A'.repeat(9_000) + ' final figure 42';
+  const markdown = 'A'.repeat(18_000) + ' final figure 42';
   const document = { format: 'pdf', markdown, units: [
-    { kind: 'page', index: 1, text: 'A'.repeat(9_000), provenance: { page: 1 } },
+    { kind: 'page', index: 1, text: 'A'.repeat(18_000), provenance: { page: 1 } },
     { kind: 'page', index: 2, text: 'final figure 42', provenance: { page: 2 } },
   ], state: 'partial', reason: 'page 3 unreadable', lost: [{ kind: 'page', index: 3 }] };
   const extracted = await handlers.extract_document({ asset_id: 'asset-1' }, {
