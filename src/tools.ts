@@ -47,7 +47,7 @@ export const TOOLS: ToolDefinition[] = [
     description: `Verify a factual claim against authoritative sources. Returns sources with stance analysis (supports/contradicts/neutral) and an overall verdict.
 
 Use this when you need to:
-- Fact-check one specific claim. For every claim in an uploaded document, use review_document instead.
+- Fact-check one specific claim. For an entire uploaded document or slide, call review_document once after extract_document, not one verify_claim call per extracted figure.
 - Find sources that support or contradict a statement
 - Get a confidence score for a claim's accuracy
 
@@ -500,6 +500,8 @@ Handles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deter
 
 Only the text display is truncated. Some Claude connectors omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.
 
+After extraction, use review_document for a whole-document or whole-slide external fact-check; recover progress with get_document_review. Do not verify each extracted figure separately with verify_claim.
+
 Credits: 1`,
     inputSchema: {
       type: 'object' as const,
@@ -567,7 +569,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'review_document',
-    description: 'Use for "audit this document", "check every figure on this slide", or full due diligence of an uploaded asset. Starts or resumes a durable full document fact-check. Use after extract_document, including for JPEG/PNG slides. Reuse the exact resume_input, including prompt, asset_ids, thread_id, source URLs, filters and billing flags, to replay completed claims without charging again. There is no fixed claim count; charges are per claim and stop when credits run out. Returns completed results, pending count and review_id even when interrupted. Then call get_document_review at zero credits to restore saved work.',
+    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this after extract_document. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts or resumes a durable full document fact-check, including for JPEG/PNG slides. Reuse the exact resume_input, including prompt, asset_ids, thread_id, source URLs, filters and billing flags, to replay completed claims without charging again. There is no fixed claim count; charges are per claim and stop when credits run out. Returns completed results, pending count and review_id even when interrupted. Then call get_document_review at zero credits to restore saved work.',
     inputSchema: { type: 'object', properties: {
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },

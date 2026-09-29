@@ -132,7 +132,7 @@ export function renderWebciteGuide(input: {
 
 export const WEBCITE_GUIDE_TOOL = {
   name: 'webcite_guide',
-  description: `Start here. Returns the next Webcite tools to call and example JSON. Costs 0 credits. Use before verify_claim or document workflows when unsure.`,
+  description: `Call this free guide first to choose a Webcite workflow. For "audit this document", "check every figure on this slide", or every claim in an uploaded file, request workflow=document_review. Then extract_document, review_document, and get_document_review; do not loop over verify_claim for full-document coverage. Costs 0 credits.`,
   inputSchema: {
     type: 'object' as const,
     properties: {
