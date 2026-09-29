@@ -167,6 +167,7 @@ function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions
   let failure: Record<string, unknown> | undefined;
   let progress: Record<string, unknown> | undefined;
   const results = new Map<string, Record<string, unknown>>();
+  const failed = new Map<string, Record<string, unknown>>();
   for (const event of events) {
     const envelope = event.data && typeof event.data === 'object' ? event.data as Record<string, unknown> : {};
     const kind = event.event === 'message' ? envelope.type : event.event;
@@ -177,6 +178,7 @@ function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions
       if (Number.isInteger(data.total_claims)) extractedTotal = data.total_claims as number;
     }
     if (kind === 'claim-verification-result' && typeof data.claim_id === 'string') results.set(data.claim_id, data);
+    if (kind === 'claim-verification-failed' && typeof data.claim_id === 'string') failed.set(data.claim_id, data);
     if (kind === 'document-review-progress') progress = data;
     if (kind === 'error') failure = data;
     if (kind === 'done') done = true;
@@ -187,6 +189,8 @@ function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions
     : failure || transportError ? 'partial'
       : done && reviewId && progress?.extraction_complete !== false && total !== null && completed === total ? 'complete' : 'partial';
   const pending = total === null ? null : Math.max(0, total - completed);
+  const failedCount = typeof progress?.failed_claims === 'number' && Number.isInteger(progress.failed_claims)
+    ? progress.failed_claims : failed.size;
   const rows = [...results.values()].map((result) => {
     const sources = Array.isArray(result.top_citations) ? result.top_citations
       .map((source) => source && typeof source === 'object' ? (source as Record<string, unknown>).url : undefined)
@@ -194,10 +198,16 @@ function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions
     return `- [${result.result ?? 'checked'}] ${result.claim ?? result.claim_id}${typeof result.summary === 'string' ? `: ${result.summary}` : ''}${sources.length ? `\n  Sources: ${sources.join(', ')}` : ''}`;
   });
   const unchecked = claims?.filter((claim) => !results.has(String(claim.id)))
-    .map((claim) => `- [unchecked] ${claim.claim ?? claim.id}`) ?? [];
+    .map((claim) => {
+      const retry = failed.get(String(claim.id));
+      return retry
+        ? `- [failed, retryable] ${claim.claim ?? claim.id}: ${retry.message ?? retry.code ?? 'verification failed'}`
+        : `- [unchecked] ${claim.claim ?? claim.id}`;
+    }) ?? [];
   const text = [
     `# Document review ${reviewId ?? '(review ID unavailable)'}`,
     `Status: ${status}. Completed: ${completed}/${total ?? 'unknown'}. Pending: ${pending ?? 'unknown'}.`,
+    failedCount > 0 ? `Failed claims needing retry: ${failedCount}.` : '',
     Number.isInteger(progress?.extraction_cursor) && Number.isInteger(progress?.chunk_count)
       ? `Extraction chunks: ${progress?.extraction_cursor}/${progress?.chunk_count}.` : '',
     typeof failure?.credits_required === 'number' ? `Credits needed for next claim: ${failure.credits_required}.` : '',
@@ -212,8 +222,9 @@ function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions
   return { text, isError: status !== 'complete', structuredContent: {
     review_id: reviewId ?? null, thread_id: options.thread_id, resume_input: options,
     status, total_claims: total,
-    completed_claims: completed, pending_claims: pending, claims: claims ?? null,
-    results: [...results.values()], error: failure ?? (transportError ? { message: transportError } : null), events,
+    completed_claims: completed, pending_claims: pending, failed_claims: failedCount, claims: claims ?? null,
+    results: [...results.values()], failed_results: [...failed.values()],
+    error: failure ?? (transportError ? { message: transportError } : null), events,
   } };
 }
 
@@ -1460,13 +1471,14 @@ export const handlers: Record<string, ToolHandler> = {
       }
       const verdict = claim.result_state === 'result_saved'
         ? `saved, settlement pending${typeof claim.result === 'string' ? `: ${claim.result}` : ''}`
+        : claim.result_state === 'failed' ? `failed, retryable${typeof claim.error_code === 'string' ? `: ${claim.error_code}` : ''}`
         : typeof claim.result === 'string' ? claim.result : 'unchecked';
       const page = Number.isInteger(claim.page_number) ? `, page ${claim.page_number}` : '';
       const citations = Array.isArray(claim.citations) ? claim.citations : claim.top_citations;
       const urls = Array.isArray(citations) ? citations
         .map((source) => source && typeof source === 'object' ? (source as Record<string, unknown>).url : undefined)
         .filter((url): url is string => typeof url === 'string') : [];
-      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Sources: ${urls.join(', ')}` : ''}`;
+      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${typeof claim.error === 'string' ? `\n   ${claim.error}` : ''}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Sources: ${urls.join(', ')}` : ''}`;
     });
     const next = Number.isInteger(result.next_offset) ? `\nNext offset: ${result.next_offset}` : '';
     const credits = typeof result.credits_remaining === 'number' ? `\nCredits remaining: ${result.credits_remaining}` : '';
@@ -1474,7 +1486,8 @@ export const handlers: Record<string, ToolHandler> = {
     const creditAction = result.status === 'credits_exhausted' ? '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
     const extraction = Number.isInteger(result.extraction_cursor) && Number.isInteger(result.chunk_count)
       ? `\nExtraction chunks: ${result.extraction_cursor}/${result.chunk_count}` : '';
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}\nResume input: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
+    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}\nResume input: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
   },
 
   review_document: async (args, client) => {
