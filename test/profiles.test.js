@@ -64,6 +64,20 @@ test('webcite_guide handler is zero-API', async () => {
   assert.match(result.text, /verify_claim/);
 });
 
+test('source tracing uses extraction, source search and preview instead of numeric Q&A', async () => {
+  const result = await handlers.webcite_guide(
+    { workflow: 'source_trace' },
+    /** @type {any} */ ({}),
+  );
+  assert.match(result.text, /extract_document/);
+  assert.match(result.text, /search_sources/);
+  assert.match(result.text, /get_source_preview/);
+  assert.match(result.text, /ask_document.*does not discover external source URLs/);
+  assert.match(SERVER_INSTRUCTIONS, /workflow: 'source_trace'/);
+  assert.match(ALL_TOOLS.find((tool) => tool.name === 'ask_document').description,
+    /does not search for external source URLs/);
+});
+
 test('document review guide covers every claim without treating metric extraction as complete', async () => {
   const result = await handlers.webcite_guide(
     { workflow: 'document_review' },
