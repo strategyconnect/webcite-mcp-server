@@ -53,7 +53,7 @@ The table below describes common tools across profiles. It is not the remote ser
 
 | Tool | Description | Credits |
 |------|-------------|---------|
-| `webcite_guide` | Pick the appropriate verification, document or numeric workflow | 0 |
+| `webcite_guide` | Pick verification, full-document, source-tracing or numeric workflow | 0 |
 | `verify_claim` | Full fact verification with stance analysis and verdict | 2-4 |
 | `get_credit_balance` | Read remaining, used and total credits | 0 |
 | `get_document_review` | Read a saved review and page through completed and pending claims | 0 |
@@ -78,6 +78,11 @@ Verification tools bind a quote back to its source and report **how** it matched
 (exact / normalized / fuzzy / unbound). A fuzzy match is capped at `needs_review` and
 is never reported as verified. The numeric tools are deterministic: they recompute
 figures rather than asking a model whether the numbers look right.
+
+To identify the original publication behind a screenshot or slide, call
+`webcite_guide` with `workflow=source_trace`. Extract the file, search for its
+distinctive table values, and inspect candidate URLs. `ask_document` checks
+numbers inside supplied text; it does not discover external sources.
 
 ## Installation
 

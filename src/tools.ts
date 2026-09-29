@@ -138,6 +138,7 @@ Returns the same formatted output as verify_claim. Credits: same as verify_claim
 
 Use this when you need to:
 - Find sources on a topic quickly
+- Trace an original report from a screenshot or slide using its distinctive values, units and years; inspect candidates with get_source_preview
 - Get raw search results for further analysis
 - Save credits by skipping analysis
 
@@ -614,7 +615,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'ask_document',
-    description: 'Queue a checked answer over supplied document text. Returns a job ID; poll with get_ask_result. Costs 5 credits. Unverified numbers remain null.',
+    description: 'Check numerical answers inside supplied document text. Returns a job ID; poll with get_ask_result. It does not search for external source URLs or identify the original publisher. Costs 5 credits. Unverified numbers remain null.',
     inputSchema: { type: 'object', properties: {
       question: { type: 'string', minLength: 1, maxLength: 2000 },
       documentText: { type: 'string', minLength: 1, maxLength: 2000000 },

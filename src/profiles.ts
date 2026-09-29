@@ -120,6 +120,7 @@ Workflows:
 2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch
 3) Figures / conflicts → extract_document first; analyze_document accepts PDF, spreadsheet and JPEG/PNG/WebP images. Image figures are OCR/model reads and need source review. extract_figures finds recognized metrics only; zero metrics is not a full numeric audit.
 4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); get_credit_balance, upload/extract, review_document with stable thread_id, then get_document_review for free saved progress. No fixed claim count. Preserve completed results and unchecked items on errors or credit exhaustion. extract_figures only recognizes known metrics.
+5) Find the original source behind an image or slide → webcite_guide({ workflow: 'source_trace' }); extract_document, search_sources using exact table values and units, then get_source_preview on candidate URLs. Use verify_claim with confirmed source_urls for claim truth. ask_document is numerical Q&A over supplied text, not an external-source finder.
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
 Never invent citation URLs. Prefer get_source_preview to show evidence.

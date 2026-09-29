@@ -6,6 +6,7 @@ export type GuideWorkflow =
   | 'quick_verify'
   | 'document_quote'
   | 'document_review'
+  | 'source_trace'
   | 'numeric'
   | 'choose';
 
@@ -14,6 +15,7 @@ export function resolveGuideWorkflow(raw: unknown): GuideWorkflow {
     raw === 'quick_verify' ||
     raw === 'document_quote' ||
     raw === 'document_review' ||
+    raw === 'source_trace' ||
     raw === 'numeric' ||
     raw === 'choose'
   ) {
@@ -96,6 +98,20 @@ export function renderWebciteGuide(input: {
     );
   }
 
+  if (workflow === 'source_trace') {
+    return (
+      header +
+      [
+        '## Workflow: source_trace',
+        '1. Call `extract_document` on the uploaded screenshot or slide. Read the actual table labels, units, years and distinctive figures. If extraction is incomplete, say which part is unreadable.',
+        '2. Call `search_sources` with those exact details. If results are secondary or empty, refine the search using a likely regulator or report title suggested by the table. Do not treat a domain filter returning zero as proof that the official source does not exist.',
+        '3. Open candidate URLs with `get_source_preview`. Identify the original publisher and page only when the same metric, period, unit, geography and table values are present. For a claim check, pass confirmed official PDFs to `verify_claim` in `source_urls`.',
+        '4. If the original source or country is not established by the document and checked URLs, report it as unresolved. Do not infer a country from currency alone or cite a news summary as the original publication.',
+        '`ask_document` checks numerical answers inside supplied text; it does not discover external source URLs.',
+      ].join('\n')
+    );
+  }
+
   if (workflow === 'numeric') {
     return (
       header +
@@ -123,22 +139,23 @@ export function renderWebciteGuide(input: {
       '- `quick_verify` — fact-check a sentence (most common cold start)',
       '- `document_quote` — bind a quote inside an uploaded document',
       '- `document_review` — check every material claim in an uploaded document',
+      '- `source_trace` — find and check the original publication behind a screenshot or slide',
       '- `numeric` — figures and conflict analysis',
       '',
-      'Re-call `webcite_guide` with `{ "workflow": "quick_verify" }` (or document_quote / document_review / numeric).',
+      'Re-call `webcite_guide` with `{ "workflow": "quick_verify" }` (or document_quote / document_review / source_trace / numeric).',
     ].join('\n')
   );
 }
 
 export const WEBCITE_GUIDE_TOOL = {
   name: 'webcite_guide',
-  description: `Call this free guide first to choose a Webcite workflow. For "audit this document", "check every figure on this slide", or every claim in an uploaded file, request workflow=document_review. Then extract_document, review_document, and get_document_review; do not loop over verify_claim for full-document coverage. Costs 0 credits.`,
+  description: `Call this free guide first to choose a Webcite workflow. Use workflow=source_trace to identify the original source of a screenshot or slide; use workflow=document_review to check every claim in an uploaded file. Costs 0 credits.`,
   inputSchema: {
     type: 'object' as const,
     properties: {
       workflow: {
         type: 'string',
-        enum: ['quick_verify', 'document_quote', 'document_review', 'numeric', 'choose'],
+        enum: ['quick_verify', 'document_quote', 'document_review', 'source_trace', 'numeric', 'choose'],
         description: 'Which workflow to explain. Default choose lists options.',
       },
       question: {
