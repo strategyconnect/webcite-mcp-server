@@ -5,6 +5,8 @@
  * coverage guard in `tools.test.js` stays exact. ListTools serves ALL_TOOLS.
  */
 
+import { WEBCITE_GUIDE_TOOL } from './guide.js';
+
 export interface ToolDefinition {
   name: string;
   description: string;
@@ -2294,24 +2296,7 @@ Credits: 1. HTTP: GET /api/v2/context/evaluations/:runId/cases/:caseId`,
 
 /** All tools advertised over ListTools (v1 + context v2). */
 export const ALL_TOOLS: ToolDefinition[] = [
-  {
-    name: 'webcite_guide',
-    description: `Start here. Returns the next Webcite tools to call and example JSON. Costs 0 credits. Use before verify_claim or document workflows when unsure.`,
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        workflow: {
-          type: 'string',
-          enum: ['quick_verify', 'document_quote', 'numeric', 'choose'],
-          description: 'Which workflow to explain. Default choose lists options.',
-        },
-        question: {
-          type: 'string',
-          description: 'Optional user question or claim to embed in examples',
-        },
-      },
-    },
-  },
+  WEBCITE_GUIDE_TOOL,
   ...TOOLS,
   ...PUBLIC_EXTRA_TOOLS,
   ...CONTEXT_TOOLS,
