@@ -36,7 +36,7 @@ These changes do not repair or regenerate historical evidence. Backend policy an
 | Profile | Tools exposed | When to use it |
 | --- | --- | --- |
 | `core` | `webcite_guide`, `get_credit_balance`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Short local list for everyday verification. |
-| `public` (local and remote default) | Core plus `review_document`, `get_document_review`, `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim` | All supported public API workflows, including saved document reviews and anchored evidence. |
+| `public` (local and remote default) | Core plus `review_document`, `get_document_review`, `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim`, `register_source`, `publish_text_representation`, `get_latest_representation`, `read_source_unit` | All supported public API workflows, including saved document reviews and anchored evidence. |
 | `docs` | Core plus `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `verify_feedback` | Deeper document work. |
 | `research` | Docs plus `get_answer`, `query_context`, `get_evidence_packet`, `compare_assertions`, `get_change_impact`, `verify_claim_stream` | Context and research workflows where the backend enables them. |
 | `full` | All tools registered by this package | Advanced local integrations and evaluation. Backend permissions and feature flags still apply. |
@@ -90,7 +90,7 @@ numbers inside supplied text; it does not discover external sources.
 
 1. Create an API key at [webcite.co/api-keys](https://webcite.co/api-keys).
 2. Open [webcite.co/connect](https://webcite.co/connect).
-3. **Claude:** Settings → Connectors → Add custom connector → paste `https://api.webcite.co/mcp` and your API key.
+3. **Claude:** Settings → Connectors → Add custom connector → paste `https://api.webcite.co/mcp`. Choose **No sign-in**, then add a Request header named `x-api-key` with your API key as its value.
 4. **Cursor:** use the one-click install button on `/connect`.
 
 No Node, no `npx`, no JSON config files.
@@ -550,7 +550,7 @@ The "usually also here" checklist for a category: each expected document type fl
 
 Extract supported documents into normalized text with provenance: whole-doc markdown, per-page/sheet units, and sheet names for spreadsheets. PDF, spreadsheets, DOCX, PPTX, HTML and text have reader paths; coverage and recognition vary by format. Unreadable or partial content must be treated as an explicit limitation, not as an empty successful extraction.
 
-The readable text preview stops at 8,000 characters. The full backend extraction, including page and sheet units and any lost-unit status, is returned in MCP `structuredContent`. Check every unit before calling a review complete. If units are unreadable, report that gap rather than treating it as no claims.
+The readable text preview stops at 16,000 characters and lists source links beyond that limit. The full backend extraction, including page and sheet units and any lost-unit status, is returned in MCP `structuredContent`. If the client omits `structuredContent`, use the actual source version ID with `get_latest_representation` and `read_source_unit`, or use `extract_pages` when that ID is unavailable. An asset ID is not a source version ID. Check every unit before calling a review complete. If units are unreadable, report that gap rather than treating it as no claims.
 
 **Parameters:**
 - `asset_id` or `asset_url` (one required)
@@ -559,7 +559,7 @@ The readable text preview stops at 8,000 characters. The full backend extraction
 
 ### extract_figures
 
-Every number in a document as a tagged, source-grounded figure: value normalized to its canonical unit, `metric`, `unit`, optional `entity`/`period`, a confidence `band`, whether it was confirmed against the cited cell (`bound`), and full `provenance`.
+Recognized financial metrics in a document as tagged, source-grounded figures: value normalized to its canonical unit, `metric`, `unit`, optional `entity`/`period`, a confidence `band`, whether it was confirmed against the cited cell (`bound`), and full `provenance`. Zero results do not mean the document contains no numbers.
 
 Header scale (`$M`, `'000`), accounting negatives, period columns and unit declarations are all honoured, so a percentage is never mis-read as a currency. Feed the result straight into `analyze_conflicts`.
 

@@ -78,6 +78,22 @@ function truncate(text: string, max = MAX_TEXT_CHARS): string {
   return `${text.slice(0, max)}\n\n... [truncated ${text.length - max} more characters]`;
 }
 
+function omittedLinks(text: string): string {
+  const urls = [...text.matchAll(/https?:\/\/[^\s<>"`]+/g)]
+    .filter((match) => match.index + match[0].length > MAX_TEXT_CHARS)
+    .map((match) => match[0].replace(/[.,;:!?)}\]]+$/, ''));
+  const unique = [...new Set(urls)];
+  if (!unique.length) return '';
+  const shown: string[] = [];
+  let displayedChars = 0;
+  for (const url of unique) {
+    if (shown.length === 100 || displayedChars + url.length > 12000) break;
+    shown.push(url);
+    displayedChars += url.length;
+  }
+  return `\n**Links beyond the display limit (${shown.length}/${unique.length}):**\n${shown.join('\n')}${unique.length > shown.length ? '\nAdditional links require the saved source units or extract_pages.' : ''}`;
+}
+
 /**
  * Format a source preview for display
  */
@@ -105,7 +121,10 @@ export function formatSourcePreview(p: SourcePreviewResponse): string {
   if (p.text) {
     parts.push(`\n---\n`);
     parts.push(truncate(p.text));
-    if (p.text.length > MAX_TEXT_CHARS) parts.push(`Full preview text is in structuredContent (${p.text.length} characters) when the client exposes it. Otherwise read the saved source unit by its representation IDs; this display is incomplete.`);
+    if (p.text.length > MAX_TEXT_CHARS) {
+      parts.push(omittedLinks(p.text));
+      parts.push(`Full preview text is in structuredContent (${p.text.length} characters) when the client exposes it. Otherwise ${p.kind === 'web' ? 'inspect the original URL' : 'use extract_pages with the asset_id'}; this display is incomplete.`);
+    }
   }
 
   return parts.join('\n');
@@ -499,6 +518,7 @@ export function formatExtractedDoc(doc: ExtractedDoc): string {
   }
   parts.push(`\n---\n`);
   parts.push(doc.markdown ? truncate(doc.markdown) : 'No readable text was returned. Do not treat this as a complete review.');
+  if (doc.markdown?.length > MAX_TEXT_CHARS) parts.push(omittedLinks(doc.markdown));
   return parts.join('\n');
 }
 
