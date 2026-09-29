@@ -1480,7 +1480,12 @@ export const handlers: Record<string, ToolHandler> = {
       const urls = Array.isArray(citations) ? citations
         .map((source) => source && typeof source === 'object' ? (source as Record<string, unknown>).url : undefined)
         .filter((url): url is string => typeof url === 'string') : [];
-      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${typeof claim.error === 'string' ? `\n   ${claim.error}` : ''}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Sources: ${urls.join(', ')}` : ''}`;
+      const printedLinks = claim.cited_source_urls;
+      if (printedLinks !== undefined && (!Array.isArray(printedLinks) ||
+          printedLinks.some((url) => typeof url !== 'string' || !url.trim()))) {
+        throw new ToolFailure('invalid_api_output', 'Stored document review has invalid printed links');
+      }
+      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${typeof claim.error === 'string' ? `\n   ${claim.error}` : ''}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Found citations: ${urls.join(', ')}` : ''}${Array.isArray(printedLinks) && printedLinks.length ? `\n   Links printed in document: ${printedLinks.join(', ')}` : ''}`;
     });
     const next = Number.isInteger(result.next_offset) ? `\nNext offset: ${result.next_offset}` : '';
     const credits = typeof result.credits_remaining === 'number' ? `\nCredits remaining: ${result.credits_remaining}` : '';

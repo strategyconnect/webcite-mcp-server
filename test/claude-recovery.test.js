@@ -143,6 +143,7 @@ test('saved review pages expose completed and pending work without a total claim
     credits_required_next: 4, extraction_cursor: 2, chunk_count: 3,
     next_offset: 50, claims: [{ id: 'claim-1', claim: 'Revenue was 10', page_number: 1,
       result: 'supported', summary: 'Source agrees.', citation_id: 'citation-1',
+      cited_source_urls: ['https://example.test/printed-in-report'],
       top_citations: [{ url: 'https://example.test/report.pdf' }],
       citations: [{ url: 'https://example.test/report.pdf' }, { url: 'https://example.test/second.pdf' }] },
     { id: 'claim-2', claim: 'Profit grew', result: 'supported', result_state: 'result_saved',
@@ -165,6 +166,9 @@ test('saved review pages expose completed and pending work without a total claim
   assert.match(result.text, /Extraction chunks: 2\/3/);
   assert.match(result.text, /https:\/\/example.test\/report.pdf/);
   assert.match(result.text, /https:\/\/example.test\/second.pdf/);
+  assert.match(result.text, /Found citations: https:\/\/example.test\/report.pdf, https:\/\/example.test\/second.pdf/);
+  assert.match(result.text, /Links printed in document: https:\/\/example.test\/printed-in-report/);
+  assert.deepEqual(result.structuredContent.claims[0].cited_source_urls, ['https://example.test/printed-in-report']);
   assert.match(result.text, /saved, settlement pending: supported/);
   assert.match(result.text, /https:\/\/example.test\/third.pdf/);
   assert.match(result.text, /Resume input: .*official.pdf/);
@@ -188,6 +192,15 @@ test('saved review pages expose completed and pending work without a total claim
     getDocumentReview: async () => { calls++; },
   }), /surrounding whitespace/);
   assert.equal(calls, 0);
+});
+
+test('saved review rejects malformed printed links instead of reporting them as citations', async () => {
+  const snapshot = { review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+    asset_ids: ['asset-1'], status: 'completed', total_claims: 1, completed_claims: 1,
+    pending_claims: 0, claims: [{ id: 'claim-1', claim: 'Claim', cited_source_urls: [42] }] };
+  await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => snapshot,
+  }), /invalid printed links/);
 });
 
 test('document review requests full scope and retains it when credits stop the stream', async () => {
