@@ -20,7 +20,7 @@ test('source search and preview retain every paid source and the full preview te
   const second = { id: 'two', title: 'Second report', url: 'https://official.example/two.pdf' };
   const search = { citations: [], claim_groups: [{ claim: 'First', citations: [first] },
     { claim: 'Second', citations: [second] }], totalResults: 2, thread_id: 'thread-1' };
-  const longText = 'A'.repeat(9000) + ' decisive source passage';
+  const longText = 'A'.repeat(18000) + ' decisive source passage';
   const preview = { kind: 'web', url: second.url, deep_link: second.url,
     binding: { grounded: true, method: 'exact' }, text: longText };
   await withPublicClient({ searchSources: async () => search, sourcePreview: async () => preview }, async (client) => {

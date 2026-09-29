@@ -1,6 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { formatExtractedDoc, formatFigures } = require('../dist/formatters.js');
+const { formatExtractedDoc, formatFigures, formatSourcePreview } = require('../dist/formatters.js');
+
+test('a cited link at the end of a moderate slide stays visible', () => {
+  const markdown = 'x'.repeat(8500) + ' https://example.org/cited-source';
+  assert.match(formatExtractedDoc({ format: 'pptx', markdown, units: [] }), /https:\/\/example.org\/cited-source/);
+  assert.match(formatSourcePreview({ kind: 'page', asset_id: 'asset', page: 1,
+    text: markdown, deep_link: '', binding: { grounded: false, method: 'unbound' } }),
+    /https:\/\/example.org\/cited-source/);
+});
 
 test('an unreadable document stays visibly unreadable in Claude output', () => {
   const text = formatExtractedDoc({

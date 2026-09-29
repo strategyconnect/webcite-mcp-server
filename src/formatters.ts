@@ -71,7 +71,7 @@ import type {
 } from './types.js';
 
 /** Cap on extracted document text, so a large file cannot flood the agent's context. */
-const MAX_TEXT_CHARS = 8000;
+const MAX_TEXT_CHARS = 16000;
 
 function truncate(text: string, max = MAX_TEXT_CHARS): string {
   if (text.length <= max) return text;
