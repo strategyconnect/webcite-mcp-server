@@ -1361,8 +1361,9 @@ function assetRef(args: Args): AssetRefOptions {
 function verifyOptions(args: Args): VerifyClaimOptions {
   const sourceUrls = args?.source_urls;
   if (sourceUrls !== undefined &&
-      (!Array.isArray(sourceUrls) || sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://'))))
-    throw new ToolFailure('invalid_argument', 'source_urls must contain public HTTPS URLs');
+      (!Array.isArray(sourceUrls) || sourceUrls.length > 5 ||
+       sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://'))))
+    throw new ToolFailure('invalid_argument', 'source_urls must contain at most five public HTTPS URLs');
   return {
     claim: requireString(args, 'claim'),
     source_urls: sourceUrls as string[] | undefined,
