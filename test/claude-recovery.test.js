@@ -216,6 +216,42 @@ test('document review returns saved progress when credits stop the stream', asyn
   }
 });
 
+test('document review names retryable failed claims without reporting a complete verdict', async () => {
+  const frames = [
+    { type: 'claims-extracted', data: { review_id: 'review-1', total_claims: 2,
+      claims: [{ id: 'c1', claim: 'Assets were 10' }, { id: 'c2', claim: 'Assets were 20' }] } },
+    { type: 'claim-verification-failed', data: { claim_id: 'c1', claim: 'Assets were 10',
+      code: 'SOURCE_SEARCH_TIMEOUT', message: 'Source search timed out; retry this claim.', attempt: 1 } },
+    { type: 'claim-verification-result', data: { claim_id: 'c2', claim: 'Assets were 20', result: 'supported' } },
+    { type: 'document-review-progress', data: { review_id: 'review-1', total_claims: 2,
+      completed_claims: 1, pending_claims: 1, failed_claims: 1 } },
+    { type: 'error', review_id: 'review-1', code: 'PARTIAL_REVIEW', message: 'One claim needs retry.' },
+  ];
+  const result = await handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+    reviewDocumentStream: async function* () { for (const data of frames) yield { event: 'message', data }; },
+  });
+  assert.equal(result.isError, true);
+  assert.equal(result.structuredContent.status, 'partial');
+  assert.equal(result.structuredContent.completed_claims, 1);
+  assert.equal(result.structuredContent.failed_claims, 1);
+  assert.equal(result.structuredContent.failed_results[0].code, 'SOURCE_SEARCH_TIMEOUT');
+  assert.match(result.text, /\[failed, retryable\] Assets were 10/);
+  assert.doesNotMatch(result.text, /\[unchecked\] Assets were 10/);
+
+  const saved = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'failed', total_claims: 2, completed_claims: 1,
+      pending_claims: 1, failed_claims: 1, claims: [
+        { id: 'c1', claim: 'Assets were 10', result_state: 'failed', error_code: 'SOURCE_SEARCH_TIMEOUT',
+          error: 'Source search timed out; retry this claim.' },
+        { id: 'c2', claim: 'Assets were 20', result_state: 'settled', result: 'supported' },
+      ] }),
+  });
+  assert.match(saved.text, /pending: 1; failed: 1/);
+  assert.match(saved.text, /\[failed, retryable: SOURCE_SEARCH_TIMEOUT\] Assets were 10/);
+  assert.match(saved.text, /Source search timed out; retry this claim/);
+});
+
 test('document review resumes as complete only after every result and done', async () => {
   const officialSources = Array.from({ length: 6 }, (_, index) => `https://example.test/report-${index}.pdf`);
   const frames = [
