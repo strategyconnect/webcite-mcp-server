@@ -1485,11 +1485,17 @@ export const handlers: Record<string, ToolHandler> = {
     const next = Number.isInteger(result.next_offset) ? `\nNext offset: ${result.next_offset}` : '';
     const credits = typeof result.credits_remaining === 'number' ? `\nCredits remaining: ${result.credits_remaining}` : '';
     const needed = typeof result.credits_required_next === 'number' ? `\nCredits needed for next step: ${result.credits_required_next}` : '';
-    const creditAction = result.status === 'credits_exhausted' ? '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
+    const focusedScope = result.review_scope === 'focused';
+    const creditAction = result.status === 'credits_exhausted'
+      ? focusedScope ? '\nAdd credits or enable overage if available before resuming.'
+        : '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
     const extraction = Number.isInteger(result.extraction_cursor) && Number.isInteger(result.chunk_count)
       ? `\nExtraction chunks: ${result.extraction_cursor}/${result.chunk_count}` : '';
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}\nResume input: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const focusGuidance = focusedScope
+      ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';
+    const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
+    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
   },
 
   review_document: async (args, client) => {

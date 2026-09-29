@@ -173,6 +173,10 @@ test('saved review pages expose completed and pending work without a total claim
     getDocumentReview: async () => ({ ...snapshot, review_scope: 'focused' }),
   });
   assert.equal(focused.structuredContent.resume_input.review_scope, 'focused');
+  assert.match(focused.text, /API resume input: .*"review_scope":"focused"/);
+  assert.match(focused.text, /resume this focused review through the API/i);
+  assert.match(focused.text, /new thread_id/);
+  assert.doesNotMatch(focused.text, /\nResume input:/);
   const full = await handlers.get_document_review({ review_id: 'review-1' }, {
     getDocumentReview: async () => ({ ...snapshot, review_scope: 'full' }),
   });
