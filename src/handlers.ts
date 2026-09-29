@@ -1458,6 +1458,8 @@ export const handlers: Record<string, ToolHandler> = {
     }
     const resumeInput: ReviewDocumentOptions = {
       prompt: result.prompt, asset_ids: result.asset_ids as string[], thread_id: result.thread_id,
+      ...(result.review_scope === 'full' || result.review_scope === 'focused'
+        ? { review_scope: result.review_scope } : {}),
       ...(Array.isArray(result.source_urls) ? { source_urls: result.source_urls as string[] } : {}),
       ...(result.source_filters && typeof result.source_filters === 'object' && !Array.isArray(result.source_filters)
         ? { filters: result.source_filters as SourceFilters } : {}),
@@ -1502,11 +1504,13 @@ export const handlers: Record<string, ToolHandler> = {
         (sourceUrls !== undefined && (!Array.isArray(sourceUrls) ||
           sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://')))) ||
         (filters !== undefined && (!filters || typeof filters !== 'object' || Array.isArray(filters))) ||
+        (args?.review_scope !== undefined && args.review_scope !== 'full') ||
         (args?.include_stance !== undefined && typeof args.include_stance !== 'boolean') ||
         (args?.include_verdict !== undefined && typeof args.include_verdict !== 'boolean')) {
-      throw new ToolFailure('invalid_argument', 'Pass distinct asset_ids, a stable thread_id, and valid HTTPS source URLs, filters and billing flags');
+      throw new ToolFailure('invalid_argument', 'Pass distinct asset_ids, a stable thread_id, full review scope, and valid HTTPS source URLs, filters and billing flags');
     }
     const options: ReviewDocumentOptions = { prompt, asset_ids: assetIds as string[], thread_id: threadId,
+      review_scope: 'full',
       ...(sourceUrls !== undefined ? { source_urls: sourceUrls as string[] } : {}),
       ...(filters !== undefined ? { filters: filters as SourceFilters } : {}),
       include_stance: args?.include_stance !== false,

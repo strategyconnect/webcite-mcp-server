@@ -169,6 +169,16 @@ test('saved review pages expose completed and pending work without a total claim
   assert.match(result.text, /https:\/\/example.test\/third.pdf/);
   assert.match(result.text, /Resume input: .*official.pdf/);
 
+  const focused = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ ...snapshot, review_scope: 'focused' }),
+  });
+  assert.equal(focused.structuredContent.resume_input.review_scope, 'focused');
+  const full = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ ...snapshot, review_scope: 'full' }),
+  });
+  assert.equal(full.structuredContent.resume_input.review_scope, 'full');
+  assert.equal(result.structuredContent.resume_input.review_scope, undefined);
+
   let calls = 0;
   await assert.rejects(() => handlers.get_document_review({ review_id: ' review-1 ' }, {
     getDocumentReview: async () => { calls++; },
@@ -176,7 +186,7 @@ test('saved review pages expose completed and pending work without a total claim
   assert.equal(calls, 0);
 });
 
-test('document review returns saved progress when credits stop the stream', async () => {
+test('document review requests full scope and retains it when credits stop the stream', async () => {
   const claims = Array.from({ length: 101 }, (_, i) => ({ id: `claim-${i}`, claim: `Claim ${i}` }));
   const frames = [
     { type: 'claims-extracted', data: { review_id: 'review-1', total_claims: 101, claims } },
@@ -184,7 +194,9 @@ test('document review returns saved progress when credits stop the stream', asyn
     { type: 'claim-verification-result', data: { review_id: 'review-1', claim_id: 'claim-1', claim: 'Claim 1', result: 'contradicted', summary: 'Official source differs.' } },
     { type: 'error', review_id: 'review-1', code: 'INSUFFICIENT_CREDITS', message: 'Insufficient credits', credits_required: 4, credits_remaining: 1 },
   ];
-  const server = createMcpServer({ reviewDocumentStream: async function* () {
+  let sentOptions;
+  const server = createMcpServer({ reviewDocumentStream: async function* (options) {
+    sentOptions = options;
     for (const data of frames) yield { event: 'message', data };
   } }, 'public');
   const client = new Client({ name: 'claude-review-test', version: '1' });
@@ -192,6 +204,8 @@ test('document review returns saved progress when credits stop the stream', asyn
   await server.connect(serverTransport);
   await client.connect(clientTransport);
   try {
+    const reviewTool = (await client.listTools()).tools.find((tool) => tool.name === 'review_document');
+    assert.deepEqual(reviewTool.inputSchema.properties.review_scope.enum, ['full']);
     const result = await client.callTool({ name: 'review_document', arguments: {
       prompt: 'Check the slide', asset_ids: ['asset-1'], thread_id: 'thread-1',
     } });
@@ -203,8 +217,10 @@ test('document review returns saved progress when credits stop the stream', asyn
     assert.equal(result.structuredContent.completed_claims, 2);
     assert.equal(result.structuredContent.pending_claims, 99);
     assert.equal(result.structuredContent.results[1].result, 'contradicted');
+    assert.equal(sentOptions.review_scope, 'full');
     assert.deepEqual(result.structuredContent.resume_input, {
       prompt: 'Check the slide', asset_ids: ['asset-1'], thread_id: 'thread-1',
+      review_scope: 'full',
       include_stance: true, include_verdict: true,
     });
     assert.match(result.content[0].text, /Credits needed for next claim: 4/);
@@ -273,6 +289,12 @@ test('document review resumes as complete only after every result and done', asy
   }), /distinct asset_ids/);
   assert.equal(called, false);
 
+  await assert.rejects(() => handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1'],
+    thread_id: 'thread-1', review_scope: 'focused' }, {
+    reviewDocumentStream: async function* () { called = true; },
+  }), /full review scope/);
+  assert.equal(called, false);
+
   const incomplete = await handlers.review_document({ prompt: 'Check', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
     reviewDocumentStream: async function* () {
       yield { event: 'message', data: { type: 'document-review-progress', data: {
@@ -296,18 +318,19 @@ test('document review stream posts the stable replay identity to the API', async
   };
   try {
     const client = new WebCiteApiClient('test-only', 'https://example.test');
-    const frames = [];
-    for await (const event of client.reviewDocumentStream({
+    const result = await handlers.review_document({
       prompt: 'Check the slide', asset_ids: ['asset-1'], thread_id: 'thread-1',
       source_urls: ['https://example.test/official.pdf'], filters: { is_primary_source: true },
       include_stance: true, include_verdict: true,
-    })) frames.push(event.data);
+    }, client);
     assert.equal(new URL(request.url).pathname, '/api/v1/playground/chat/stream');
     assert.deepEqual(JSON.parse(request.options.body), {
       prompt: 'Check the slide', asset_ids: ['asset-1'], thread_id: 'thread-1',
+      review_scope: 'full',
       source_urls: ['https://example.test/official.pdf'], filters: { is_primary_source: true },
       include_stance: true, include_verdict: true,
     });
-    assert.deepEqual(frames, [{ type: 'done' }]);
+    assert.equal(result.structuredContent.resume_input.review_scope, 'full');
+    assert.deepEqual(result.structuredContent.events.map((event) => event.data), [{ type: 'done' }]);
   } finally { global.fetch = previous; }
 });
