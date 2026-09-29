@@ -147,18 +147,28 @@ test('an ask result cannot silently accept a saved review ID', async () => {
   });
 });
 
-test('claim verification accepts all supplied official sources without an MCP count ceiling', async () => {
+test('claim verification forwards five official sources and rejects six before calling the API', async () => {
   const sources = Array.from({ length: 6 }, (_, i) => `https://official.example/report-${i}.pdf`);
-  let received;
-  await withPublicClient({ verifyClaim: async (options) => {
-    received = options;
-    return { claim_groups: [], totalResults: 0, thread_id: 'thread-1' };
-  } }, async (client) => {
-    const result = await client.callTool({ name: 'verify_claim', arguments: {
-      claim: 'Assets rose', source_urls: sources,
-    } });
-    assert.equal(result.isError, undefined);
-    assert.deepEqual(received.source_urls, sources);
+  const received = [];
+  await withPublicClient({
+    verifyClaim: async (options) => {
+      received.push(['json', options.source_urls]);
+      return { claim_groups: [], totalResults: 0, thread_id: 'thread-1' };
+    },
+    verifyClaimStream: async function* (options) {
+      received.push(['stream', options.source_urls]);
+      yield { event: 'message', data: { type: 'result', data: { claim_groups: [], totalResults: 0, thread_id: 'thread-1' } } };
+      yield { event: 'message', data: { type: 'done' } };
+    },
+  }, async (client) => {
+    for (const name of ['verify_claim', 'verify_claim_stream']) {
+      const valid = await client.callTool({ name, arguments: { claim: 'Assets rose', source_urls: sources.slice(0, 5) } });
+      assert.equal(valid.isError, undefined);
+      const invalid = await client.callTool({ name, arguments: { claim: 'Assets rose', source_urls: sources } });
+      assert.equal(invalid.isError, true);
+      assert.equal(invalid.structuredContent.code, 'invalid_argument');
+    }
+    assert.deepEqual(received, [['json', sources.slice(0, 5)], ['stream', sources.slice(0, 5)]]);
   });
 });
 
