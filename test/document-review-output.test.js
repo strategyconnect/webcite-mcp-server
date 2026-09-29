@@ -10,6 +10,24 @@ test('a cited link at the end of a moderate slide stays visible', () => {
     /https:\/\/example.org\/cited-source/);
 });
 
+test('links beyond the text cap stay visible without claiming full coverage', () => {
+  const markdown = 'x'.repeat(17_000) + '\nhttps://example.org/late-source) and https://example.org/late-source';
+  const extracted = formatExtractedDoc({ format: 'pptx', markdown, units: [] });
+  const preview = formatSourcePreview({ kind: 'page', asset_id: 'asset', page: 1,
+    text: markdown, deep_link: '', binding: { grounded: false, method: 'unbound' } });
+  for (const display of [extracted, preview]) {
+    assert.match(display, /Links beyond the display limit \(1\/1\)/);
+    assert.match(display, /https:\/\/example.org\/late-source/);
+    assert.doesNotMatch(display, /https:\/\/example.org\/late-source\)/);
+    assert.match(display, /display is incomplete|not a complete review/i);
+  }
+  assert.doesNotMatch(formatExtractedDoc({ format: 'txt', markdown: 'short', units: [] }), /Links beyond/);
+  const web = formatSourcePreview({ kind: 'web', url: 'https://example.org/source', title: 'Source',
+    text: markdown, deep_link: '', binding: { grounded: false, method: 'unbound' } });
+  assert.match(web, /inspect the original URL/);
+  assert.doesNotMatch(web, /extract_pages with the asset_id/);
+});
+
 test('an unreadable document stays visibly unreadable in Claude output', () => {
   const text = formatExtractedDoc({
     format: 'png',

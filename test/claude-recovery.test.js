@@ -111,6 +111,8 @@ test('document review guide tells Claude to resume with saved work and no count 
   assert.match(guide, /get_credit_balance/);
   assert.match(guide, /Completed claims replay without a new charge/);
   assert.match(guide, /connectors show only MCP text and omit structuredContent/);
+  assert.match(guide, /16,000 characters and lists links beyond that limit/);
+  assert.match(guide, /An asset_id is not a source_version_id/);
   assert.match(guide, /get_latest_representation.*read_source_unit/);
   assert.match(guide, /extract_pages.*costs 1 credit/);
   assert.match(guide, /get_document_review.*review_id.*zero credits/);
