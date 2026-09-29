@@ -1458,6 +1458,8 @@ export const handlers: Record<string, ToolHandler> = {
     }
     const resumeInput: ReviewDocumentOptions = {
       prompt: result.prompt, asset_ids: result.asset_ids as string[], thread_id: result.thread_id,
+      ...(result.review_scope === 'full' || result.review_scope === 'focused'
+        ? { review_scope: result.review_scope } : {}),
       ...(Array.isArray(result.source_urls) ? { source_urls: result.source_urls as string[] } : {}),
       ...(result.source_filters && typeof result.source_filters === 'object' && !Array.isArray(result.source_filters)
         ? { filters: result.source_filters as SourceFilters } : {}),
@@ -1483,11 +1485,17 @@ export const handlers: Record<string, ToolHandler> = {
     const next = Number.isInteger(result.next_offset) ? `\nNext offset: ${result.next_offset}` : '';
     const credits = typeof result.credits_remaining === 'number' ? `\nCredits remaining: ${result.credits_remaining}` : '';
     const needed = typeof result.credits_required_next === 'number' ? `\nCredits needed for next step: ${result.credits_required_next}` : '';
-    const creditAction = result.status === 'credits_exhausted' ? '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
+    const focusedScope = result.review_scope === 'focused';
+    const creditAction = result.status === 'credits_exhausted'
+      ? focusedScope ? '\nAdd credits or enable overage if available before resuming.'
+        : '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
     const extraction = Number.isInteger(result.extraction_cursor) && Number.isInteger(result.chunk_count)
       ? `\nExtraction chunks: ${result.extraction_cursor}/${result.chunk_count}` : '';
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}\nResume input: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const focusGuidance = focusedScope
+      ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';
+    const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
+    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
   },
 
   review_document: async (args, client) => {
@@ -1502,11 +1510,13 @@ export const handlers: Record<string, ToolHandler> = {
         (sourceUrls !== undefined && (!Array.isArray(sourceUrls) ||
           sourceUrls.some((url) => typeof url !== 'string' || !url.startsWith('https://')))) ||
         (filters !== undefined && (!filters || typeof filters !== 'object' || Array.isArray(filters))) ||
+        (args?.review_scope !== undefined && args.review_scope !== 'full') ||
         (args?.include_stance !== undefined && typeof args.include_stance !== 'boolean') ||
         (args?.include_verdict !== undefined && typeof args.include_verdict !== 'boolean')) {
-      throw new ToolFailure('invalid_argument', 'Pass distinct asset_ids, a stable thread_id, and valid HTTPS source URLs, filters and billing flags');
+      throw new ToolFailure('invalid_argument', 'Pass distinct asset_ids, a stable thread_id, full review scope, and valid HTTPS source URLs, filters and billing flags');
     }
     const options: ReviewDocumentOptions = { prompt, asset_ids: assetIds as string[], thread_id: threadId,
+      review_scope: 'full',
       ...(sourceUrls !== undefined ? { source_urls: sourceUrls as string[] } : {}),
       ...(filters !== undefined ? { filters: filters as SourceFilters } : {}),
       include_stance: args?.include_stance !== false,

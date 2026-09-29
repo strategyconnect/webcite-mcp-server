@@ -34,6 +34,7 @@ export interface ReviewDocumentOptions {
   prompt: string;
   asset_ids: string[];
   thread_id: string;
+  review_scope?: 'full' | 'focused';
   source_urls?: string[];
   filters?: SourceFilters;
   include_stance?: boolean;
