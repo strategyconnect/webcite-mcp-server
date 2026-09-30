@@ -86,14 +86,13 @@ numbers inside supplied text; it does not discover external sources.
 
 ## Installation
 
-### Non-technical (recommended): Claude or Cursor
+### Claude remote connector (recommended)
 
 1. Create an API key at [webcite.co/api-keys](https://webcite.co/api-keys).
 2. Open [webcite.co/connect](https://webcite.co/connect).
 3. **Claude:** Settings → Connectors → Add custom connector → paste `https://api.webcite.co/mcp`. Choose **No sign-in**, then add a Request header named `x-api-key` with your API key as its value.
-4. **Cursor:** use the `.cursor/mcp.json` setup below with your API key.
 
-The Claude remote connector needs no Node, `npx`, or JSON config file. Cursor uses the JSON setup below.
+No Node, no `npx`, no JSON config files.
 
 ### Claude Desktop
 
