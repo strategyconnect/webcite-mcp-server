@@ -141,11 +141,11 @@ import {
 
 type Args = Record<string, unknown> | undefined;
 
-// Claude remote tools have a five-minute absolute limit. Leave time for the
-// backend to release its review lock and for this tool to return a checkpoint.
-const REVIEW_SOFT_BUDGET_MS = 165_000;
-const REVIEW_HARD_BUDGET_MS = 220_000;
-const REVIEW_SETTLE_BUDGET_MS = 60_000;
+// Some Claude clients stop waiting after 180 seconds. Leave time to abort,
+// inspect the saved review, and return its ID even if a claim is still running.
+const REVIEW_SOFT_BUDGET_MS = 115_000;
+const REVIEW_HARD_BUDGET_MS = 130_000;
+const REVIEW_SETTLE_BUDGET_MS = 30_000;
 const REVIEW_RESPONSE_MAX_BYTES = 20_000;
 
 export type ToolSuccess = {
@@ -1621,16 +1621,17 @@ export const handlers: Record<string, ToolHandler> = {
         return documentReviewOutput(events, options, 'Review paused before its saved ID was received. Wait briefly, then retry the exact resume input.');
       }
       let savedStatus: unknown;
-      const settleDeadline = Date.now() + REVIEW_SETTLE_BUDGET_MS;
-      do {
+      const settleDeadline = started + REVIEW_HARD_BUDGET_MS + REVIEW_SETTLE_BUDGET_MS;
+      while (Date.now() < settleDeadline) {
         try {
-          const saved = await client.getDocumentReview(reviewId, 0, 1, AbortSignal.timeout(5_000));
+          const readBudget = Math.max(1, Math.min(5_000, settleDeadline - Date.now()));
+          const saved = await client.getDocumentReview(reviewId, 0, 1, AbortSignal.timeout(readBudget));
           savedStatus = saved.status;
           if (savedStatus !== 'running' && savedStatus !== 'extracting') break;
         } catch { /* A transient read failure must not be mistaken for a released lock. */ }
         if (Date.now() >= settleDeadline) break;
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
-      } while (Date.now() < settleDeadline);
+        await new Promise((resolve) => setTimeout(resolve, Math.min(1_000, settleDeadline - Date.now())));
+      }
       if (savedStatus === 'failed' || savedStatus === 'credits_exhausted') {
         return documentReviewOutput(events, options,
           savedStatus === 'credits_exhausted'
