@@ -53,9 +53,9 @@ These changes do not repair or regenerate historical evidence. Backend policy an
 
 Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change a local server's tool discovery. This does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
 
-On the hosted connector, `upload_file` accepts `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`.
+On the hosted connector, `upload_file` is a small-file compatibility path accepting `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`.
 
-A file attached to a Claude chat is not automatically passed to a remote MCP tool. For the hosted connector, upload the document to Webcite and use its asset ID, or use a client that explicitly supplies the file bytes to `upload_file`.
+A file attached to a Claude chat is not automatically passed to a remote MCP tool. Upload the binary through Webcite Playground or the multipart HTTP API, then use its asset ID with the same Webcite account in Claude. Do not base64-encode extracted text as a substitute for the original file. A client that directly supplies original bytes may still use `upload_file` for small files.
 
 ## Tool reference
 

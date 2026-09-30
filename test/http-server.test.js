@@ -115,7 +115,9 @@ test('hosted upload advertises bytes and refuses server file paths', async () =>
     const upload = listed.body.result.tools.find((tool) => tool.name === 'upload_file');
     assert.deepEqual(upload.inputSchema.required, ['filename', 'file_base64']);
     assert.equal(upload.inputSchema.properties.file_path, undefined);
-    assert.match(upload.description, /chat attachment is not automatically sent/);
+    assert.match(upload.description, /attachment is not automatically sent/);
+    assert.match(upload.description, /Playground or HTTP multipart/);
+    assert.match(upload.description, /Do not generate base64 from document text/);
     const rejected = await rpc(3, 'tools/call', { name: 'upload_file', arguments: { file_path: '/etc/passwd' } }, session);
     assert.equal(rejected.body.result.isError, true);
     assert.match(rejected.body.result.content[0].text, /not file_path/);

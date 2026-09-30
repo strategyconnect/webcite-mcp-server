@@ -54,7 +54,7 @@ export function createMcpServer(
 ): Server {
   const tools = filterToolsByProfile(ALL_TOOLS, profile).map((tool) =>
     remote && tool.name === 'upload_file'
-      ? { ...tool, description: 'Upload caller-provided base64 file content (up to 20 MB). A server file path is not accepted by the hosted connector. A Claude chat attachment is not automatically sent as file_base64; provide raw bytes through the client or upload in Webcite and use its asset_id.',
+      ? { ...tool, description: 'Small-file compatibility upload: caller-provided base64 bytes, up to 20 MB decoded. For a Claude chat attachment or larger file, upload the binary through Webcite Playground or HTTP multipart, then pass its asset_id to the other tools. A remote MCP server cannot read a local path, and an attachment is not automatically sent as file_base64. Do not generate base64 from document text.',
           inputSchema: { type: 'object' as const, properties: {
             filename: { type: 'string', minLength: 1, maxLength: 255 },
             file_base64: { type: 'string', description: 'Base64-encoded file bytes, maximum 20 MB decoded.' },
