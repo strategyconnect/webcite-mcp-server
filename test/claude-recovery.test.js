@@ -285,6 +285,146 @@ test('document review names retryable failed claims without reporting a complete
   assert.match(saved.text, /Source search timed out; retry this claim/);
 });
 
+test('long review stops at a saved checkpoint and releases the backend lock before a safe resume', async () => {
+  const realNow = Date.now;
+  let reads = 0;
+  let aborted = false;
+  Date.now = () => reads++ === 0 ? 0 : 165_001;
+  try {
+    const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+      reviewDocumentStream: async function* (_options, signal) {
+        try {
+          yield { event: 'message', data: { type: 'document-review-progress', data: {
+            review_id: 'review-1', status: 'running', total_claims: 30, completed_claims: 5,
+            pending_claims: 25,
+          } } };
+        } finally { aborted = signal.aborted; }
+      },
+      getDocumentReview: async (id, offset, limit) => {
+        assert.deepEqual([id, offset, limit], ['review-1', 0, 1]);
+        return { status: 'interrupted' };
+      },
+    });
+    assert.equal(aborted, true);
+    assert.equal(result.isError, false);
+    assert.equal(result.structuredContent.checkpoint, true);
+    assert.equal(result.structuredContent.saved_status, 'interrupted');
+    assert.equal(result.structuredContent.review_id, 'review-1');
+    assert.match(result.text, /repeat the exact resume input until complete/);
+  } finally { Date.now = realNow; }
+});
+
+test('a timed review with an unreleased backend lock remains an error', async () => {
+  const realNow = Date.now;
+  let reads = 0;
+  Date.now = () => reads++ === 0 ? 0 : reads < 4 ? 165_001 : 300_000;
+  try {
+    const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+      reviewDocumentStream: async function* () {
+        yield { event: 'message', data: { type: 'document-review-progress', data: { review_id: 'review-1' } } };
+      },
+      getDocumentReview: async () => ({ status: 'running' }),
+    });
+    assert.equal(result.isError, true);
+    assert.match(result.text, /could not confirm a released lock/);
+  } finally { Date.now = realNow; }
+});
+
+test('credit exhaustion after a time budget remains an error with credit guidance', async () => {
+  const realNow = Date.now;
+  let reads = 0;
+  Date.now = () => reads++ === 0 ? 0 : 165_001;
+  try {
+    const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+      reviewDocumentStream: async function* () {
+        yield { event: 'message', data: { type: 'document-review-progress', data: { review_id: 'review-1' } } };
+      },
+      getDocumentReview: async () => ({ status: 'credits_exhausted' }),
+    });
+    assert.equal(result.isError, true);
+    assert.match(result.text, /credits were exhausted/);
+    assert.doesNotMatch(result.text, /could not confirm a released lock/);
+  } finally { Date.now = realNow; }
+});
+
+test('a completed saved review is distinguished from an incomplete stream capture', async () => {
+  const realNow = Date.now;
+  let reads = 0;
+  Date.now = () => reads++ === 0 ? 0 : 165_001;
+  try {
+    const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+      reviewDocumentStream: async function* () {
+        yield { event: 'message', data: { type: 'document-review-progress', data: { review_id: 'review-1' } } };
+      },
+      getDocumentReview: async () => ({ status: 'complete' }),
+    });
+    assert.equal(result.isError, false);
+    assert.equal(result.structuredContent.saved_status, 'complete');
+    assert.match(result.text, /Stream capture: partial/);
+    assert.match(result.text, /Saved review status: complete/);
+    assert.doesNotMatch(result.text, /repeat the exact resume input until complete/);
+  } finally { Date.now = realNow; }
+});
+
+test('oversized review responses retain a saved recovery ID within the tool size budget', async () => {
+  const longCitation = 'https://example.test/' + 'a'.repeat(3_000);
+  const frames = [
+    { event: 'message', data: { type: 'claims-extracted', data: { review_id: 'review-1',
+      total_claims: 30, claims: Array.from({ length: 30 }, (_, index) => ({ id: `c${index}`, claim: `Claim ${index}` })) } } },
+    ...Array.from({ length: 30 }, (_, index) => ({ event: 'message', data: {
+      type: 'claim-verification-result', data: { review_id: 'review-1', claim_id: `c${index}`,
+        claim: `Claim ${index}`, result: 'supported', top_citations: [{ url: longCitation }] },
+    } })),
+    { event: 'message', data: { type: 'done' } },
+  ];
+  const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+    reviewDocumentStream: async function* () { yield* frames; },
+  });
+  assert.equal(result.isError, false);
+  assert.equal(result.structuredContent.review_id, 'review-1');
+  assert.equal(result.structuredContent.results_omitted, 30);
+  assert.match(result.text, /get_document_review/);
+  assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 20_000);
+
+  const saved = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 30 }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check all',
+      asset_ids: ['asset-1'], status: 'complete', total_claims: 30, completed_claims: 30,
+      pending_claims: 0, claims: Array.from({ length: 30 }, (_, index) => ({ id: `c${index}`,
+        claim: `Claim ${index}`, result: 'supported', citation_id: `citation-${index}`,
+        citations: [{ url: longCitation, snippet: 'b'.repeat(3_000) }] })) }),
+  });
+  assert.equal(saved.structuredContent.review_id, 'review-1');
+  assert.equal(saved.structuredContent.claims.length, 3);
+  assert.equal(saved.structuredContent.next_offset, 3);
+  assert.equal(saved.structuredContent.claims_omitted, 27);
+  assert.match(saved.text, /Full saved evidence remains in Webcite/);
+  assert.ok(Buffer.byteLength(JSON.stringify(saved)) <= 20_000);
+});
+
+test('extreme prompt and citation fields cannot overflow compact review responses', async () => {
+  const huge = 'x'.repeat(100_000);
+  const stream = await handlers.review_document({ prompt: huge, asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+    reviewDocumentStream: async function* () {
+      yield { event: 'message', data: { type: 'document-review-progress', data: {
+        review_id: 'review-1', total_claims: 1, completed_claims: 0, pending_claims: 1,
+      } } };
+    },
+  });
+  assert.equal(stream.structuredContent.review_id, 'review-1');
+  assert.ok(Buffer.byteLength(JSON.stringify(stream)) <= 20_000);
+  assert.match(stream.text, /original input/);
+
+  const saved = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: huge,
+      asset_ids: ['asset-1'], status: 'complete', total_claims: 1, completed_claims: 1,
+      pending_claims: 0, claims: [{ id: 'c1', claim: huge, result: 'supported',
+        citations: [{ url: `https://example.test/${huge}` }] }] }),
+  });
+  assert.equal(saved.structuredContent.review_id, 'review-1');
+  assert.ok(Buffer.byteLength(JSON.stringify(saved)) <= 20_000);
+  assert.match(saved.text, /use the Webcite API for full citation objects/);
+});
+
 test('document review resumes as complete only after every result and done', async () => {
   const officialSources = Array.from({ length: 6 }, (_, index) => `https://example.test/report-${index}.pdf`);
   const frames = [

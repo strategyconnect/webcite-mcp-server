@@ -193,23 +193,23 @@ export class WebCiteApiClient {
     return this.request('/api/v1/payment/credits/balance', { method: 'GET' });
   }
 
-  async getDocumentReview(reviewId: string, offset?: number, limit?: number): Promise<Record<string, unknown>> {
+  async getDocumentReview(reviewId: string, offset?: number, limit?: number, signal?: AbortSignal): Promise<Record<string, unknown>> {
     const query = new URLSearchParams();
     if (offset !== undefined) query.set('offset', String(offset));
     if (limit !== undefined) query.set('limit', String(limit));
     const suffix = query.size ? `?${query}` : '';
-    return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}${suffix}`, { method: 'GET' });
+    return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}${suffix}`, { method: 'GET', signal });
   }
 
   async *verifyClaimStream(options: VerifyClaimOptions): AsyncGenerator<SSEEvent> {
     yield* this.streamRequest('/api/v1/verify/stream', this.verifyBody(options));
   }
 
-  async *reviewDocumentStream(options: ReviewDocumentOptions): AsyncGenerator<SSEEvent> {
-    yield* this.streamRequest('/api/v1/playground/chat/stream', JSON.stringify(options));
+  async *reviewDocumentStream(options: ReviewDocumentOptions, signal?: AbortSignal): AsyncGenerator<SSEEvent> {
+    yield* this.streamRequest('/api/v1/playground/chat/stream', JSON.stringify(options), signal);
   }
 
-  private async *streamRequest(endpoint: string, body: string): AsyncGenerator<SSEEvent> {
+  private async *streamRequest(endpoint: string, body: string, signal?: AbortSignal): AsyncGenerator<SSEEvent> {
     const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
@@ -219,6 +219,7 @@ export class WebCiteApiClient {
         Accept: 'text/event-stream',
       },
       body,
+      signal,
     });
 
     if (!response.ok) {
