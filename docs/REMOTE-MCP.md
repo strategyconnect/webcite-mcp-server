@@ -26,14 +26,14 @@ Process env:
 - `WEBCITE_MCP_PROFILE=public`
 - `PORT=8813`
 
-The hosted endpoint and public npm package both served version 1.9.9 at the
-2026-09-30 observation; this repository now prepares 1.9.10. Check `/mcp-health`
+The hosted endpoint and public npm package served version 1.9.10 at the
+2026-09-30 follow-up; this repository prepares 1.9.11. Check `/mcp-health`
 and the npm registry before claiming the new version is live. The public profile
 exposes 29 tools. The local run example above uses port 8787 independently of
 production.
 
-In 1.9.10, a long `review_document` call returns a time budget checkpoint after
-the saved backend review stops. Read the saved review with `get_document_review`
+In 1.9.11, a long `review_document` call returns a time budget checkpoint after
+the saved backend review stops, or an explicit saved-status error while it remains locked. Read the saved review with `get_document_review`
 and resume using the exact original input. Large saved pages provide smaller
 MCP summaries and explicit offsets; full citation records remain on the Webcite
 API. A checkpoint never means every claim has been checked.

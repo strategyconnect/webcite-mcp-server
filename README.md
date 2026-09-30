@@ -7,11 +7,15 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.11 release notes
+
+`review_document` now aborts a quiet, in-flight review before a 180-second Claude client deadline and bounds its saved-status check within the same call budget. If the backend has not released the review lock, the tool returns the saved review ID with an explicit error. Check progress with `get_document_review` before resuming.
+
 ## 1.9.10 release notes
 
-Long `review_document` calls now stop within the Claude remote tool budget. Webcite saves each completed claim; the tool confirms the backend has released the review before returning a normal time budget checkpoint. Call `get_document_review` to inspect saved progress, then repeat the exact `resume_input` until the review is complete. An unconfirmed backend stop remains an error and should be checked before retrying.
+Long `review_document` calls can return a time budget checkpoint. Webcite saves each completed claim; the tool confirms the backend has released the review before returning a normal checkpoint. Call `get_document_review` to inspect saved progress, then repeat the exact `resume_input` until the review is complete. An unconfirmed backend stop remains an error and should be checked before retrying. Version 1.9.10 could still exceed a 180-second client limit while waiting for an in-flight claim or backend lock.
 
-Large review responses now point to saved, paginated results instead of exceeding Claude's tool output limit. Small responses retain their existing detail. The saved review and its citation evidence remain in Webcite. Hosted and npm 1.9.10 availability depends on publication and deployment; check the registry and `/mcp-health` before assuming either is live.
+Large review responses now point to saved, paginated results instead of exceeding Claude's tool output limit. Small responses retain their existing detail. The saved review and its citation evidence remain in Webcite. Check the registry and `/mcp-health` for the version in use.
 
 ## 1.9.2 release notes
 

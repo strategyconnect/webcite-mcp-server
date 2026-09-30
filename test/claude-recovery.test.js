@@ -289,7 +289,7 @@ test('long review stops at a saved checkpoint and releases the backend lock befo
   const realNow = Date.now;
   let reads = 0;
   let aborted = false;
-  Date.now = () => reads++ === 0 ? 0 : 165_001;
+  Date.now = () => reads++ === 0 ? 0 : 115_001;
   try {
     const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
       reviewDocumentStream: async function* (_options, signal) {
@@ -314,10 +314,31 @@ test('long review stops at a saved checkpoint and releases the backend lock befo
   } finally { Date.now = realNow; }
 });
 
+test('silent in-flight claim is aborted before the 180-second client deadline', { timeout: 1_000 }, async () => {
+  const realSetTimeout = global.setTimeout;
+  let aborted = false;
+  global.setTimeout = (fn, ms, ...args) => realSetTimeout(fn, ms === 130_000 ? 0 : ms, ...args);
+  try {
+    const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
+      reviewDocumentStream: async function* (_options, signal) {
+        yield { event: 'message', data: { type: 'document-review-progress', data: { review_id: 'review-1' } } };
+        try {
+          await new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true }));
+        } finally { aborted = signal.aborted; }
+      },
+      getDocumentReview: async () => ({ status: 'interrupted' }),
+    });
+    assert.equal(aborted, true);
+    assert.equal(result.structuredContent.review_id, 'review-1');
+    assert.equal(result.structuredContent.checkpoint, true);
+    assert.equal(result.isError, false);
+  } finally { global.setTimeout = realSetTimeout; }
+});
+
 test('a timed review with an unreleased backend lock remains an error', async () => {
   const realNow = Date.now;
   let reads = 0;
-  Date.now = () => reads++ === 0 ? 0 : reads < 4 ? 165_001 : 300_000;
+  Date.now = () => reads++ === 0 ? 0 : reads < 4 ? 115_001 : 300_000;
   try {
     const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
       reviewDocumentStream: async function* () {
@@ -333,7 +354,7 @@ test('a timed review with an unreleased backend lock remains an error', async ()
 test('credit exhaustion after a time budget remains an error with credit guidance', async () => {
   const realNow = Date.now;
   let reads = 0;
-  Date.now = () => reads++ === 0 ? 0 : 165_001;
+  Date.now = () => reads++ === 0 ? 0 : 115_001;
   try {
     const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
       reviewDocumentStream: async function* () {
@@ -350,7 +371,7 @@ test('credit exhaustion after a time budget remains an error with credit guidanc
 test('a completed saved review is distinguished from an incomplete stream capture', async () => {
   const realNow = Date.now;
   let reads = 0;
-  Date.now = () => reads++ === 0 ? 0 : 165_001;
+  Date.now = () => reads++ === 0 ? 0 : 115_001;
   try {
     const result = await handlers.review_document({ prompt: 'Check all', asset_ids: ['asset-1'], thread_id: 'thread-1' }, {
       reviewDocumentStream: async function* () {
