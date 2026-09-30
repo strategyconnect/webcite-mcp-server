@@ -118,7 +118,8 @@ test('document review guide tells Claude to resume with saved work and no count 
   assert.match(guide, /get_document_review_job.*job_id at zero credits/);
   assert.match(guide, /review_document.*new idempotency_key/);
   assert.match(guide, /cannot read a local path or automatically access the attachment/);
-  assert.match(guide, /Playground or with HTTP multipart/);
+  assert.match(guide, /Playground or through authenticated HTTP multipart\/resumable upload/);
+  assert.match(guide, /parse_job_id.*wait for parsing.*parse_required.*parse_endpoint/);
   assert.match(guide, /never reconstructed document text/);
   assert.match(guide, /found with `search_sources` in source_urls/);
   assert.match(guide, /Repeating `extract_document` or `extract_figures` incurs the stated per-call credits/);

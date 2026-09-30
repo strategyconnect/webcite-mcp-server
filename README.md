@@ -59,7 +59,7 @@ Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change a local server's too
 
 On the hosted connector, `upload_file` is a small-file compatibility path accepting `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`.
 
-A file attached to a Claude chat is not automatically passed to a remote MCP tool. Upload the binary through Webcite Playground or the multipart HTTP API within the API's supported format and size limits, then use its asset ID with the same Webcite account in Claude. Do not base64-encode extracted text as a substitute for the original file. A client that directly supplies original bytes may still use `upload_file` for small files.
+A file attached to a Claude chat is not automatically passed to a remote MCP tool. Upload the original binary through Webcite Playground or the authenticated multipart/resumable HTTP API within the parser's format and size limits, then use its asset ID with the same Webcite account in Claude. If upload completion returns `parse_job_id`, wait for parsing; if it returns `parse_required`, call its `parse_endpoint`. Do not base64-encode extracted text as a substitute for the original file. A client that directly supplies original bytes may still use `upload_file` for small files.
 
 ## Tool reference
 
