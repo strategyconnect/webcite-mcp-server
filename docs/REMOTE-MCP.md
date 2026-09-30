@@ -13,9 +13,9 @@ PORT=8787 WEBCITE_MCP_PROFILE=public node dist/http-server.js
 # MCP:   POST http://127.0.0.1:8787/mcp  with Authorization: Bearer <api_key>
 ```
 
-## Production (current)
+## Production (observed 2026-09-30)
 
-Live URL (prod nginx proxies to pm2 `webcite-mcp-http` on `:8787`):
+Live URL (production Nginx proxies to PM2 `webcite-mcp-prod-1-9-9-3885a38` on `:8813`):
 
 - MCP: `https://api.webcite.co/mcp`
 - Health: `https://api.webcite.co/mcp-health`
@@ -24,8 +24,11 @@ Process env:
 
 - `WEBCITE_API_URL=https://api.webcite.co`
 - `WEBCITE_MCP_PROFILE=public`
-- `PORT=8787`
-- `HOST=127.0.0.1`
+- `PORT=8813`
+
+The hosted endpoint and public npm package both serve version 1.9.9 as of this
+observation; the public profile exposes 29 tools. The local run example above
+uses port 8787 independently of production.
 
 The remote server's `public` profile exposes supported public API workflows documented in the
 [package tool profiles](../README.md#tool-profiles). `docs`, `research` and
@@ -56,6 +59,6 @@ and auto-selects Sign in now / CIMD registration.
 
 When shipping API + MCP together:
 
-1. Publish / deploy this HTTP binary (and npm package when Trusted Publishing is set up).
+1. Publish the canonical npm package and deploy the reviewed HTTP binary.
 2. Bump `integrations/mcp-server/RELEASE.json` on the backend repo.
 3. `deploy-vm.sh` MCP gate must pass.

@@ -91,7 +91,7 @@ numbers inside supplied text; it does not discover external sources.
 1. Create an API key at [webcite.co/api-keys](https://webcite.co/api-keys).
 2. Open [webcite.co/connect](https://webcite.co/connect).
 3. **Claude:** Settings → Connectors → Add custom connector → paste `https://api.webcite.co/mcp`. Choose **No sign-in**, then add a Request header named `x-api-key` with your API key as its value.
-4. **Cursor:** use the one-click install button on `/connect`.
+4. **Cursor:** use the `.cursor/mcp.json` setup below with your API key.
 
 No Node, no `npx`, no JSON config files.
 
