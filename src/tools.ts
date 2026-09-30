@@ -561,7 +561,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_document_review',
-    description: 'Read a saved document review by review_id without new analysis or credits. Page checked claims, uncovered passages and rejected claim candidates independently with their next offsets. The API key must own the review.',
+    description: 'Read a saved document review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 },
       offset: { type: 'integer', minimum: 0 },
@@ -570,7 +570,27 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
       gap_limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Uncovered passages per page, 1 to 100. Continue with next_gap_offset.' },
       rejected_offset: { type: 'integer', minimum: 0 },
       rejected_limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Rejected claim candidates per page, 1 to 100. Continue with next_rejected_offset.' },
+      disposition_offset: { type: 'integer', minimum: 0 },
+      disposition_limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Explicit nonclaim dispositions per page. Continue with next_disposition_offset.' },
     }, required: ['review_id'] },
+  },
+  {
+    name: 'get_review_source_span',
+    description: 'Read the exact text of one saved uncovered source passage for review. Only works for an owned completed v6 review and a source-attested heading, table title or navigation gap within the attestation size limit. Costs 0 credits.',
+    inputSchema: { type: 'object', properties: {
+      review_id: { type: 'string', minLength: 1 }, asset_id: { type: 'string', format: 'uuid' },
+      start: { type: 'integer', minimum: 0 }, end: { type: 'integer', minimum: 1 },
+    }, required: ['review_id', 'asset_id', 'start', 'end'] },
+  },
+  {
+    name: 'record_review_nonclaim',
+    description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. Inspect its full text first with get_review_source_span; a structural role alone never proves nonclaim. Leave assertion-bearing passages uncovered. Records rationale and authenticated reviewer identity. Costs 0 credits.',
+    inputSchema: { type: 'object', properties: {
+      review_id: { type: 'string', minLength: 1 }, asset_id: { type: 'string', format: 'uuid' },
+      start: { type: 'integer', minimum: 0 }, end: { type: 'integer', minimum: 1 },
+      source_quote: { type: 'string', minLength: 1, maxLength: 16000 },
+      rationale: { type: 'string', minLength: 10, maxLength: 1000 },
+    }, required: ['review_id', 'asset_id', 'start', 'end', 'source_quote', 'rationale'] },
   },
   {
     name: 'get_document_review_job',
@@ -673,6 +693,8 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
 export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v1/payment/credits/balance': 'get_credit_balance',
   'GET /api/v1/playground/chat/document-reviews/:reviewId': 'get_document_review',
+  'GET /api/v1/playground/chat/document-reviews/:reviewId/source-span': 'get_review_source_span',
+  'POST /api/v1/playground/chat/document-reviews/:reviewId/nonclaim-dispositions': 'record_review_nonclaim',
   'GET /api/v1/playground/chat/document-review-jobs/:jobId': 'get_document_review_job',
   'POST /api/v1/playground/chat/document-review-jobs': 'review_document',
   'POST /api/v2/sources': 'register_source',

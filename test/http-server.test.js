@@ -128,10 +128,11 @@ test('hosted upload advertises bytes and refuses server file paths', async () =>
 
 test('hosted upload accepts explicit raw bytes and returns an asset ID', async () => {
   let uploadedBytes = false;
+  const originalPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==', 'base64');
   const backend = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
-    uploadedBytes = Buffer.concat(chunks).includes(Buffer.from('slide-image-bytes'));
+    uploadedBytes = Buffer.concat(chunks).includes(originalPng);
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ successCode: 200, data: { asset_id: 'asset-1' } }));
   });
@@ -154,7 +155,7 @@ test('hosted upload accepts explicit raw bytes and returns an asset ID', async (
       clientInfo: { name: 'hosted-bytes-test', version: '1' } });
     const session = init.response.headers.get('mcp-session-id');
     const upload = await rpc(2, 'tools/call', { name: 'upload_file', arguments: {
-      filename: 'slide.jpg', file_base64: Buffer.from('slide-image-bytes').toString('base64'),
+      filename: 'slide.png', file_base64: originalPng.toString('base64'),
     } }, session);
     assert.equal(upload.body.result.structuredContent.asset_id, 'asset-1');
     assert.equal(uploadedBytes, true);
