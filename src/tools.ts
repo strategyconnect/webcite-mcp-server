@@ -501,7 +501,7 @@ Handles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deter
 
 Only the text display is truncated. Some Claude connectors omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.
 
-After extraction, use review_document for a whole-document or whole-slide external fact-check; recover progress with get_document_review. Do not verify each extracted figure separately with verify_claim.
+After extraction, use review_document for a whole-document or whole-slide external fact-check; poll get_document_review_job, then read saved results and gaps with get_document_review. Do not verify each extracted figure separately with verify_claim.
 
 Credits: 1`,
     inputSchema: {
@@ -561,16 +561,27 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_document_review',
-    description: 'Read a saved document review by review_id without new analysis or credits. Returns completed claim results and pending claims. Use offset and limit to page through all claims; there is no total claim cap. The API key must own the review.',
+    description: 'Read a saved document review by review_id without new analysis or credits. Page checked claims, uncovered passages and rejected claim candidates independently with their next offsets. The API key must own the review.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 },
       offset: { type: 'integer', minimum: 0 },
       limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Claims per page, 1 to 100. Continue with next_offset until all claims are read.' },
+      gap_offset: { type: 'integer', minimum: 0 },
+      gap_limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Uncovered passages per page, 1 to 100. Continue with next_gap_offset.' },
+      rejected_offset: { type: 'integer', minimum: 0 },
+      rejected_limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Rejected claim candidates per page, 1 to 100. Continue with next_rejected_offset.' },
     }, required: ['review_id'] },
   },
   {
+    name: 'get_document_review_job',
+    description: 'Poll a durable document review job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Use the same job_id until complete, partial_coverage, credits_exhausted or failed. Then read saved claims and uncovered source spans with get_document_review using its review_id.',
+    inputSchema: { type: 'object', properties: {
+      job_id: { type: 'string', minLength: 36 },
+    }, required: ['job_id'] },
+  },
+  {
     name: 'review_document',
-    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this after extract_document. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts or resumes a durable full document fact-check, including for JPEG/PNG slides. Reuse the exact resume_input, including prompt, asset_ids, thread_id, source URLs, filters and billing flags, to replay completed claims without charging again. There is no fixed claim count; charges are per claim and stop when credits run out. Long reviews return a time budget checkpoint with saved progress; call get_document_review, then repeat the exact resume_input until complete. Returns completed results, pending count and review_id even when interrupted.',
+    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this after extract_document. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts a durable full review and immediately returns a job_id. Poll get_document_review_job until terminal, then page through get_document_review. Repeating the same input reuses its job without a new charge. After credits are replenished or a failed job is diagnosed, retry the same thread and input with a new idempotency_key; completed claims replay from the saved review. Only report full coverage when coverage_complete is true.',
     inputSchema: { type: 'object', properties: {
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
@@ -580,6 +591,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
       filters: sourceFiltersInput,
       include_stance: { type: 'boolean', default: true, description: 'Analyze source stance; adds 1 credit per claim.' },
       include_verdict: { type: 'boolean', default: true, description: 'Generate a verdict; adds 1 credit per claim.' },
+      idempotency_key: { type: 'string', minLength: 1, maxLength: 128, description: 'Optional retry key. Omit on first start; use a new value only after a terminal failed or credits_exhausted job is diagnosed.' },
     }, required: ['prompt', 'asset_ids', 'thread_id'] },
   },
   {
@@ -661,7 +673,8 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
 export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v1/payment/credits/balance': 'get_credit_balance',
   'GET /api/v1/playground/chat/document-reviews/:reviewId': 'get_document_review',
-  'POST /api/v1/playground/chat/stream': 'review_document',
+  'GET /api/v1/playground/chat/document-review-jobs/:jobId': 'get_document_review_job',
+  'POST /api/v1/playground/chat/document-review-jobs': 'review_document',
   'POST /api/v2/sources': 'register_source',
   'GET /api/v2/sources/:versionId/representations/:representationId/units/:unitId': 'read_source_unit',
   'POST /api/v2/sources/:versionId/representations/text': 'publish_text_representation',

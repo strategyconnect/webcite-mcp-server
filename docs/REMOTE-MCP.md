@@ -13,9 +13,9 @@ PORT=8787 WEBCITE_MCP_PROFILE=public node dist/http-server.js
 # MCP:   POST http://127.0.0.1:8787/mcp  with Authorization: Bearer <api_key>
 ```
 
-## Production (observed 2026-09-30)
+## Production (observed 2026-09-30, before the durable review release)
 
-Live URL (production Nginx proxies to PM2 `webcite-mcp-prod-1-9-9-3885a38` on `:8813`):
+Live URL (production Nginx proxies to the 1.9.12 PM2 process on `:8819`):
 
 - MCP: `https://api.webcite.co/mcp`
 - Health: `https://api.webcite.co/mcp-health`
@@ -24,19 +24,24 @@ Process env:
 
 - `WEBCITE_API_URL=https://api.webcite.co`
 - `WEBCITE_MCP_PROFILE=public`
-- `PORT=8813`
+- `PORT=8819`
 
-The hosted endpoint and public npm package served version 1.9.10 at the
-2026-09-30 follow-up; this repository prepares 1.9.11. Check `/mcp-health`
-and the npm registry before claiming the new version is live. The public profile
-exposes 29 tools. The local run example above uses port 8787 independently of
-production.
+The hosted endpoint and public npm package served 1.9.12 after the 2026-09-30
+binary-upload release. Check `/mcp-health` and the npm registry before claiming
+the durable review version is live. The 1.9.12 public profile exposes 29 tools;
+the durable release adds `get_document_review_job`. The local run example above
+uses port 8787 independently of production.
 
 In 1.9.11, a long `review_document` call returns a time budget checkpoint after
 the saved backend review stops, or an explicit saved-status error while it remains locked. Read the saved review with `get_document_review`
 and resume using the exact original input. Large saved pages provide smaller
 MCP summaries and explicit offsets; full citation records remain on the Webcite
 API. A checkpoint never means every claim has been checked.
+
+The next release starts a backend job and returns `job_id` without holding an MCP
+request open. Poll `get_document_review_job`, then read the saved review and its
+coverage gaps with `get_document_review`. Deploy the backend document-review-jobs
+API before this MCP package.
 
 The remote server's `public` profile exposes supported public API workflows documented in the
 [package tool profiles](../README.md#tool-profiles). `docs`, `research` and

@@ -7,6 +7,10 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.13 release notes
+
+`review_document` now returns a job ID immediately. Poll `get_document_review_job` until it reaches `complete`, `partial_coverage`, `credits_exhausted`, or `failed`, then read claims and uncovered source passages with `get_document_review`. Claims and gaps have independent page offsets. A terminal failed or credit-exhausted job remains an immutable receipt; retry the same review inputs with a new `idempotency_key` after diagnosing the failure or adding credits. This flow requires the backend document-review-jobs API.
+
 ## 1.9.11 release notes
 
 `review_document` now aborts a quiet, in-flight review before a 180-second Claude client deadline and bounds its saved-status check within the same call budget. If the backend has not released the review lock, the tool returns the saved review ID with an explicit error. Check progress with `get_document_review` before resuming.
@@ -46,7 +50,7 @@ These changes do not repair or regenerate historical evidence. Backend policy an
 | Profile | Tools exposed | When to use it |
 | --- | --- | --- |
 | `core` | `webcite_guide`, `get_credit_balance`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Short local list for everyday verification. |
-| `public` (local and remote default) | Core plus `review_document`, `get_document_review`, `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim`, `register_source`, `publish_text_representation`, `get_latest_representation`, `read_source_unit` | All supported public API workflows, including saved document reviews and anchored evidence. |
+| `public` (local and remote default) | Core plus `review_document`, `get_document_review_job`, `get_document_review`, `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim`, `register_source`, `publish_text_representation`, `get_latest_representation`, `read_source_unit` | All supported public API workflows, including saved document reviews and anchored evidence. |
 | `docs` | Core plus `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `verify_feedback` | Deeper document work. |
 | `research` | Docs plus `get_answer`, `query_context`, `get_evidence_packet`, `compare_assertions`, `get_change_impact`, `verify_claim_stream` | Context and research workflows where the backend enables them. |
 | `full` | All tools registered by this package | Advanced local integrations and evaluation. Backend permissions and feature flags still apply. |
@@ -66,8 +70,9 @@ The table below describes common tools across profiles. It is not the remote ser
 | `webcite_guide` | Pick verification, full-document, source-tracing or numeric workflow | 0 |
 | `verify_claim` | Full fact verification with stance analysis and verdict | 2-4 |
 | `get_credit_balance` | Read remaining, used and total credits | 0 |
-| `get_document_review` | Read a saved review and page through completed and pending claims | 0 |
-| `review_document` | Start or resume a full review of uploaded assets; completed claims replay | Per claim |
+| `get_document_review` | Page saved claims and uncovered source passages independently | 0 |
+| `get_document_review_job` | Poll a durable review job | 0 |
+| `review_document` | Start a full review and return its job ID immediately | Per claim after start |
 | `verify_claim_stream` | Streaming verification for complex/long-running claims | 2-4 |
 | `search_sources` | Quick citation search without analysis | 2 |
 | `list_citations` | List your past verifications | 1 |
