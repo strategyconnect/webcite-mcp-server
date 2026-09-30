@@ -117,7 +117,9 @@ test('document review guide tells Claude to resume with saved work and no count 
   assert.match(guide, /extract_pages.*costs 1 credit/);
   assert.match(guide, /get_document_review.*review_id.*zero credits/);
   assert.match(guide, /review_document.*exact resume_input/);
-  assert.match(guide, /chat attachment is not automatically available/);
+  assert.match(guide, /cannot read a local path or automatically access the attachment/);
+  assert.match(guide, /Playground or with HTTP multipart/);
+  assert.match(guide, /never reconstructed document text/);
   assert.match(guide, /found with `search_sources` in source_urls/);
   assert.match(guide, /Repeating `extract_document` or `extract_figures` incurs the stated per-call credits/);
 });
