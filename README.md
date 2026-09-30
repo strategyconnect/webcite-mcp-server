@@ -7,6 +7,12 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.10 release notes
+
+Long `review_document` calls now stop within the Claude remote tool budget. Webcite saves each completed claim; the tool confirms the backend has released the review before returning a normal time budget checkpoint. Call `get_document_review` to inspect saved progress, then repeat the exact `resume_input` until the review is complete. An unconfirmed backend stop remains an error and should be checked before retrying.
+
+Large review responses now point to saved, paginated results instead of exceeding Claude's tool output limit. Small responses retain their existing detail. The saved review and its citation evidence remain in Webcite. Hosted and npm 1.9.10 availability depends on publication and deployment; check the registry and `/mcp-health` before assuming either is live.
+
 ## 1.9.2 release notes
 
 The public profile includes 29 tools, including credit balance, saved document review, and review recovery. Whole-document requests now route through extraction and a saved review, with guidance to report unreadable pages and unchecked claims.
