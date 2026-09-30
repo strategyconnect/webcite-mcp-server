@@ -39,7 +39,7 @@ test('public MCP tools forward validated inputs to the matching API routes', asy
       ['POST', '/api/v2/verify/numeric'],
     ]);
     assert.deepEqual(calls[5].body, { asset_id: 'asset-1' });
-    assert.equal(new URL(calls[6].url).search, '?offset=2&limit=5&gap_offset=0&gap_limit=20');
+    assert.equal(new URL(calls[6].url).search, '?offset=2&limit=5&gap_offset=0&gap_limit=20&rejected_offset=0&rejected_limit=20');
     assert.deepEqual(calls[8].body.operands[0], {
       source_version_id: 'version-1', representation_id: 'rep-1', source_unit_id: 'unit-1', figure_index: 0,
     });

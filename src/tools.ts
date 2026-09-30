@@ -561,18 +561,20 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_document_review',
-    description: 'Read a saved document review by review_id without new analysis or credits. Returns checked and pending claims plus source coverage gaps. Page claims with offset/limit and uncovered passages with gap_offset/gap_limit. The API key must own the review.',
+    description: 'Read a saved document review by review_id without new analysis or credits. Page checked claims, uncovered passages and rejected claim candidates independently with their next offsets. The API key must own the review.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 },
       offset: { type: 'integer', minimum: 0 },
       limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Claims per page, 1 to 100. Continue with next_offset until all claims are read.' },
       gap_offset: { type: 'integer', minimum: 0 },
       gap_limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Uncovered passages per page, 1 to 100. Continue with next_gap_offset.' },
+      rejected_offset: { type: 'integer', minimum: 0 },
+      rejected_limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Rejected claim candidates per page, 1 to 100. Continue with next_rejected_offset.' },
     }, required: ['review_id'] },
   },
   {
     name: 'get_document_review_job',
-    description: 'Poll a durable document review job by job_id at zero credits. Use the same job_id until complete, partial_coverage, credits_exhausted or failed. Then read saved claims and uncovered source spans with get_document_review using its review_id.',
+    description: 'Poll a durable document review job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Use the same job_id until complete, partial_coverage, credits_exhausted or failed. Then read saved claims and uncovered source spans with get_document_review using its review_id.',
     inputSchema: { type: 'object', properties: {
       job_id: { type: 'string', minLength: 36 },
     }, required: ['job_id'] },

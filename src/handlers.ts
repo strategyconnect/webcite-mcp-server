@@ -174,7 +174,7 @@ function requireString(args: Args, key: string): string {
 }
 
 function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
-  const statuses = ['queued', 'running', 'waiting_review', 'complete', 'partial_coverage', 'credits_exhausted', 'failed'];
+  const statuses = ['queued', 'running', 'waiting_review', 'waiting_parse', 'complete', 'partial_coverage', 'credits_exhausted', 'failed'];
   if (typeof result.job_id !== 'string' || !/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(result.job_id) ||
       typeof result.status !== 'string' || !statuses.includes(result.status) ||
       (result.review_id !== undefined && typeof result.review_id !== 'string') ||
@@ -191,7 +191,7 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
     ? ` Coverage incomplete: ${progress.uncovered_source_span_count ?? 'unknown'} uncovered source spans.` : '';
   const next = result.review_id
     ? `Call get_document_review with review_id ${result.review_id} for saved claim results.` : '';
-  const wait = ['queued', 'running', 'waiting_review'].includes(result.status)
+  const wait = ['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
     ? `Call get_document_review_job with job_id ${result.job_id} to check progress.` : '';
   const error = typeof result.error === 'string' ? ` Error: ${result.error}` : '';
   return { text: `Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait}`.trim(),
@@ -1406,14 +1406,19 @@ export const handlers: Record<string, ToolHandler> = {
     const limit = args?.limit ?? 50;
     const gapOffset = args?.gap_offset ?? 0;
     const gapLimit = args?.gap_limit ?? 20;
+    const rejectedOffset = args?.rejected_offset ?? 0;
+    const rejectedLimit = args?.rejected_limit ?? 20;
     if (!Number.isInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 100) {
       throw new ToolFailure('invalid_argument', 'offset must be >= 0 and page limit must be 1 to 100');
     }
     if (!Number.isInteger(gapOffset) || (gapOffset as number) < 0 ||
         !Number.isInteger(gapLimit) || (gapLimit as number) < 1 || (gapLimit as number) > 100)
       throw new ToolFailure('invalid_argument', 'gap_offset must be >= 0 and gap_limit must be 1 to 100');
+    if (!Number.isInteger(rejectedOffset) || (rejectedOffset as number) < 0 ||
+        !Number.isInteger(rejectedLimit) || (rejectedLimit as number) < 1 || (rejectedLimit as number) > 100)
+      throw new ToolFailure('invalid_argument', 'rejected_offset must be >= 0 and rejected_limit must be 1 to 100');
     const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number,
-      gapOffset as number, gapLimit as number));
+      gapOffset as number, gapLimit as number, rejectedOffset as number, rejectedLimit as number));
     if (result.review_id !== reviewId || !Array.isArray(result.claims) ||
         !Number.isInteger(result.total_claims) || !Number.isInteger(result.completed_claims) ||
         !Number.isInteger(result.pending_claims) || typeof result.status !== 'string' ||
@@ -1441,6 +1446,16 @@ export const handlers: Record<string, ToolHandler> = {
       `- Uncovered passage ${(gapOffset as number) + index + 1}: asset ${gap.asset_id}, offsets ${gap.start}-${gap.end}: ${gap.preview}`);
     const nextGap = Number.isInteger(result.next_gap_offset)
       ? `\nNext gap offset: ${result.next_gap_offset} (use gap_offset and gap_limit)` : '';
+    const rejected = Array.isArray(result.rejected_claims)
+      ? result.rejected_claims as Array<Record<string, unknown>> : [];
+    if (rejected.some((item) => typeof item.claim !== 'string' || typeof item.reason !== 'string'))
+      throw new ToolFailure('invalid_api_output', 'Stored review has an invalid rejected claim candidate');
+    const rejectedCount = Number.isInteger(result.rejected_claim_count)
+      ? `\nRejected claim candidates: ${result.rejected_claim_count}.` : '';
+    const rejectedRows = rejected.map((item, index) =>
+      `- Rejected candidate ${(rejectedOffset as number) + index + 1}: ${item.claim} (reason: ${item.reason})`);
+    const nextRejected = Number.isInteger(result.next_rejected_offset)
+      ? `\nNext rejected offset: ${result.next_rejected_offset} (use rejected_offset and rejected_limit)` : '';
     const rows = claims.map((claim, index) => {
       if (typeof claim.id !== 'string' || typeof claim.claim !== 'string') {
         throw new ToolFailure('invalid_api_output', 'Stored document review has an invalid claim');
@@ -1478,7 +1493,7 @@ export const handlers: Record<string, ToolHandler> = {
     const focusGuidance = focusedScope
       ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
-    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${coverage}${creditAction}\n${gapRows.join('\n')}${nextGap}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
     if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
     const shown = claims.slice(0, 3).map((claim, index) => ({
       id: claim.id, claim: String(claim.claim).slice(0, 500),
@@ -1491,7 +1506,18 @@ export const handlers: Record<string, ToolHandler> = {
         .filter((url: unknown): url is string => typeof url === 'string'),
     }));
     const nextPage = (offset as number) + shown.length;
-    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${coverage}${creditAction}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${nextGap}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+    const shownGaps = gaps.slice(0, 3);
+    const compactNextGap = shownGaps.length < gaps.length
+      ? (gapOffset as number) + shownGaps.length : result.next_gap_offset;
+    const compactGapHint = Number.isInteger(compactNextGap)
+      ? `\nNext gap offset: ${compactNextGap} (use gap_offset and gap_limit)` : '';
+    const shownRejected = rejected.slice(0, 3);
+    const compactNextRejected = shownRejected.length < rejected.length
+      ? (rejectedOffset as number) + shownRejected.length : result.next_rejected_offset;
+    const compactRejectedHint = Number.isInteger(compactNextRejected)
+      ? `\nNext rejected offset: ${compactNextRejected} (use rejected_offset and rejected_limit)` : '';
+    const compactRejectedRows = rejectedRows.slice(0, 3);
+    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       claims: shown, next_offset: nextPage < (offset as number) + claims.length ? nextPage : result.next_offset,
@@ -1499,18 +1525,23 @@ export const handlers: Record<string, ToolHandler> = {
       coverage_complete: result.coverage_complete ?? null,
       uncovered_source_span_count: result.uncovered_source_span_count ?? null,
       ungrounded_claims: result.ungrounded_claims ?? null,
-      uncovered_source_spans: gaps.slice(0, 3),
-      next_gap_offset: result.next_gap_offset ?? null,
+      uncovered_source_spans: shownGaps,
+      next_gap_offset: compactNextGap ?? null,
+      rejected_claim_count: result.rejected_claim_count ?? null,
+      rejected_claims: shownRejected,
+      next_rejected_offset: compactNextRejected ?? null,
       full_evidence_saved: true,
     });
     if (Buffer.byteLength(JSON.stringify(compact)) <= REVIEW_RESPONSE_MAX_BYTES) return compact;
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${coverage}\nThe requested page exceeds Claude's tool response limit. Call get_document_review with offset ${offset}, limit 1, gap_offset ${gapOffset}, and gap_limit 1; use the Webcite API for full citation objects.`, {
+    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${coverage}\nThe requested page exceeds Claude's tool response limit. Call get_document_review with offset ${offset}, limit 1, gap_offset ${gapOffset}, gap_limit 1, rejected_offset ${rejectedOffset}, and rejected_limit 1; use the Webcite API for full citation objects.`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       coverage_complete: result.coverage_complete ?? null,
       uncovered_source_span_count: result.uncovered_source_span_count ?? null,
       ungrounded_claims: result.ungrounded_claims ?? null,
-      next_gap_offset: result.next_gap_offset ?? null,
+      next_gap_offset: gaps.length ? gapOffset : result.next_gap_offset ?? null,
+      rejected_claim_count: result.rejected_claim_count ?? null,
+      next_rejected_offset: rejected.length ? rejectedOffset : result.next_rejected_offset ?? null,
       next_offset: offset, full_evidence_saved: true,
     });
   },

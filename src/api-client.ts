@@ -195,6 +195,7 @@ export class WebCiteApiClient {
 
   async getDocumentReview(
     reviewId: string, offset?: number, limit?: number, gapOffset?: number, gapLimit?: number,
+    rejectedOffset?: number, rejectedLimit?: number,
     signal?: AbortSignal,
   ): Promise<Record<string, unknown>> {
     const query = new URLSearchParams();
@@ -202,6 +203,8 @@ export class WebCiteApiClient {
     if (limit !== undefined) query.set('limit', String(limit));
     if (gapOffset !== undefined) query.set('gap_offset', String(gapOffset));
     if (gapLimit !== undefined) query.set('gap_limit', String(gapLimit));
+    if (rejectedOffset !== undefined) query.set('rejected_offset', String(rejectedOffset));
+    if (rejectedLimit !== undefined) query.set('rejected_limit', String(rejectedLimit));
     const suffix = query.size ? `?${query}` : '';
     return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}${suffix}`, { method: 'GET', signal });
   }

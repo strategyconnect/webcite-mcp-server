@@ -154,7 +154,7 @@ test('saved review pages expose completed and pending work without a total claim
   const result = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 50 }, {
     getDocumentReview: async (...args) => { requested = args; return snapshot; },
   });
-  assert.deepEqual(requested, ['review-1', 0, 50, 0, 20]);
+  assert.deepEqual(requested, ['review-1', 0, 50, 0, 20, 0, 20]);
   assert.equal(result.structuredContent.total_claims, 101);
   assert.equal(result.structuredContent.claims[0].citation_id, 'citation-1');
   assert.deepEqual(result.structuredContent.resume_input, {
@@ -284,6 +284,12 @@ test('review job client posts without an SSE connection or a claim-count deadlin
 });
 
 test('malformed review job status fails closed and saved coverage is visible', async () => {
+  const parsing = await handlers.get_document_review_job({ job_id: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }, {
+    getDocumentReviewJob: async () => ({ job_id: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      status: 'waiting_parse', progress: { completed_claims: 0, total_claims: 0 } }),
+  });
+  assert.notEqual(parsing.isError, true);
+  assert.match(parsing.text, /Call get_document_review_job/);
   await assert.rejects(() => handlers.get_document_review_job({ job_id: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }, {
     getDocumentReviewJob: async () => ({ status: 'complete' }),
   }), /incomplete/);
@@ -314,14 +320,45 @@ test('saved review pages uncovered passages independently of checked claims', as
       pending_claims: 0, extraction_complete: true, coverage_complete: false,
       uncovered_source_span_count: 2, ungrounded_claims: 0, next_gap_offset: 2,
       uncovered_source_spans: [{ asset_id: 'asset-1', start: 12, end: 20, preview: 'Gap two' }],
+      rejected_claim_count: 2, next_rejected_offset: 2,
+      rejected_claims: [{ claim: 'Rejected two', reason: 'Unbound source quote' }],
       claims: [{ id: 'c1', claim: 'Present claim', result: 'verified' }] });
   };
   try {
     const result = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 1,
-      gap_offset: 1, gap_limit: 1 }, new WebCiteApiClient('test-only', 'https://example.test'));
+      gap_offset: 1, gap_limit: 1, rejected_offset: 1, rejected_limit: 1 },
+    new WebCiteApiClient('test-only', 'https://example.test'));
     assert.equal(requestUrl.searchParams.get('gap_offset'), '1');
     assert.equal(requestUrl.searchParams.get('gap_limit'), '1');
+    assert.equal(requestUrl.searchParams.get('rejected_offset'), '1');
+    assert.equal(requestUrl.searchParams.get('rejected_limit'), '1');
     assert.equal(result.structuredContent.next_gap_offset, 2);
+    assert.equal(result.structuredContent.next_rejected_offset, 2);
     assert.match(result.text, /Uncovered passage 2.*Gap two/);
+    assert.match(result.text, /Rejected candidate 2.*Unbound source quote/);
   } finally { global.fetch = previous; }
+});
+
+test('compact review output keeps an exact cursor for hidden gaps', async () => {
+  const gaps = Array.from({ length: 5 }, (_, index) => ({
+    asset_id: 'asset-1', start: index, end: index + 1, preview: `Gap ${index + 1}`,
+  }));
+  const result = await handlers.get_document_review({ review_id: 'review-1', gap_limit: 5 }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'complete', total_claims: 4, completed_claims: 4,
+      pending_claims: 0, extraction_complete: true, coverage_complete: false,
+      uncovered_source_span_count: 5, ungrounded_claims: 0, next_gap_offset: 5,
+      uncovered_source_spans: gaps,
+      rejected_claim_count: 5, next_rejected_offset: 5,
+      rejected_claims: Array.from({ length: 5 }, (_, index) => ({
+        claim: `Rejected ${index + 1}`, reason: 'Not grounded' })),
+      claims: Array.from({ length: 4 }, (_, index) => ({ id: `c${index}`,
+        claim: `Claim ${index} ${'x'.repeat(6000)}`, result: 'unverified' })) }),
+  });
+  assert.equal(result.structuredContent.next_gap_offset, 3);
+  assert.equal(result.structuredContent.uncovered_source_spans.length, 3);
+  assert.match(result.text, /Next gap offset: 3/);
+  assert.equal(result.structuredContent.next_rejected_offset, 3);
+  assert.equal(result.structuredContent.rejected_claims.length, 3);
+  assert.match(result.text, /Next rejected offset: 3/);
 });
