@@ -196,6 +196,7 @@ export class WebCiteApiClient {
   async getDocumentReview(
     reviewId: string, offset?: number, limit?: number, gapOffset?: number, gapLimit?: number,
     rejectedOffset?: number, rejectedLimit?: number,
+    dispositionOffset?: number, dispositionLimit?: number,
     signal?: AbortSignal,
   ): Promise<Record<string, unknown>> {
     const query = new URLSearchParams();
@@ -205,8 +206,23 @@ export class WebCiteApiClient {
     if (gapLimit !== undefined) query.set('gap_limit', String(gapLimit));
     if (rejectedOffset !== undefined) query.set('rejected_offset', String(rejectedOffset));
     if (rejectedLimit !== undefined) query.set('rejected_limit', String(rejectedLimit));
+    if (dispositionOffset !== undefined) query.set('disposition_offset', String(dispositionOffset));
+    if (dispositionLimit !== undefined) query.set('disposition_limit', String(dispositionLimit));
     const suffix = query.size ? `?${query}` : '';
     return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}${suffix}`, { method: 'GET', signal });
+  }
+
+  async getDocumentReviewSourceSpan(reviewId: string, assetId: string, start: number, end: number): Promise<Record<string, unknown>> {
+    const query = new URLSearchParams({ asset_id: assetId, start: String(start), end: String(end) });
+    return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}/source-span?${query}`, { method: 'GET' });
+  }
+
+  async recordDocumentReviewNonclaim(reviewId: string, input: {
+    asset_id: string; start: number; end: number; source_quote: string; rationale: string;
+  }): Promise<Record<string, unknown>> {
+    return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}/nonclaim-dispositions`, {
+      method: 'POST', body: JSON.stringify(input),
+    });
   }
 
   async startDocumentReviewJob(options: ReviewDocumentOptions, idempotencyKey: string): Promise<Record<string, unknown>> {

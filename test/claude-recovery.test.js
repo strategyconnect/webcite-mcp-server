@@ -154,7 +154,7 @@ test('saved review pages expose completed and pending work without a total claim
   const result = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 50 }, {
     getDocumentReview: async (...args) => { requested = args; return snapshot; },
   });
-  assert.deepEqual(requested, ['review-1', 0, 50, 0, 20, 0, 20]);
+  assert.deepEqual(requested, ['review-1', 0, 50, 0, 20, 0, 20, 0, 20]);
   assert.equal(result.structuredContent.total_claims, 101);
   assert.equal(result.structuredContent.claims[0].citation_id, 'citation-1');
   assert.deepEqual(result.structuredContent.resume_input, {
@@ -203,6 +203,35 @@ test('saved review rejects malformed printed links instead of reporting them as 
   await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
     getDocumentReview: async () => snapshot,
   }), /invalid printed links/);
+});
+
+test('saved review fails closed when counted rejected candidates or dispositions are omitted', async () => {
+  const snapshot = { review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+    asset_ids: ['asset-1'], status: 'complete', total_claims: 0, completed_claims: 0,
+    pending_claims: 0, claims: [] };
+  await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ ...snapshot, rejected_claim_count: 1 }),
+  }), /omitted rejected claim candidates/);
+  await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ ...snapshot, nonclaim_disposition_count: 1 }),
+  }), /omitted nonclaim dispositions/);
+  await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ ...snapshot, rejected_claim_count: 2,
+      rejected_claims: [{ claim: 'One', reason: 'Missing quote' }] }),
+  }), /omitted rejected candidate cursor/);
+  await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ ...snapshot, nonclaim_disposition_count: 2,
+      nonclaim_dispositions: [{ asset_id: 'asset-1', start: 0, end: 8,
+        source_quote: 'Contents', rationale: 'Navigation label', reviewer_id: 'user-1' }] }),
+  }), /omitted nonclaim disposition cursor/);
+  const positive = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ ...snapshot, rejected_claim_count: 1,
+      rejected_claims: [{ claim: 'Skipped claim', reason: 'Source quote missing' }],
+      nonclaim_disposition_count: 1, nonclaim_dispositions: [{ asset_id: 'asset-1', start: 0, end: 8,
+        source_quote: 'Contents', rationale: 'Navigation label', reviewer_id: 'user-1' }] }),
+  });
+  assert.match(positive.text, /Rejected candidate 1.*Skipped claim/);
+  assert.match(positive.text, /Nonclaim disposition 1.*Navigation label/);
 });
 
 test('Claude starts a durable full review, then polls saved progress without waiting for claims', async () => {
@@ -326,12 +355,15 @@ test('saved review pages uncovered passages independently of checked claims', as
   };
   try {
     const result = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 1,
-      gap_offset: 1, gap_limit: 1, rejected_offset: 1, rejected_limit: 1 },
+      gap_offset: 1, gap_limit: 1, rejected_offset: 1, rejected_limit: 1,
+      disposition_offset: 1, disposition_limit: 1 },
     new WebCiteApiClient('test-only', 'https://example.test'));
     assert.equal(requestUrl.searchParams.get('gap_offset'), '1');
     assert.equal(requestUrl.searchParams.get('gap_limit'), '1');
     assert.equal(requestUrl.searchParams.get('rejected_offset'), '1');
     assert.equal(requestUrl.searchParams.get('rejected_limit'), '1');
+    assert.equal(requestUrl.searchParams.get('disposition_offset'), '1');
+    assert.equal(requestUrl.searchParams.get('disposition_limit'), '1');
     assert.equal(result.structuredContent.next_gap_offset, 2);
     assert.equal(result.structuredContent.next_rejected_offset, 2);
     assert.match(result.text, /Uncovered passage 2.*Gap two/);
@@ -352,6 +384,10 @@ test('compact review output keeps an exact cursor for hidden gaps', async () => 
       rejected_claim_count: 5, next_rejected_offset: 5,
       rejected_claims: Array.from({ length: 5 }, (_, index) => ({
         claim: `Rejected ${index + 1}`, reason: 'Not grounded' })),
+      nonclaim_disposition_count: 5, next_disposition_offset: 5,
+      nonclaim_dispositions: Array.from({ length: 5 }, (_, index) => ({
+        asset_id: 'asset-1', start: index, end: index + 1, source_quote: 'x',
+        rationale: `Navigation label ${index + 1}`, reviewer_id: 'user-1' })),
       claims: Array.from({ length: 4 }, (_, index) => ({ id: `c${index}`,
         claim: `Claim ${index} ${'x'.repeat(6000)}`, result: 'unverified' })) }),
   });
@@ -361,4 +397,7 @@ test('compact review output keeps an exact cursor for hidden gaps', async () => 
   assert.equal(result.structuredContent.next_rejected_offset, 3);
   assert.equal(result.structuredContent.rejected_claims.length, 3);
   assert.match(result.text, /Next rejected offset: 3/);
+  assert.equal(result.structuredContent.next_disposition_offset, 3);
+  assert.equal(result.structuredContent.nonclaim_dispositions.length, 3);
+  assert.match(result.text, /Next disposition offset: 3/);
 });

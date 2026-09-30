@@ -42,6 +42,8 @@ const RESEARCH_EXTRA = [
 const PUBLIC_TOOLS = [
   ...CORE_TOOL_ORDER,
   'get_document_review',
+  'get_review_source_span',
+  'record_review_nonclaim',
   'get_document_review_job',
   'review_document',
   'verify_claim_stream', 'verify_feedback', 'analyze_document',

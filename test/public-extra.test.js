@@ -39,13 +39,56 @@ test('public MCP tools forward validated inputs to the matching API routes', asy
       ['POST', '/api/v2/verify/numeric'],
     ]);
     assert.deepEqual(calls[5].body, { asset_id: 'asset-1' });
-    assert.equal(new URL(calls[6].url).search, '?offset=2&limit=5&gap_offset=0&gap_limit=20&rejected_offset=0&rejected_limit=20');
+    assert.equal(new URL(calls[6].url).search, '?offset=2&limit=5&gap_offset=0&gap_limit=20&rejected_offset=0&rejected_limit=20&disposition_offset=0&disposition_limit=20');
     assert.deepEqual(calls[8].body.operands[0], {
       source_version_id: 'version-1', representation_id: 'rep-1', source_unit_id: 'unit-1', figure_index: 0,
     });
   } finally {
     global.fetch = originalFetch;
   }
+});
+
+test('review source span and explicit nonclaim tools bind exact coordinates before write', async () => {
+  const asset = '12345678-1234-4234-8234-123456789abc';
+  const prior = global.fetch;
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push({ url: new URL(url), method: options.method, body: options.body && JSON.parse(options.body) });
+    return Response.json(options.method === 'GET'
+      ? { asset_id: asset, start: 0, end: 8, source_quote: 'Contents', role: 'navigation',
+        block_id: 'nav-1', role_basis: 'html:nav' }
+      : { asset_id: asset, start: 0, end: 8, source_quote: 'Contents',
+        rationale: 'A table of contents label', reviewer_id: 'user-1', reviewed_at: '2026-09-30T00:00:00Z' });
+  };
+  try {
+    const client = new WebCiteApiClient('test-key', 'https://example.test');
+    const span = await handlers.get_review_source_span({ review_id: 'review-1', asset_id: asset,
+      start: 0, end: 8 }, client);
+    assert.match(span.text, /Contents/);
+    const saved = await handlers.record_review_nonclaim({ review_id: 'review-1', asset_id: asset,
+      start: 0, end: 8, source_quote: 'Contents', rationale: 'A table of contents label' }, client);
+    assert.equal(saved.structuredContent.reviewer_id, 'user-1');
+    assert.deepEqual(calls.map((call) => [call.method, call.url.pathname]), [
+      ['GET', '/api/v1/playground/chat/document-reviews/review-1/source-span'],
+      ['POST', '/api/v1/playground/chat/document-reviews/review-1/nonclaim-dispositions'],
+    ]);
+    assert.equal(calls[0].url.searchParams.get('asset_id'), asset);
+    assert.deepEqual(calls[1].body, { asset_id: asset, start: 0, end: 8,
+      source_quote: 'Contents', rationale: 'A table of contents label' });
+    global.fetch = async () => Response.json({ asset_id: asset, start: 0, end: 8,
+      source_quote: 'Overview', role: 'heading', block_id: 'heading-1', role_basis: 'html:h1' });
+    const heading = await handlers.get_review_source_span({ review_id: 'review-1', asset_id: asset,
+      start: 0, end: 8 }, client);
+    assert.equal(heading.structuredContent.role, 'heading');
+    global.fetch = async () => Response.json({ asset_id: asset, start: 0, end: 8,
+      source_quote: 'Overview', role: 'unknown', block_id: 'heading-1', role_basis: 'unknown' });
+    await assert.rejects(() => handlers.get_review_source_span({ review_id: 'review-1', asset_id: asset,
+      start: 0, end: 8 }, client), /structural proof/);
+    await assert.rejects(() => handlers.record_review_nonclaim({ review_id: 'review-1', asset_id: asset,
+      start: 0, end: 8, source_quote: 'Rewritten', rationale: 'A table of contents label' }, client),
+    /exact source quote/);
+    assert.equal(calls.length, 2);
+  } finally { global.fetch = prior; }
 });
 
 test('register_source posts owned bytes and validates retained source identity', async () => {
@@ -87,6 +130,18 @@ test('base64 upload forwards caller bytes without reading a server path', async 
   assert.match(result.text, /asset-1/);
   assert.equal(result.structuredContent.asset_id, 'asset-1');
   assert.match(result.text, /source-1/);
+});
+
+test('base64 binary uploads reject reconstructed text but retain genuine byte path', async () => {
+  let uploads = 0;
+  const client = { uploadBytes: async () => { uploads++; return { asset_id: 'asset-1', filename: 'report.pdf', size: 16 }; } };
+  await assert.rejects(() => handlers.upload_file({ filename: 'report.pdf',
+    file_base64: Buffer.from('Revenue increased in 2025').toString('base64') }, client),
+  /supply original file bytes/);
+  assert.equal(uploads, 0);
+  await handlers.upload_file({ filename: 'report.pdf',
+    file_base64: Buffer.from('%PDF-1.7\noriginal bytes').toString('base64') }, client);
+  assert.equal(uploads, 1);
 });
 
 test('upload normalizes the actual API envelope and refuses missing asset identity', async () => {
