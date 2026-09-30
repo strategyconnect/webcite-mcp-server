@@ -6,6 +6,7 @@ import { storedVerification, validateBatch, validateVerification } from './verif
  */
 
 import { ApiClientError, ToolFailure, type WebCiteApiClient } from './api-client.js';
+import { createHash } from 'node:crypto';
 import {
   formatAccuracyReport,
   formatAnalyzeResult,
@@ -141,11 +142,6 @@ import {
 
 type Args = Record<string, unknown> | undefined;
 
-// Some Claude clients stop waiting after 180 seconds. Leave time to abort,
-// inspect the saved review, and return its ID even if a claim is still running.
-const REVIEW_SOFT_BUDGET_MS = 115_000;
-const REVIEW_HARD_BUDGET_MS = 130_000;
-const REVIEW_SETTLE_BUDGET_MS = 30_000;
 const REVIEW_RESPONSE_MAX_BYTES = 20_000;
 
 export type ToolSuccess = {
@@ -166,101 +162,6 @@ function requireApiShape(valid: boolean, tool: string): void {
   });
 }
 
-function documentReviewOutput(events: SSEEvent[], options: ReviewDocumentOptions, transportError?: string): ToolSuccess {
-  let reviewId: string | undefined;
-  let claims: Array<Record<string, unknown>> | undefined;
-  let extractedTotal: number | undefined;
-  let done = false;
-  let failure: Record<string, unknown> | undefined;
-  let progress: Record<string, unknown> | undefined;
-  const results = new Map<string, Record<string, unknown>>();
-  const failed = new Map<string, Record<string, unknown>>();
-  for (const event of events) {
-    const envelope = event.data && typeof event.data === 'object' ? event.data as Record<string, unknown> : {};
-    const kind = event.event === 'message' ? envelope.type : event.event;
-    const data = envelope.data && typeof envelope.data === 'object' ? envelope.data as Record<string, unknown> : envelope;
-    if (typeof data.review_id === 'string') reviewId = data.review_id;
-    if (kind === 'claims-extracted') {
-      if (Array.isArray(data.claims)) claims = data.claims as Array<Record<string, unknown>>;
-      if (Number.isInteger(data.total_claims)) extractedTotal = data.total_claims as number;
-    }
-    if (kind === 'claim-verification-result' && typeof data.claim_id === 'string') results.set(data.claim_id, data);
-    if (kind === 'claim-verification-failed' && typeof data.claim_id === 'string') failed.set(data.claim_id, data);
-    if (kind === 'document-review-progress') progress = data;
-    if (kind === 'error') failure = data;
-    if (kind === 'done') done = true;
-  }
-  const total = extractedTotal ?? (typeof progress?.total_claims === 'number' ? progress.total_claims : claims?.length ?? null);
-  const completed = results.size;
-  const status = failure?.code === 'INSUFFICIENT_CREDITS' ? 'credit_exhausted'
-    : failure || transportError ? 'partial'
-      : done && reviewId && progress?.extraction_complete !== false && total !== null && completed === total ? 'complete' : 'partial';
-  const pending = total === null ? null : Math.max(0, total - completed);
-  const failedCount = typeof progress?.failed_claims === 'number' && Number.isInteger(progress.failed_claims)
-    ? progress.failed_claims : failed.size;
-  const rows = [...results.values()].map((result) => {
-    const sources = Array.isArray(result.top_citations) ? result.top_citations
-      .map((source) => source && typeof source === 'object' ? (source as Record<string, unknown>).url : undefined)
-      .filter((url): url is string => typeof url === 'string') : [];
-    return `- [${result.result ?? 'checked'}] ${result.claim ?? result.claim_id}${typeof result.summary === 'string' ? `: ${result.summary}` : ''}${sources.length ? `\n  Sources: ${sources.join(', ')}` : ''}`;
-  });
-  const unchecked = claims?.filter((claim) => !results.has(String(claim.id)))
-    .map((claim) => {
-      const retry = failed.get(String(claim.id));
-      return retry
-        ? `- [failed, retryable] ${claim.claim ?? claim.id}: ${retry.message ?? retry.code ?? 'verification failed'}`
-        : `- [unchecked] ${claim.claim ?? claim.id}`;
-    }) ?? [];
-  const text = [
-    `# Document review ${reviewId ?? '(review ID unavailable)'}`,
-    `Status: ${status}. Completed: ${completed}/${total ?? 'unknown'}. Pending: ${pending ?? 'unknown'}.`,
-    failedCount > 0 ? `Failed claims needing retry: ${failedCount}.` : '',
-    Number.isInteger(progress?.extraction_cursor) && Number.isInteger(progress?.chunk_count)
-      ? `Extraction chunks: ${progress?.extraction_cursor}/${progress?.chunk_count}.` : '',
-    typeof failure?.credits_required === 'number' ? `Credits needed for next claim: ${failure.credits_required}.` : '',
-    typeof failure?.credits_remaining === 'number' ? `Credits remaining: ${failure.credits_remaining}.` : '',
-    status === 'credit_exhausted' ? 'Add credits or enable overage if available, then resume with the exact input below.' : '',
-    ...rows,
-    ...unchecked,
-    reviewId ? 'Use get_document_review for the saved claim list and source URLs; inspect important citations with get_source_preview.' : '',
-    status !== 'complete' ? `Resume input: ${JSON.stringify(options)}` : '',
-    failure || transportError ? `Stopped: ${failure?.message ?? transportError}. Saved results remain available through get_document_review when a review ID is present.` : '',
-  ].filter(Boolean).join('\n');
-  const output: ToolSuccess = { text, isError: status !== 'complete', structuredContent: {
-    review_id: reviewId ?? null, thread_id: options.thread_id, resume_input: options,
-    status, total_claims: total,
-    completed_claims: completed, pending_claims: pending, failed_claims: failedCount, claims: claims ?? null,
-    results: [...results.values()], failed_results: [...failed.values()],
-    error: failure ?? (transportError ? { message: transportError } : null), events,
-  } };
-  if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
-  const compact: ToolSuccess = {
-    text: [
-      `# Document review ${reviewId ?? '(review ID unavailable)'}`,
-      `Status: ${status}. Completed: ${completed}/${total ?? 'unknown'}. Pending: ${pending ?? 'unknown'}.`,
-      'The full stream exceeds the tool response limit. Saved claims and citations remain available through paginated get_document_review calls.',
-      reviewId ? `Call get_document_review with review_id ${reviewId}, offset 0, limit 5.` : '',
-      status !== 'complete' ? `Resume input: ${JSON.stringify(options)}` : '',
-      failure || transportError ? `Stopped: ${failure?.message ?? transportError}` : '',
-    ].filter(Boolean).join('\n'),
-    isError: status !== 'complete',
-    structuredContent: {
-      review_id: reviewId ?? null, thread_id: options.thread_id, resume_input: options,
-      status, total_claims: total, completed_claims: completed, pending_claims: pending,
-      failed_claims: failedCount, results_omitted: results.size,
-      events_omitted: events.length, saved_review_required: true,
-      error: failure ?? (transportError ? { message: transportError } : null),
-    },
-  };
-  if (Buffer.byteLength(JSON.stringify(compact)) <= REVIEW_RESPONSE_MAX_BYTES) return compact;
-  return {
-    text: `Document review ${reviewId ?? '(ID unavailable)'}: ${status}, ${completed}/${total ?? 'unknown'} completed. The response is too large for Claude. ${reviewId ? `Use get_document_review with review_id ${reviewId}, offset 0, limit 1. If resuming, reuse the original input exactly.` : 'Retry with the original input after checking the saved review.'}`,
-    isError: status !== 'complete',
-    structuredContent: { review_id: reviewId ?? null, status, total_claims: total,
-      completed_claims: completed, pending_claims: pending, saved_review_required: true },
-  };
-}
-
 function requireString(args: Args, key: string): string {
   const value = args?.[key];
   if (typeof value !== 'string' || !value.trim()) {
@@ -270,6 +171,31 @@ function requireString(args: Args, key: string): string {
     });
   }
   return value;
+}
+
+function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
+  const statuses = ['queued', 'running', 'waiting_review', 'complete', 'partial_coverage', 'credits_exhausted', 'failed'];
+  if (typeof result.job_id !== 'string' || !/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(result.job_id) ||
+      typeof result.status !== 'string' || !statuses.includes(result.status) ||
+      (result.review_id !== undefined && typeof result.review_id !== 'string') ||
+      (result.progress !== undefined && (!result.progress || typeof result.progress !== 'object' || Array.isArray(result.progress))))
+    throw new ToolFailure('invalid_api_output', 'Document review job response is incomplete');
+  const progress = result.progress as Record<string, unknown> | undefined;
+  if (['complete', 'partial_coverage'].includes(result.status) &&
+      (typeof result.review_id !== 'string' || !progress || progress.extraction_complete !== true ||
+        progress.pending_claims !== 0 || progress.coverage_complete !== (result.status === 'complete')))
+    throw new ToolFailure('invalid_api_output', 'Completed review job has inconsistent coverage or pending claims');
+  const counts = progress && Number.isInteger(progress.completed_claims) && Number.isInteger(progress.total_claims)
+    ? ` ${progress.completed_claims}/${progress.total_claims} claims checked.` : '';
+  const gaps = progress?.coverage_complete === false && progress.extraction_complete === true
+    ? ` Coverage incomplete: ${progress.uncovered_source_span_count ?? 'unknown'} uncovered source spans.` : '';
+  const next = result.review_id
+    ? `Call get_document_review with review_id ${result.review_id} for saved claim results.` : '';
+  const wait = ['queued', 'running', 'waiting_review'].includes(result.status)
+    ? `Call get_document_review_job with job_id ${result.job_id} to check progress.` : '';
+  const error = typeof result.error === 'string' ? ` Error: ${result.error}` : '';
+  return { text: `Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait}`.trim(),
+    isError: result.status === 'failed' || result.status === 'credits_exhausted', structuredContent: result };
 }
 
 function base64File(args: Args) {
@@ -1478,10 +1404,16 @@ export const handlers: Record<string, ToolHandler> = {
     if (!wakeIdentityComplete(reviewId)) throw new ToolFailure('invalid_argument', 'review_id cannot have surrounding whitespace');
     const offset = args?.offset ?? 0;
     const limit = args?.limit ?? 50;
+    const gapOffset = args?.gap_offset ?? 0;
+    const gapLimit = args?.gap_limit ?? 20;
     if (!Number.isInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 100) {
       throw new ToolFailure('invalid_argument', 'offset must be >= 0 and page limit must be 1 to 100');
     }
-    const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number));
+    if (!Number.isInteger(gapOffset) || (gapOffset as number) < 0 ||
+        !Number.isInteger(gapLimit) || (gapLimit as number) < 1 || (gapLimit as number) > 100)
+      throw new ToolFailure('invalid_argument', 'gap_offset must be >= 0 and gap_limit must be 1 to 100');
+    const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number,
+      gapOffset as number, gapLimit as number));
     if (result.review_id !== reviewId || !Array.isArray(result.claims) ||
         !Number.isInteger(result.total_claims) || !Number.isInteger(result.completed_claims) ||
         !Number.isInteger(result.pending_claims) || typeof result.status !== 'string' ||
@@ -1500,6 +1432,15 @@ export const handlers: Record<string, ToolHandler> = {
       ...(typeof result.use_verdict === 'boolean' ? { include_verdict: result.use_verdict } : {}),
     };
     const claims = result.claims as Array<Record<string, unknown>>;
+    const gaps = Array.isArray(result.uncovered_source_spans)
+      ? result.uncovered_source_spans as Array<Record<string, unknown>> : [];
+    if (gaps.some((gap) => typeof gap.asset_id !== 'string' || !Number.isInteger(gap.start) ||
+        !Number.isInteger(gap.end) || typeof gap.preview !== 'string'))
+      throw new ToolFailure('invalid_api_output', 'Stored review has an invalid uncovered source span');
+    const gapRows = gaps.map((gap, index) =>
+      `- Uncovered passage ${(gapOffset as number) + index + 1}: asset ${gap.asset_id}, offsets ${gap.start}-${gap.end}: ${gap.preview}`);
+    const nextGap = Number.isInteger(result.next_gap_offset)
+      ? `\nNext gap offset: ${result.next_gap_offset} (use gap_offset and gap_limit)` : '';
     const rows = claims.map((claim, index) => {
       if (typeof claim.id !== 'string' || typeof claim.claim !== 'string') {
         throw new ToolFailure('invalid_api_output', 'Stored document review has an invalid claim');
@@ -1529,11 +1470,15 @@ export const handlers: Record<string, ToolHandler> = {
         : '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
     const extraction = Number.isInteger(result.extraction_cursor) && Number.isInteger(result.chunk_count)
       ? `\nExtraction chunks: ${result.extraction_cursor}/${result.chunk_count}` : '';
+    const coverage = result.coverage_complete === true ? '\nSource coverage: complete.'
+      : result.coverage_complete === false && result.extraction_complete === true
+        ? `\nSource coverage: incomplete; ${result.uncovered_source_span_count ?? 'unknown'} uncovered spans, ${result.ungrounded_claims ?? 'unknown'} ungrounded claims. Checked claim results do not cover these passages.`
+        : '\nSource coverage: not established for this saved review.';
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
     const focusGuidance = focusedScope
       ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
-    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${creditAction}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${coverage}${creditAction}\n${gapRows.join('\n')}${nextGap}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
     if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
     const shown = claims.slice(0, 3).map((claim, index) => ({
       id: claim.id, claim: String(claim.claim).slice(0, 500),
@@ -1546,19 +1491,35 @@ export const handlers: Record<string, ToolHandler> = {
         .filter((url: unknown): url is string => typeof url === 'string'),
     }));
     const nextPage = (offset as number) + shown.length;
-    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${creditAction}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${credits}${needed}${extraction}${coverage}${creditAction}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${nextGap}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       claims: shown, next_offset: nextPage < (offset as number) + claims.length ? nextPage : result.next_offset,
       resume_input: resumeInput, claims_omitted: claims.length - shown.length,
+      coverage_complete: result.coverage_complete ?? null,
+      uncovered_source_span_count: result.uncovered_source_span_count ?? null,
+      ungrounded_claims: result.ungrounded_claims ?? null,
+      uncovered_source_spans: gaps.slice(0, 3),
+      next_gap_offset: result.next_gap_offset ?? null,
       full_evidence_saved: true,
     });
     if (Buffer.byteLength(JSON.stringify(compact)) <= REVIEW_RESPONSE_MAX_BYTES) return compact;
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}\nThe requested page exceeds Claude's tool response limit. Call get_document_review with offset ${offset} and limit 1; use the Webcite API for full citation objects.`, {
+    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${coverage}\nThe requested page exceeds Claude's tool response limit. Call get_document_review with offset ${offset}, limit 1, gap_offset ${gapOffset}, and gap_limit 1; use the Webcite API for full citation objects.`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
+      coverage_complete: result.coverage_complete ?? null,
+      uncovered_source_span_count: result.uncovered_source_span_count ?? null,
+      ungrounded_claims: result.ungrounded_claims ?? null,
+      next_gap_offset: result.next_gap_offset ?? null,
       next_offset: offset, full_evidence_saved: true,
     });
+  },
+
+  get_document_review_job: async (args, client) => {
+    const jobId = requireString(args, 'job_id');
+    if (!/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(jobId))
+      throw new ToolFailure('invalid_argument', 'job_id must be a review job ID');
+    return documentReviewJobOutput(await wrapApi(client.getDocumentReviewJob(jobId)));
   },
 
   review_document: async (args, client) => {
@@ -1575,9 +1536,8 @@ export const handlers: Record<string, ToolHandler> = {
         (filters !== undefined && (!filters || typeof filters !== 'object' || Array.isArray(filters))) ||
         (args?.review_scope !== undefined && args.review_scope !== 'full') ||
         (args?.include_stance !== undefined && typeof args.include_stance !== 'boolean') ||
-        (args?.include_verdict !== undefined && typeof args.include_verdict !== 'boolean')) {
+        (args?.include_verdict !== undefined && typeof args.include_verdict !== 'boolean'))
       throw new ToolFailure('invalid_argument', 'Pass distinct asset_ids, a stable thread_id, full review scope, and valid HTTPS source URLs, filters and billing flags');
-    }
     const options: ReviewDocumentOptions = { prompt, asset_ids: assetIds as string[], thread_id: threadId,
       review_scope: 'full',
       ...(sourceUrls !== undefined ? { source_urls: sourceUrls as string[] } : {}),
@@ -1585,73 +1545,12 @@ export const handlers: Record<string, ToolHandler> = {
       include_stance: args?.include_stance !== false,
       include_verdict: args?.include_verdict !== false,
     };
-    const events: SSEEvent[] = [];
-    let transportError: string | undefined;
-    let reviewId: string | undefined;
-    let paused = false;
-    const started = Date.now();
-    const controller = new AbortController();
-    const deadline = setTimeout(() => controller.abort(), REVIEW_HARD_BUDGET_MS);
-    try {
-      for await (const event of client.reviewDocumentStream(options, controller.signal)) {
-        events.push(event);
-        const envelope = event.data && typeof event.data === 'object' ? event.data as Record<string, unknown> : {};
-        const data = envelope.data && typeof envelope.data === 'object' ? envelope.data as Record<string, unknown> : envelope;
-        if (typeof data.review_id === 'string') reviewId = data.review_id;
-        const kind = event.event === 'message' ? envelope.type : event.event;
-        if (Date.now() - started >= REVIEW_SOFT_BUDGET_MS &&
-            (kind === 'document-review-progress' || kind === 'claim-verification-result')) {
-          paused = true;
-          controller.abort();
-          break;
-        }
-      }
-    } catch (error) {
-      if (controller.signal.aborted) paused = true;
-      else {
-        if (!events.length && error instanceof ApiClientError) throw error.toToolFailure();
-        if (!events.length) throw error;
-        transportError = error instanceof Error ? error.message : 'stream disconnected';
-      }
-    } finally {
-      clearTimeout(deadline);
-    }
-    if (paused) {
-      if (!reviewId) {
-        return documentReviewOutput(events, options, 'Review paused before its saved ID was received. Wait briefly, then retry the exact resume input.');
-      }
-      let savedStatus: unknown;
-      const settleDeadline = started + REVIEW_HARD_BUDGET_MS + REVIEW_SETTLE_BUDGET_MS;
-      while (Date.now() < settleDeadline) {
-        try {
-          const readBudget = Math.max(1, Math.min(5_000, settleDeadline - Date.now()));
-          const saved = await client.getDocumentReview(reviewId, 0, 1, AbortSignal.timeout(readBudget));
-          savedStatus = saved.status;
-          if (savedStatus !== 'running' && savedStatus !== 'extracting') break;
-        } catch { /* A transient read failure must not be mistaken for a released lock. */ }
-        if (Date.now() >= settleDeadline) break;
-        await new Promise((resolve) => setTimeout(resolve, Math.min(1_000, settleDeadline - Date.now())));
-      }
-      if (savedStatus === 'failed' || savedStatus === 'credits_exhausted') {
-        return documentReviewOutput(events, options,
-          savedStatus === 'credits_exhausted'
-            ? 'Saved review stopped because credits were exhausted. Check get_document_review for the required and remaining credits before resuming.'
-            : 'Saved review failed. Check get_document_review for failed claims before resuming the exact input.');
-      }
-      if (savedStatus !== 'interrupted' && savedStatus !== 'complete') {
-        return documentReviewOutput(events, options,
-          `Review checkpoint could not confirm a released lock (saved status: ${String(savedStatus ?? 'unavailable')}). Call get_document_review and wait until the saved review is interrupted, failed, credits_exhausted, or complete. Address any failure or credit refusal before resuming.`);
-      }
-      const checkpoint = documentReviewOutput(events, options);
-      const checkpointResult = { ...checkpoint, isError: false,
-        text: `${checkpoint.text.replace(/^Status: partial\./m, 'Stream capture: partial.')}\nTime budget checkpoint. Saved review status: ${savedStatus}. Call get_document_review for the latest saved progress${savedStatus === 'complete' ? '.' : ', then repeat the exact resume input until complete.'}`,
-        structuredContent: { ...checkpoint.structuredContent, checkpoint: true, saved_status: savedStatus } };
-      if (Buffer.byteLength(JSON.stringify(checkpointResult)) <= REVIEW_RESPONSE_MAX_BYTES) return checkpointResult;
-      return { text: `Review ${reviewId} reached a time budget checkpoint. Saved review status: ${savedStatus}. Call get_document_review with offset 0, limit 1${savedStatus === 'complete' ? '.' : ', then resume using the original review_document arguments.'}`,
-        isError: false, structuredContent: { review_id: reviewId, checkpoint: true, saved_status: savedStatus,
-          saved_review_required: true } };
-    }
-    return documentReviewOutput(events, options, transportError);
+    const suppliedKey = args?.idempotency_key;
+    if (suppliedKey !== undefined && (typeof suppliedKey !== 'string' ||
+        suppliedKey.length < 1 || suppliedKey.length > 128 || suppliedKey.trim() !== suppliedKey))
+      throw new ToolFailure('invalid_argument', 'idempotency_key must be a non-empty string of at most 128 characters');
+    const key = (suppliedKey as string | undefined) ?? createHash('sha256').update(JSON.stringify(options)).digest('hex');
+    return documentReviewJobOutput(await wrapApi(client.startDocumentReviewJob(options, key)));
   },
 
   verify_claim: async (args, client) => {

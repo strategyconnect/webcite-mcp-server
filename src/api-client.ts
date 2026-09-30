@@ -193,20 +193,32 @@ export class WebCiteApiClient {
     return this.request('/api/v1/payment/credits/balance', { method: 'GET' });
   }
 
-  async getDocumentReview(reviewId: string, offset?: number, limit?: number, signal?: AbortSignal): Promise<Record<string, unknown>> {
+  async getDocumentReview(
+    reviewId: string, offset?: number, limit?: number, gapOffset?: number, gapLimit?: number,
+    signal?: AbortSignal,
+  ): Promise<Record<string, unknown>> {
     const query = new URLSearchParams();
     if (offset !== undefined) query.set('offset', String(offset));
     if (limit !== undefined) query.set('limit', String(limit));
+    if (gapOffset !== undefined) query.set('gap_offset', String(gapOffset));
+    if (gapLimit !== undefined) query.set('gap_limit', String(gapLimit));
     const suffix = query.size ? `?${query}` : '';
     return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}${suffix}`, { method: 'GET', signal });
   }
 
-  async *verifyClaimStream(options: VerifyClaimOptions): AsyncGenerator<SSEEvent> {
-    yield* this.streamRequest('/api/v1/verify/stream', this.verifyBody(options));
+  async startDocumentReviewJob(options: ReviewDocumentOptions, idempotencyKey: string): Promise<Record<string, unknown>> {
+    const { review_scope: _scope, ...body } = options;
+    return this.request('/api/v1/playground/chat/document-review-jobs', {
+      method: 'POST', body: JSON.stringify({ ...body, idempotency_key: idempotencyKey }),
+    });
   }
 
-  async *reviewDocumentStream(options: ReviewDocumentOptions, signal?: AbortSignal): AsyncGenerator<SSEEvent> {
-    yield* this.streamRequest('/api/v1/playground/chat/stream', JSON.stringify(options), signal);
+  async getDocumentReviewJob(jobId: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v1/playground/chat/document-review-jobs/${encodeURIComponent(jobId)}`, { method: 'GET' });
+  }
+
+  async *verifyClaimStream(options: VerifyClaimOptions): AsyncGenerator<SSEEvent> {
+    yield* this.streamRequest('/api/v1/verify/stream', this.verifyBody(options));
   }
 
   private async *streamRequest(endpoint: string, body: string, signal?: AbortSignal): AsyncGenerator<SSEEvent> {
