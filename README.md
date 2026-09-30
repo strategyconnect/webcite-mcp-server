@@ -93,7 +93,7 @@ numbers inside supplied text; it does not discover external sources.
 3. **Claude:** Settings → Connectors → Add custom connector → paste `https://api.webcite.co/mcp`. Choose **No sign-in**, then add a Request header named `x-api-key` with your API key as its value.
 4. **Cursor:** use the `.cursor/mcp.json` setup below with your API key.
 
-No Node, no `npx`, no JSON config files.
+The Claude remote connector needs no Node, `npx`, or JSON config file. Cursor uses the JSON setup below.
 
 ### Claude Desktop
 
