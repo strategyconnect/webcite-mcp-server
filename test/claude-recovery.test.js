@@ -344,6 +344,53 @@ test('non-factual counts reject invalid values instead of silently omitting them
   }
 });
 
+test('duplicate references and source recovery audit survive full and compact paged output', async () => {
+  const recovery = { method: 'literal_temporal_scope', original_claim: 'Process followed by a visit',
+    original_source_quote: 'Submitting proposals, followed by a visit.', original_source_fragments: ['followed by a visit.'] };
+  const claim = { id: 'duplicate-1', claim: 'Submitting proposals,', result_state: 'duplicate',
+    duplicate_of_index: 0, duplicate_of_id: 'canonical-1', duplicate_reason: 'same_source_assertion', source_recovery: recovery };
+  for (const context of ['', 'x'.repeat(400000)]) {
+    const result = await handlers.get_document_review({ review_id: 'review-1', offset: 1 }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 2, completed_claims: 0,
+        pending_claims: 1, duplicate_claims: 1, claims: [{ ...claim, context }] }),
+    });
+    assert.equal(result.structuredContent.duplicate_claims, 1);
+    assert.equal(result.structuredContent.claims[0].duplicate_of_index, 0);
+    assert.equal(result.structuredContent.claims[0].duplicate_of_id, 'canonical-1');
+    assert.deepEqual(result.structuredContent.claims[0].source_recovery, recovery);
+    assert.match(result.text, /duplicate of claim canonical-1 \(not separately checked\)/);
+    assert.match(result.text, /duplicates: 1/);
+  }
+});
+
+test('duplicates reject broken links, invented outcomes and invalid counts', async () => {
+  const claim = { id: 'duplicate-1', claim: 'Submitting proposals', result_state: 'duplicate',
+    duplicate_of_index: 0, duplicate_of_id: 'canonical-1', duplicate_reason: 'same_source_assertion' };
+  const read = (extra = {}, duplicate_claims = 1) => handlers.get_document_review({ review_id: 'review-1', offset: 1 }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'failed', total_claims: 2, completed_claims: 0,
+      pending_claims: 1, duplicate_claims, claims: [{ ...claim, ...extra }] }),
+  });
+  for (const invalid of [{ duplicate_of_index: -1 }, { duplicate_of_index: 1 }, { duplicate_of_index: 0.5 },
+    { duplicate_of_id: '' }, { duplicate_of_id: 'duplicate-1' }, { duplicate_reason: 'non_factual' },
+    { result: 'verified' }, { confidence: 0 }, { credits_charged: 0 }, { operation_id: 'op' },
+    { citations: [{ url: 'https://example.com' }] }, { top_citations: {} }]) {
+    await assert.rejects(() => read(invalid), /invalid canonical reference or verification fields/);
+  }
+  for (const count of [-1, 0.5, 3, '1', null]) await assert.rejects(() => read({}, count), /invalid duplicate count/);
+  const positive = await read({ result: null, confidence: null, citation_id: null, citations: [] });
+  assert.match(positive.text, /not separately checked/);
+  for (const canonical of [{ id: 'wrong-id', claim: 'Submitting proposals' },
+    { id: 'canonical-1', claim: 'Submitting proposals', result_state: 'duplicate' }]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 2, completed_claims: 0,
+        pending_claims: 1, duplicate_claims: 1, claims: [canonical, claim] }),
+    }), /invalid canonical reference or verification fields/);
+  }
+});
+
 test('automatic dispositions reject fabricated analyst metadata and invalid source spans', async () => {
   const valid = { asset_id: 'asset-1', start: 0, end: 8, source_quote: 'Contents',
     reason: 'heading', origin: 'automatic_classification' };

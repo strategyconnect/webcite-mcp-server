@@ -1567,7 +1567,26 @@ export const handlers: Record<string, ToolHandler> = {
            ['result', 'verdict', 'confidence', 'citation_id', 'credits_used', 'credits_charged'].some((key) =>
              claim[key] !== undefined && claim[key] !== null)))
         throw new ToolFailure('invalid_api_output', 'Stored non-factual claim has invalid classification provenance');
-      const verdict = claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
+      const canonical = claims[(claim.duplicate_of_index as number) - (offset as number)];
+      if (claim.result_state === 'duplicate' &&
+          (!Number.isInteger(claim.duplicate_of_index) || (claim.duplicate_of_index as number) < 0 ||
+           (claim.duplicate_of_index as number) >= (offset as number) + index ||
+           typeof claim.duplicate_of_id !== 'string' || !claim.duplicate_of_id.trim() || claim.duplicate_of_id === claim.id ||
+           claim.duplicate_reason !== 'same_source_assertion' ||
+           (canonical && (canonical.id !== claim.duplicate_of_id || canonical.result_state === 'duplicate')) ||
+           ['result', 'verdict', 'confidence', 'citation_id', 'credits_used', 'credits_charged', 'operation_id'].some((key) =>
+             claim[key] !== undefined && claim[key] !== null) ||
+           ['citations', 'top_citations'].some((key) => claim[key] !== undefined && claim[key] !== null &&
+             (!Array.isArray(claim[key]) || (claim[key] as unknown[]).length > 0))))
+        throw new ToolFailure('invalid_api_output', 'Stored duplicate claim has invalid canonical reference or verification fields');
+      const recovery = claim.source_recovery as Record<string, unknown> | undefined;
+      if (recovery !== undefined && (!recovery || recovery.method !== 'literal_temporal_scope' ||
+          typeof recovery.original_claim !== 'string' || typeof recovery.original_source_quote !== 'string' ||
+          !Array.isArray(recovery.original_source_fragments) ||
+          recovery.original_source_fragments.some((part) => typeof part !== 'string' || !part.trim())))
+        throw new ToolFailure('invalid_api_output', 'Stored claim has invalid source recovery metadata');
+      const verdict = claim.result_state === 'duplicate' ? `duplicate of claim ${claim.duplicate_of_id} (not separately checked)`
+        : claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
         : claim.result_state === 'result_saved'
         ? `saved, settlement pending${typeof claim.result === 'string' ? `: ${claim.result}` : ''}`
         : claim.result_state === 'failed' ? `failed, retryable${typeof claim.error_code === 'string' ? `: ${claim.error_code}` : ''}`
@@ -1602,16 +1621,24 @@ export const handlers: Record<string, ToolHandler> = {
          (result.non_factual_claims as number) > (result.total_claims as number)))
       throw new ToolFailure('invalid_api_output', 'Stored review has an invalid non-factual count');
     const nonFactualCount = Number.isInteger(result.non_factual_claims) ? `; non-factual: ${result.non_factual_claims}` : '';
+    if (result.duplicate_claims !== undefined &&
+        (!Number.isInteger(result.duplicate_claims) || (result.duplicate_claims as number) < 0 ||
+         (result.duplicate_claims as number) > (result.total_claims as number)))
+      throw new ToolFailure('invalid_api_output', 'Stored review has an invalid duplicate count');
+    const duplicateCount = Number.isInteger(result.duplicate_claims) ? `; duplicates: ${result.duplicate_claims}` : '';
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
     const focusGuidance = focusedScope
       ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
-    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
     if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
     const shown = claims.slice(0, 3).map((claim, index) => ({
       id: claim.id, claim: String(claim.claim).slice(0, 500),
       result: claim.result, result_state: claim.result_state, citation_id: claim.citation_id,
       classification_origin: claim.classification_origin, classification_reason: claim.classification_reason,
+      duplicate_of_index: claim.duplicate_of_index, duplicate_of_id: claim.duplicate_of_id,
+      duplicate_reason: claim.duplicate_reason,
+      source_recovery: claim.source_recovery,
       page_number: claim.page_number, error_code: claim.error_code,
       error: typeof claim.error === 'string' ? claim.error.slice(0, 500) : undefined,
       cited_source_urls: claim.cited_source_urls,
@@ -1636,10 +1663,11 @@ export const handlers: Record<string, ToolHandler> = {
       ? (dispositionOffset as number) + shownDispositions.length : result.next_disposition_offset;
     const compactDispositionHint = Number.isInteger(compactNextDisposition)
       ? `\nNext disposition offset: ${compactNextDisposition} (use disposition_offset and disposition_limit)` : '';
-    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, 3).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result_state === 'non_factual' ? 'non-factual (automatic classification)' : claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, 3).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result_state === 'duplicate' ? `duplicate of claim ${claim.duplicate_of_id} (not separately checked)` : claim.result_state === 'non_factual' ? 'non-factual (automatic classification)' : claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       non_factual_claims: result.non_factual_claims,
+      duplicate_claims: result.duplicate_claims,
       claims: shown, next_offset: nextPage < (offset as number) + claims.length ? nextPage : result.next_offset,
       resume_input: resumeInput, claims_omitted: claims.length - shown.length,
       coverage_complete: result.coverage_complete ?? null,
@@ -1660,6 +1688,7 @@ export const handlers: Record<string, ToolHandler> = {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       non_factual_claims: result.non_factual_claims,
+      duplicate_claims: result.duplicate_claims,
       coverage_complete: result.coverage_complete ?? null,
       uncovered_source_span_count: result.uncovered_source_span_count ?? null,
       ungrounded_claims: result.ungrounded_claims ?? null,

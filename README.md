@@ -93,6 +93,12 @@ The table below describes common tools across profiles. It is not the remote ser
 | `extract_figures` | Recognized financial metrics as tagged, source-grounded figures | 2 |
 | `accuracy_report` | The engine's measured accuracy against its gold set | 1 |
 
+Saved reviews retain candidate IDs and positions. A `duplicate` row links to an earlier
+claim through `duplicate_of_id` and `duplicate_of_index`; it has no separate verdict,
+citation or charge. `duplicate_claims` is separate from completed and non-factual
+counts. A `source_recovery` record preserves the original candidate when a temporal
+relationship is restored from the document's literal text.
+
 Verification tools bind a quote back to its source and report **how** it matched
 (exact / normalized / fuzzy / unbound). A fuzzy match is capped at `needs_review` and
 is never reported as verified. The numeric tools are deterministic: they recompute
