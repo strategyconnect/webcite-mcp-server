@@ -257,6 +257,107 @@ test('saved failed review preserves model dispositions and actual analyst actors
   assert.equal(Object.hasOwn(result.structuredContent.nonclaim_dispositions[0], 'reviewer_id'), false);
 });
 
+test('saved review preserves automatic classification separately from model extraction and analyst review', async () => {
+  const automatic = { asset_id: 'asset-1', start: 0, end: 8, source_quote: 'Contents',
+    reason: 'heading', origin: 'automatic_classification' };
+  const model = { ...automatic, origin: 'model_extraction' };
+  const analyst = { asset_id: 'asset-1', start: 0, end: 8, source_quote: 'Contents',
+    origin: 'analyst_review', rationale: 'Navigation label', reviewer_id: 'user-1' };
+  const snapshot = { review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+    asset_ids: ['asset-1'], status: 'failed', total_claims: 0, completed_claims: 0,
+    pending_claims: 0, claims: [], nonclaim_disposition_count: 3,
+    nonclaim_dispositions: [automatic, model, analyst] };
+  const result = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => snapshot,
+  });
+  assert.deepEqual(result.structuredContent.nonclaim_dispositions, [automatic, model, analyst]);
+  assert.match(result.text, /automatic classification \(heading\): "Contents"/);
+  assert.match(result.text, /model extraction \(heading\): "Contents"/);
+  assert.match(result.text, /reviewer user-1: Navigation label/);
+  assert.doesNotMatch(result.text, /reviewer undefined/);
+});
+
+test('saved automatically classified entries are not displayed as unchecked or verified', async () => {
+  const claim = { id: 'claim-1', claim: 'Choose your institutional model', result_state: 'non_factual',
+    classification_reason: 'heading', classification_origin: 'automatic_classification' };
+  const result = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+      pending_claims: 0, claims: [claim] }),
+  });
+  assert.deepEqual(result.structuredContent.claims, [claim]);
+  assert.match(result.text, /non-factual \(automatic classification\)/);
+  assert.doesNotMatch(result.text, /unchecked|verified/);
+});
+
+test('non-factual provenance and counts survive response compaction', async () => {
+  const claim = { id: 'claim-1', claim: 'Choose your institutional model', result_state: 'non_factual',
+    classification_origin: 'automatic_classification', classification_reason: 'heading', context: 'x'.repeat(400000) };
+  const result = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+      pending_claims: 0, non_factual_claims: 1, claims: [claim] }),
+  });
+  assert.equal(result.structuredContent.full_evidence_saved, true);
+  assert.equal(result.structuredContent.non_factual_claims, 1);
+  assert.equal(result.structuredContent.claims[0].classification_origin, 'automatic_classification');
+  assert.equal(result.structuredContent.claims[0].classification_reason, 'heading');
+});
+
+test('non-factual entries reject absent or invented classification provenance', async () => {
+  for (const classification_origin of [undefined, 'analyst_review', 'model_extraction']) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+        pending_claims: 0, claims: [{ id: 'claim-1', claim: 'Choose your model',
+          result_state: 'non_factual', classification_reason: 'heading', classification_origin }] }),
+    }), /invalid classification provenance/);
+  }
+});
+
+test('non-factual entries fail closed on invented verification or charged-success fields', async () => {
+  const claim = { id: 'claim-1', claim: 'Choose your model', result_state: 'non_factual',
+    classification_origin: 'automatic_classification', classification_reason: 'heading' };
+  for (const forged of [{ result: 'verified' }, { verdict: 'verified' }, { confidence: 0 },
+    { citation_id: 'citation-1' }, { credits_used: 1 }, { credits_charged: 1 }]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+        pending_claims: 0, claims: [{ ...claim, ...forged }] }),
+    }), /invalid classification provenance/);
+  }
+  const positive = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+      pending_claims: 0, claims: [{ ...claim, result: null, confidence: null, citation_id: null }] }),
+  });
+  assert.match(positive.text, /non-factual/);
+});
+
+test('non-factual counts reject invalid values instead of silently omitting them', async () => {
+  for (const non_factual_claims of [-1, 0.5, 2, '1', null]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+        pending_claims: 0, non_factual_claims, claims: [] }),
+    }), /invalid non-factual count/);
+  }
+});
+
+test('automatic dispositions reject fabricated analyst metadata and invalid source spans', async () => {
+  const valid = { asset_id: 'asset-1', start: 0, end: 8, source_quote: 'Contents',
+    reason: 'heading', origin: 'automatic_classification' };
+  for (const item of [{ ...valid, reviewer_id: 'user-1' }, { ...valid, reviewed_at: 'now' },
+    { ...valid, rationale: 'Analyst review' }, { ...valid, reason: 'fact' },
+    { ...valid, source_quote: 'Content' }, { ...valid, end: 0 }]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'complete', total_claims: 0, completed_claims: 0,
+        pending_claims: 0, claims: [], nonclaim_disposition_count: 1, nonclaim_dispositions: [item] }),
+    }), /invalid nonclaim disposition/);
+  }
+});
+
 test('saved disposition union rejects incomplete sources, unknown origins and fabricated model actors', async () => {
   const valid = { asset_id: 'asset-1', start: 0, end: 8,
     source_quote: 'Contents', reason: 'heading', origin: 'model_extraction' };
