@@ -315,6 +315,35 @@ test('non-factual entries reject absent or invented classification provenance', 
   }
 });
 
+test('non-factual entries fail closed on invented verification or charged-success fields', async () => {
+  const claim = { id: 'claim-1', claim: 'Choose your model', result_state: 'non_factual',
+    classification_origin: 'automatic_classification', classification_reason: 'heading' };
+  for (const forged of [{ result: 'verified' }, { verdict: 'verified' }, { confidence: 0 },
+    { citation_id: 'citation-1' }, { credits_used: 1 }, { credits_charged: 1 }]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+        pending_claims: 0, claims: [{ ...claim, ...forged }] }),
+    }), /invalid classification provenance/);
+  }
+  const positive = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+      pending_claims: 0, claims: [{ ...claim, result: null, confidence: null, citation_id: null }] }),
+  });
+  assert.match(positive.text, /non-factual/);
+});
+
+test('non-factual counts reject invalid values instead of silently omitting them', async () => {
+  for (const non_factual_claims of [-1, 0.5, 2, '1', null]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+        pending_claims: 0, non_factual_claims, claims: [] }),
+    }), /invalid non-factual count/);
+  }
+});
+
 test('automatic dispositions reject fabricated analyst metadata and invalid source spans', async () => {
   const valid = { asset_id: 'asset-1', start: 0, end: 8, source_quote: 'Contents',
     reason: 'heading', origin: 'automatic_classification' };

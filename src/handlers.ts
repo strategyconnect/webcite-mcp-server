@@ -1563,7 +1563,9 @@ export const handlers: Record<string, ToolHandler> = {
       }
       if (claim.result_state === 'non_factual' &&
           (claim.classification_origin !== 'automatic_classification' ||
-           !['heading', 'navigation', 'opinion'].includes(claim.classification_reason as string)))
+           !['heading', 'navigation', 'opinion'].includes(claim.classification_reason as string) ||
+           ['result', 'verdict', 'confidence', 'citation_id', 'credits_used', 'credits_charged'].some((key) =>
+             claim[key] !== undefined && claim[key] !== null)))
         throw new ToolFailure('invalid_api_output', 'Stored non-factual claim has invalid classification provenance');
       const verdict = claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
         : claim.result_state === 'result_saved'
@@ -1595,6 +1597,10 @@ export const handlers: Record<string, ToolHandler> = {
       : result.coverage_complete === false && result.extraction_complete === true
         ? `\nSource coverage: incomplete; ${result.uncovered_source_span_count ?? 'unknown'} uncovered spans, ${result.ungrounded_claims ?? 'unknown'} ungrounded claims. Checked claim results do not cover these passages.`
         : '\nSource coverage: not established for this saved review.';
+    if (result.non_factual_claims !== undefined &&
+        (!Number.isInteger(result.non_factual_claims) || (result.non_factual_claims as number) < 0 ||
+         (result.non_factual_claims as number) > (result.total_claims as number)))
+      throw new ToolFailure('invalid_api_output', 'Stored review has an invalid non-factual count');
     const nonFactualCount = Number.isInteger(result.non_factual_claims) ? `; non-factual: ${result.non_factual_claims}` : '';
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
     const focusGuidance = focusedScope
@@ -1630,7 +1636,7 @@ export const handlers: Record<string, ToolHandler> = {
       ? (dispositionOffset as number) + shownDispositions.length : result.next_disposition_offset;
     const compactDispositionHint = Number.isInteger(compactNextDisposition)
       ? `\nNext disposition offset: ${compactNextDisposition} (use disposition_offset and disposition_limit)` : '';
-    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, 3).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, 3).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result_state === 'non_factual' ? 'non-factual (automatic classification)' : claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       non_factual_claims: result.non_factual_claims,
