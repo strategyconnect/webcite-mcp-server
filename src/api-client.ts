@@ -2,6 +2,7 @@
  * WebCite API Client - Public API endpoints
  */
 
+import { creditUsage, withCreditHeaders } from './credit-usage.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type {
@@ -163,11 +164,19 @@ export class WebCiteApiClient {
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new ApiClientError(response.status, errorBody);
+      throw await this.responseError(response);
     }
 
-    return response.json() as Promise<T>;
+    return withCreditHeaders(await response.json() as T, response.headers);
+  }
+
+  private async responseError(response: Response): Promise<ApiClientError> {
+    const body = await response.text();
+    let data: unknown;
+    try { data = JSON.parse(body); } catch { /* Preserve non-JSON failure bodies. */ }
+    const usage = creditUsage(withCreditHeaders(
+      data && typeof data === 'object' ? data : {}, response.headers));
+    return new ApiClientError(response.status, body, usage);
   }
 
   private verifyBody(options: VerifyClaimOptions): string {
@@ -261,8 +270,7 @@ export class WebCiteApiClient {
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new ApiClientError(response.status, errorBody);
+      throw await this.responseError(response);
     }
 
     if (!response.body) {
@@ -471,11 +479,10 @@ export class WebCiteApiClient {
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new ApiClientError(response.status, errorBody);
+      throw await this.responseError(response);
     }
 
-    return response.json();
+    return withCreditHeaders(await response.json(), response.headers);
   }
 
   async uploadBytes(fileBuffer: Uint8Array, fileName: string): Promise<UploadResponse> {

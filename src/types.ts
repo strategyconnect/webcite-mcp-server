@@ -1,3 +1,4 @@
+import type { CreditUsage } from './credit-usage.js';
 /**
  * WebCite API types — request options and response shapes for the public v1 API.
  */
@@ -131,10 +132,7 @@ export interface VerifyClaimResponse {
   request_id?: string;
   operation_id?: string;
   result_url?: string;
-  credit_usage?: {
-    credits_used: number;
-    credits_remaining: number;
-  };
+  credit_usage?: CreditUsage;
 }
 
 export interface CitationRecord {
@@ -1635,6 +1633,7 @@ export type ToolFailureCode =
   | 'partial_result';
 
 export interface ToolFailurePayload {
+  credit_usage?: CreditUsage;
   code: ToolFailureCode;
   message: string;
   details?: Record<string, unknown>;

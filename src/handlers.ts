@@ -1,3 +1,4 @@
+import { creditUsage, creditUsageText, reviewUsageText } from './credit-usage.js';
 import { storedVerification, validateBatch, validateVerification } from './verification-response.js';
 import { validateAnalysisRevision, validateSavedRevision } from './analysis-revision.js';
 /**
@@ -154,7 +155,7 @@ export type ToolSuccess = {
 export type ToolHandler = (args: Args, client: WebCiteApiClient) => Promise<ToolSuccess>;
 
 function ok(text: string, structuredContent?: Record<string, unknown>): ToolSuccess {
-  return structuredContent ? { text, structuredContent } : { text };
+  return structuredContent ? { text: text + creditUsageText(structuredContent) + reviewUsageText(structuredContent), structuredContent } : { text };
 }
 
 function extractionResult(text: string, result: Record<string, unknown>): ToolSuccess {
@@ -242,7 +243,7 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
     throw new ToolFailure('invalid_api_output', 'Document review retry key is invalid');
   const retry = typeof result.retry_idempotency_key === 'string'
     ? `After resolving the failure, call review_document with the same inputs, retry_failed: true, and idempotency_key: ${result.retry_idempotency_key}.` : '';
-  return { text: `Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(),
+  return { ...ok(`Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(), result),
     isError: ['failed', 'interrupted', 'credits_exhausted'].includes(result.status), structuredContent: result };
 }
 
@@ -1748,6 +1749,8 @@ export const handlers: Record<string, ToolHandler> = {
         extraction_complete: result.extraction_complete ?? null,
         extraction_cursor: result.extraction_cursor ?? null, chunk_count: result.chunk_count ?? null,
         source_read_complete: result.source_read_complete ?? null, source_readiness: result.source_readiness ?? null,
+        ...(result.credit_usage !== undefined ? { credit_usage: result.credit_usage } : {}),
+        ...(result.review_usage !== undefined ? { review_usage: result.review_usage } : {}),
         claims: shown, next_offset: compactNextClaim, next_page_input: compactContinuation,
         resume_input: resumeInput, claims_omitted: claims.length - shown.length,
         coverage_complete: result.coverage_complete ?? null,
@@ -1999,7 +2002,7 @@ export const handlers: Record<string, ToolHandler> = {
     }
 
     const results = validateBatch(await wrapApi(client.verifyBatch(items)));
-    return ok(formatBatchResults(results), { results });
+    return ok(formatBatchResults(results), { results, ...(creditUsage(results) ? { credit_usage: creditUsage(results) } : {}) });
   },
 
   verify_feedback: async (args, client) => {

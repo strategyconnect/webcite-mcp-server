@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { creditUsageText } from './credit-usage.js';
 /**
  * WebCite MCP Server
  *
@@ -132,7 +133,7 @@ export function createMcpServer(
               type: 'text',
               text: `Error [${payload.code}]: ${payload.message}${
                 payload.actionable ? `\nAction: ${payload.actionable}` : ''
-              }`,
+              }${creditUsageText(payload)}`,
             },
           ],
           structuredContent: payload as unknown as Record<string, unknown>,

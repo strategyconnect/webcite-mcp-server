@@ -1,3 +1,4 @@
+import { creditUsage } from './credit-usage.js';
 /** Consume the backend result and explicit terminal marker. Partial evidence is not a result. */
 import type { SSEEvent, VerifyClaimResponse } from './types.js';
 import { ToolFailure } from './errors.js';
@@ -15,7 +16,7 @@ export async function collectStreamEvents(
       details: {
         partial_events: events,
         ...(result ? { unconfirmed_result: result } : {}),
-        ...(usage ? { stream_usage: usage } : {}),
+        ...(usage ? { stream_usage: usage, ...(creditUsage(usage) ? { credit_usage: creditUsage(usage) } : {}) } : {}),
       },
       actionable: creditError
         ? 'Stop chargeable calls. Give the user completed results and unchecked items. An account owner can add credits or enable overage where available. Preserve partial events; do not repeat uncertain paid work.'
@@ -53,6 +54,6 @@ export async function collectStreamEvents(
     throw incomplete(`Verification stream disconnected: ${error instanceof Error ? error.message : 'unknown error'}`);
   }
   if (!result || !done) throw incomplete('Verification stream ended without a result and completion marker');
-  return { result: { ...result, ...(usage ? { stream_usage: usage,
+  return { result: { ...result, ...(usage ? { stream_usage: usage, ...(creditUsage(usage) ? { credit_usage: creditUsage(usage) } : {}),
     ...(typeof usage.operation_id === 'string' && !result.operation_id ? { operation_id: usage.operation_id } : {}) } : {}) }, events };
 }

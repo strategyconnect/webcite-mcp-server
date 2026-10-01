@@ -114,7 +114,7 @@ export function profileExclusionMessage(
 
 export const SERVER_INSTRUCTIONS = `Webcite verifies claims and binds quotes to sources. Free plan: 100 credits/month.
 
-When a user asks to audit an entire uploaded document or every figure on a slide, use review_document after extract_document, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.
+When a user asks to audit an entire uploaded document or every figure on a slide, use review_document directly with its existing asset_id, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.
 Keep returned extraction structuredContent and reuse it in the conversation; repeated extract calls incur the stated per-call credits.
 
 START: call webcite_guide with workflow=choose, then follow the workflow matching the user's request.
@@ -123,7 +123,7 @@ Workflows:
 1) Plain fact → verify_claim({ claim })
 2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch
 3) Figures / conflicts → extract_document first; analyze_document accepts PDF, spreadsheet and JPEG/PNG/WebP images. Image figures are OCR/model reads and need source review. extract_figures finds recognized metrics only; zero metrics is not a full numeric audit.
-4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); get_credit_balance, upload/extract, review_document with stable thread_id, get_document_review_job until terminal, then get_document_review for saved results and coverage. No fixed claim count. Preserve completed results and unchecked source spans on errors or credit exhaustion. extract_figures only recognizes known metrics.
+4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); upload original bytes only if needed, then review_document with stable thread_id (no mandatory balance or extraction preflight), get_document_review_job until terminal, then get_document_review for saved results and coverage. No fixed claim count. Preserve completed results and unchecked source spans on errors or credit exhaustion. extract_figures only recognizes known metrics.
 5) Find the original source behind an image or slide → webcite_guide({ workflow: 'source_trace' }); extract_document, search_sources using exact table values and units, then get_source_preview on candidate URLs. Use verify_claim with confirmed source_urls for claim truth. ask_document is numerical Q&A over supplied text, not an external-source finder.
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.

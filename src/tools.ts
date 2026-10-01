@@ -47,7 +47,7 @@ export const TOOLS: ToolDefinition[] = [
     description: `Verify a factual claim against authoritative sources. Returns sources with stance analysis (supports/contradicts/neutral) and an overall verdict.
 
 Use this when you need to:
-- Fact-check one specific claim. For an entire uploaded document or slide, call review_document once after extract_document, not one verify_claim call per extracted figure.
+- Fact-check one specific claim. For an entire uploaded document or slide, call review_document once with its asset_id, not one verify_claim call per extracted figure.
 - Find sources that support or contradict a statement
 - Get a confidence score for a claim's accuracy
 
@@ -556,7 +556,7 @@ const claimScopeProperties = {
 export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   {
     name: 'get_credit_balance',
-    description: 'Read the authenticated account credit balance before a document review or after a credit refusal. Costs 0 credits. Returns remaining, used and total credits; no billing change is made.',
+    description: 'Read the authenticated account credit balance for an explicit balance question or an unresolved credit refusal. A routine document review does not require this call; use inline credit_usage from normal responses. Costs 0 credits. Returns remaining, used and total credits; no billing change is made.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -609,7 +609,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'review_document',
-    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this after extract_document. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts a durable full review and immediately returns a job_id. Poll get_document_review_job until terminal, then page through get_document_review. Repeating the same input reuses its job without a new charge. After credits are replenished or a failed job is diagnosed, resume the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); preserve completed claims and the failed job receipt. Only report full coverage when coverage_complete is true.',
+    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this directly with the existing asset_id. Stored source parsing is handled by the server; extract_document is optional when extracted content is also needed. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts a durable full review and immediately returns a job_id. Poll get_document_review_job until terminal, then page through get_document_review. Repeating the same input reuses its job without a new charge. After credits are replenished or a failed job is diagnosed, resume the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); preserve completed claims and the failed job receipt. Only report full coverage when coverage_complete is true.',
     inputSchema: { type: 'object', properties: {
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
