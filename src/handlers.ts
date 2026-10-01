@@ -206,6 +206,15 @@ function requireString(args: Args, key: string): string {
   return value;
 }
 
+function savedClaimLabel(claim: Record<string, unknown>): string {
+  return claim.result_state === 'duplicate' ? `duplicate of claim ${claim.duplicate_of_id} (not separately checked)`
+        : claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
+        : claim.result_state === 'result_saved'
+        ? `saved, settlement pending${typeof claim.result === 'string' ? `: ${claim.result}` : ''}`
+        : claim.result_state === 'failed' ? `failed, retryable${typeof claim.error_code === 'string' ? `: ${claim.error_code}` : ''}`
+        : typeof claim.result === 'string' ? claim.result : 'unchecked';
+}
+
 function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
   const statuses = ['queued', 'running', 'waiting_review', 'waiting_parse', 'complete', 'partial_coverage', 'credits_exhausted', 'failed', 'interrupted'];
   if (typeof result.job_id !== 'string' || !/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(result.job_id) ||
@@ -222,10 +231,10 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
     ? ` ${progress.completed_claims}/${progress.total_claims} claims checked.` : '';
   const gaps = progress?.coverage_complete === false && progress.extraction_complete === true
     ? ` Coverage incomplete: ${progress.uncovered_source_span_count ?? 'unknown'} uncovered source spans.` : '';
-  const next = result.review_id
+  const next = result.review_id && !['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
     ? `Call get_document_review with review_id ${result.review_id} for saved claim results.` : '';
   const wait = ['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
-    ? `Call get_document_review_job with job_id ${result.job_id} to check progress.` : '';
+    ? `Call get_document_review_job with job_id ${result.job_id} to check progress. Wait about 30 seconds between checks; do not repeatedly fetch unfinished result pages unless the user requests interim results.` : '';
   const error = typeof result.error === 'string' ? ` Error: ${result.error}` : '';
   if (result.retry_idempotency_key !== undefined && (typeof result.retry_idempotency_key !== 'string' ||
       result.retry_idempotency_key !== `review-retry:${result.job_id}` ||
@@ -240,10 +249,12 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
 function base64File(args: Args) {
   const encoded = requireString(args, 'file_base64');
   const filename = requireString(args, 'filename');
-  if (encoded.length > 28_000_000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded))
+  if (encoded.length > 26_666_668 || encoded.length % 4 !== 0 ||
+      encoded.length / 4 * 3 - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0) > 20_000_000 ||
+      /[^A-Za-z0-9+/=]/.test(encoded))
     throw new ToolFailure('invalid_argument', 'file_base64 must be valid base64 and at most 20 MB');
   const bytes = Buffer.from(encoded, 'base64');
-  if (bytes.length === 0 || bytes.length > 20_000_000 || filename.length > 255)
+  if (bytes.length === 0 || bytes.length > 20_000_000 || bytes.toString('base64') !== encoded || filename.length > 255)
     throw new ToolFailure('invalid_argument', 'Upload must have a filename and 1 to 20 MB of content');
   const extension = filename.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
   const signatureOk = extension === 'pdf' ? bytes.subarray(0, 1024).includes(Buffer.from('%PDF-'))
@@ -1627,12 +1638,7 @@ export const handlers: Record<string, ToolHandler> = {
           !Array.isArray(recovery.original_source_fragments) ||
           recovery.original_source_fragments.some((part) => typeof part !== 'string' || !part.trim())))
         throw new ToolFailure('invalid_api_output', 'Stored claim has invalid source recovery metadata');
-      const verdict = claim.result_state === 'duplicate' ? `duplicate of claim ${claim.duplicate_of_id} (not separately checked)`
-        : claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
-        : claim.result_state === 'result_saved'
-        ? `saved, settlement pending${typeof claim.result === 'string' ? `: ${claim.result}` : ''}`
-        : claim.result_state === 'failed' ? `failed, retryable${typeof claim.error_code === 'string' ? `: ${claim.error_code}` : ''}`
-        : typeof claim.result === 'string' ? claim.result : 'unchecked';
+      const verdict = savedClaimLabel(claim);
       const page = Number.isInteger(claim.page_number) ? `, page ${claim.page_number}` : '';
       const citations = Array.isArray(claim.citations) ? claim.citations : claim.top_citations;
       const urls = Array.isArray(citations) ? citations
@@ -1672,10 +1678,12 @@ export const handlers: Record<string, ToolHandler> = {
     const focusGuidance = focusedScope
       ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
-    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const linkGuidance = '\nFor citation links in the final report, use source titles as labels and complete returned URLs as link targets. Never shorten URL paths or replace them with ellipses.';
+    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
     if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
-    const shown = claims.slice(0, 3).map((claim, index) => ({
+    const compactClaims = claims.map((claim) => ({
       id: claim.id, claim: String(claim.claim).slice(0, 500),
+      ...(String(claim.claim).length > 500 ? { claim_truncated: true } : {}),
       result: claim.result, result_state: claim.result_state, citation_id: claim.citation_id,
       classification_origin: claim.classification_origin, classification_reason: claim.classification_reason,
       duplicate_of_index: claim.duplicate_of_index, duplicate_of_id: claim.duplicate_of_id,
@@ -1695,45 +1703,67 @@ export const handlers: Record<string, ToolHandler> = {
         .map((source: unknown) => source && typeof source === 'object' ? (source as Record<string, unknown>).url : undefined)
         .filter((url: unknown): url is string => typeof url === 'string'),
     }));
-    const nextPage = (offset as number) + shown.length;
-    const shownGaps = gaps.slice(0, 3);
-    const compactNextGap = shownGaps.length < gaps.length
-      ? (gapOffset as number) + shownGaps.length : result.next_gap_offset;
-    const compactGapHint = Number.isInteger(compactNextGap)
-      ? `\nNext gap offset: ${compactNextGap} (use gap_offset and gap_limit)` : '';
-    const shownRejected = rejected.slice(0, 3);
-    const compactNextRejected = shownRejected.length < rejected.length
-      ? (rejectedOffset as number) + shownRejected.length : result.next_rejected_offset;
-    const compactRejectedHint = Number.isInteger(compactNextRejected)
-      ? `\nNext rejected offset: ${compactNextRejected} (use rejected_offset and rejected_limit)` : '';
-    const compactRejectedRows = rejectedRows.slice(0, 3);
-    const shownDispositions = dispositions.slice(0, 3);
-    const compactNextDisposition = shownDispositions.length < dispositions.length
-      ? (dispositionOffset as number) + shownDispositions.length : result.next_disposition_offset;
-    const compactDispositionHint = Number.isInteger(compactNextDisposition)
-      ? `\nNext disposition offset: ${compactNextDisposition} (use disposition_offset and disposition_limit)` : '';
-    const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, 3).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, 3).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${claim.result_state === 'duplicate' ? `duplicate of claim ${claim.duplicate_of_id} (not separately checked)` : claim.result_state === 'non_factual' ? 'non-factual (automatic classification)' : claim.result ?? claim.result_state ?? 'unchecked'}] ${claim.claim}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: 3)` : next}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
-      review_id: reviewId, status: result.status, total_claims: result.total_claims,
-      completed_claims: result.completed_claims, pending_claims: result.pending_claims,
-      non_factual_claims: result.non_factual_claims,
-      duplicate_claims: result.duplicate_claims,
-      claims: shown, next_offset: nextPage < (offset as number) + claims.length ? nextPage : result.next_offset,
-      resume_input: resumeInput, claims_omitted: claims.length - shown.length,
-      coverage_complete: result.coverage_complete ?? null,
-      uncovered_source_span_count: result.uncovered_source_span_count ?? null,
-      ungrounded_claims: result.ungrounded_claims ?? null,
-      uncovered_source_spans: shownGaps,
-      next_gap_offset: compactNextGap ?? null,
-      rejected_claim_count: result.rejected_claim_count ?? null,
-      rejected_claims: shownRejected,
-      next_rejected_offset: compactNextRejected ?? null,
-      nonclaim_disposition_count: result.nonclaim_disposition_count ?? null,
-      nonclaim_dispositions: shownDispositions,
-      next_disposition_offset: compactNextDisposition ?? null,
-      full_evidence_saved: true,
-    });
-    if (Buffer.byteLength(JSON.stringify(compact)) <= REVIEW_RESPONSE_MAX_BYTES) return compact;
-    return ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${coverage}\nThe requested page exceeds Claude's tool response limit. Call get_document_review with offset ${offset}, limit 1, gap_offset ${gapOffset}, gap_limit 1, rejected_offset ${rejectedOffset}, rejected_limit 1, disposition_offset ${dispositionOffset}, and disposition_limit 1; use the Webcite API for full citation objects.`, {
+    const buildCompactPage = (shown: typeof compactClaims, sideLimit: number) => {
+      const nextPage = (offset as number) + shown.length;
+      const shownGaps = gaps.slice(0, sideLimit);
+      const compactNextGap = shownGaps.length < gaps.length
+        ? (gapOffset as number) + shownGaps.length : result.next_gap_offset;
+      const compactGapHint = Number.isInteger(compactNextGap)
+        ? `\nNext gap offset: ${compactNextGap} (use gap_offset and gap_limit)` : '';
+      const shownRejected = rejected.slice(0, sideLimit);
+      const compactNextRejected = shownRejected.length < rejected.length
+        ? (rejectedOffset as number) + shownRejected.length : result.next_rejected_offset;
+      const compactRejectedHint = Number.isInteger(compactNextRejected)
+        ? `\nNext rejected offset: ${compactNextRejected} (use rejected_offset and rejected_limit)` : '';
+      const compactRejectedRows = rejectedRows.slice(0, sideLimit);
+      const shownDispositions = dispositions.slice(0, sideLimit);
+      const compactNextDisposition = shownDispositions.length < dispositions.length
+        ? (dispositionOffset as number) + shownDispositions.length : result.next_disposition_offset;
+      const compactDispositionHint = Number.isInteger(compactNextDisposition)
+        ? `\nNext disposition offset: ${compactNextDisposition} (use disposition_offset and disposition_limit)` : '';
+      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+        review_id: reviewId, status: result.status, total_claims: result.total_claims,
+        completed_claims: result.completed_claims, pending_claims: result.pending_claims,
+        non_factual_claims: result.non_factual_claims,
+        duplicate_claims: result.duplicate_claims,
+        failed_claims: result.failed_claims,
+        extraction_complete: result.extraction_complete ?? null,
+        extraction_cursor: result.extraction_cursor ?? null, chunk_count: result.chunk_count ?? null,
+        source_read_complete: result.source_read_complete ?? null, source_readiness: result.source_readiness ?? null,
+        claims: shown, next_offset: nextPage < (offset as number) + claims.length ? nextPage : result.next_offset,
+        resume_input: resumeInput, claims_omitted: claims.length - shown.length,
+        coverage_complete: result.coverage_complete ?? null,
+        uncovered_source_span_count: result.uncovered_source_span_count ?? null,
+        ungrounded_claims: result.ungrounded_claims ?? null,
+        uncovered_source_spans: shownGaps,
+        next_gap_offset: compactNextGap ?? null,
+        rejected_claim_count: result.rejected_claim_count ?? null,
+        rejected_claims: shownRejected,
+        next_rejected_offset: compactNextRejected ?? null,
+        nonclaim_disposition_count: result.nonclaim_disposition_count ?? null,
+        nonclaim_dispositions: shownDispositions,
+        next_disposition_offset: compactNextDisposition ?? null,
+        full_evidence_saved: true,
+      });
+      return compact;
+    };
+    // ponytail: bounded by the public 100-row limits; measure the complete response instead of estimating token size.
+    for (let sideLimit = 3; sideLimit >= 1; sideLimit--) {
+      for (let count = compactClaims.length; count >= (compactClaims.length ? 1 : 0); count--) {
+        const compact = buildCompactPage(compactClaims.slice(0, count), sideLimit);
+        if (Buffer.byteLength(JSON.stringify(compact)) <= REVIEW_RESPONSE_MAX_BYTES) {
+          let packed = compact;
+          const maxSideRows = Math.max(gaps.length, rejected.length, dispositions.length);
+          for (let expanded = sideLimit + 1; expanded <= maxSideRows; expanded++) {
+            const candidate = buildCompactPage(compactClaims.slice(0, count), expanded);
+            if (Buffer.byteLength(JSON.stringify(candidate)) > REVIEW_RESPONSE_MAX_BYTES) break;
+            packed = candidate;
+          }
+          return packed;
+        }
+      }
+    }
+    return { ...ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${coverage}\nThe requested page exceeds Claude's tool response limit. Even one item per stream exceeds the limit. No claim or side-list item was consumed. Use the Webcite API for full citation objects and coverage lists at these offsets; repeating this tool call cannot retrieve this oversized page.`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       non_factual_claims: result.non_factual_claims,
@@ -1746,8 +1776,8 @@ export const handlers: Record<string, ToolHandler> = {
       next_rejected_offset: rejected.length ? rejectedOffset : result.next_rejected_offset ?? null,
       nonclaim_disposition_count: result.nonclaim_disposition_count ?? null,
       next_disposition_offset: dispositions.length ? dispositionOffset : result.next_disposition_offset ?? null,
-      next_offset: offset, full_evidence_saved: true,
-    });
+      next_offset: null, blocked_offset: offset, code: 'response_limit_exceeded', full_evidence_saved: true,
+    }), isError: true };
   },
 
   get_document_review_job: async (args, client) => {
