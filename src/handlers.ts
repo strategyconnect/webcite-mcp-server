@@ -235,8 +235,10 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
         progress.pending_claims !== 0 || progress.coverage_complete !== (result.status === 'complete')))
     throw new ToolFailure('invalid_api_output', 'Completed review job has inconsistent coverage or pending claims');
   const counts = progress ? ` Completed: ${progress.completed_claims ?? 'unknown'}/${progress.total_claims ?? 'unknown'} physical rows; material: ${progress.material_claims ?? 'unknown'}; duplicates: ${progress.duplicate_claims ?? 'unknown'}; pending (includes failed): ${progress.pending_claims ?? 'unknown'}; failed: ${progress.failed_claims ?? 'unknown'}; rejected: ${progress.rejected_claim_count ?? 'unknown'}; uncovered: ${progress.uncovered_source_span_count ?? 'unknown'}.` : '';
-  const gaps = progress?.coverage_complete === false && progress.extraction_complete === true
-    ? ` Coverage incomplete: ${progress.uncovered_source_span_count ?? 'unknown'} uncovered source spans.` : '';
+  for (const field of ['extraction_complete', 'source_read_complete', 'coverage_complete'])
+    if (progress?.[field] !== undefined && progress[field] !== null && typeof progress[field] !== 'boolean')
+      throw new ToolFailure('invalid_api_output', `Document review job has an invalid ${field} flag`);
+  const gaps = progress ? ` Extraction complete: ${progress.extraction_complete ?? 'unknown'}; source read complete: ${progress.source_read_complete ?? 'unknown'}; source coverage complete: ${progress.coverage_complete ?? 'unknown'}.` : '';
   const next = result.review_id && !['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
     ? `Call get_document_review with review_id ${result.review_id} for saved claim results.` : '';
   const active = ['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status);

@@ -79,3 +79,24 @@ test('negative job count is rejected instead of becoming a reported number', asy
     assert.equal(output.isError, true); assert.match(output.content[0].text, /invalid failed_claims count/);
   });
 });
+
+for (const value of [true, false, null, undefined]) {
+  test(`failed job text exposes canonical processing and source flags (${value})`, async () => {
+    const job = { job_id: 'a'.repeat(64), status: 'failed', progress: {
+      extraction_complete: value, source_read_complete: value, coverage_complete: value } };
+    await withClient({ getDocumentReviewJob: async () => job }, async client => {
+      const output = await client.callTool({ name: 'get_document_review_job', arguments: { job_id: job.job_id } });
+      const shown = value ?? 'unknown';
+      assert.ok(output.content[0].text.includes(`Extraction complete: ${shown}; source read complete: ${shown}; source coverage complete: ${shown}.`));
+      assert.deepEqual(output.structuredContent.progress, job.progress);
+      assert.equal(output.isError, true);
+    });
+  });
+}
+
+test('string processing flag is rejected rather than interpreted as a boolean', async () => {
+  await withClient({ getDocumentReviewJob: async () => ({ job_id: 'a'.repeat(64), status: 'failed', progress: { extraction_complete: 'false' } }) }, async client => {
+    const output = await client.callTool({ name: 'get_document_review_job', arguments: { job_id: 'a'.repeat(64) } });
+    assert.equal(output.isError, true); assert.match(output.content[0].text, /invalid extraction_complete flag/);
+  });
+});
