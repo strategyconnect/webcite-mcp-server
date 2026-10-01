@@ -19,9 +19,12 @@ test('terminal job text retains known physical, material, duplicate, pending and
     pending_claims: 51, failed_claims: 4, rejected_claim_count: null } };
   await withClient({ getDocumentReviewJob: async () => { calls++; return job; } }, async client => {
     assert.match(client.getInstructions(), /material_claims \(physical rows excluding duplicates\)/);
+    assert.match(client.getInstructions(), /pending_claims is unfinished work and includes failed_claims/);
+    assert.match(client.getInstructions(), /Counts do not establish attempt history/);
+    assert.match(client.getInstructions(), /provider access error does not rule out incomplete extraction/);
     const output = await client.callTool({ name: 'get_document_review_job', arguments: { job_id: job.job_id } });
     assert.equal(output.isError, true);
-    assert.match(output.content[0].text, /6\/65 physical rows; material: 57; duplicates: 8; pending: 51; failed: 4; rejected: unknown; uncovered: unknown/);
+    assert.match(output.content[0].text, /6\/65 physical rows; material: 57; duplicates: 8; pending \(includes failed\): 51; failed: 4; rejected: unknown; uncovered: unknown/);
     assert.deepEqual(output.structuredContent.progress, job.progress);
     assert.equal(output.structuredContent.poll_after_ms, 0);
     assert.equal(calls, 1);
@@ -32,7 +35,7 @@ test('legacy absent and null counts remain unknown, never zero', async () => {
   const job = { job_id: 'a'.repeat(64), status: 'failed', progress: { completed_claims: 0, total_claims: 1, material_claims: null } };
   await withClient({ getDocumentReviewJob: async () => job }, async client => {
     const output = await client.callTool({ name: 'get_document_review_job', arguments: { job_id: job.job_id } });
-    assert.match(output.content[0].text, /0\/1 physical rows; material: unknown; duplicates: unknown; pending: unknown; failed: unknown/);
+    assert.match(output.content[0].text, /0\/1 physical rows; material: unknown; duplicates: unknown; pending \(includes failed\): unknown; failed: unknown/);
     assert.equal(output.structuredContent.progress.material_claims, null);
     assert.equal(output.structuredContent.progress.pending_claims, undefined);
   });
