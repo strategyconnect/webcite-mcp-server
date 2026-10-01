@@ -7,6 +7,16 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.21 workflow changes
+
+Saved review pages fit as many compact claims and coverage records as the existing 20 KB response limit permits. Each list keeps its own continuation offset. An item that cannot fit returns an explicit blocked error and leaves the saved evidence available through the API. Claim text shortened for display is marked; citation URLs are retained in full.
+
+Review jobs can return a review ID before they finish. Poll the job about 30 seconds apart and read final pages after a terminal status, unless interim results are requested. Saved outcomes and URLs are sufficient for a summary; source-detail tools are for a specific evidence question.
+
+Base64 upload validation uses linear checks and a canonical byte round trip. The hosted limit remains 20 MB of original bytes. Empty, malformed and oversized inputs fail before upload. Larger files use the Playground or API multipart upload, then their asset ID.
+
+For a local upload-contract corpus check, run `WEBCITE_LOCAL_CORPUS_CATALOG=/path/to/discovery.json node --test test/local-corpus-workflow.test.js` after building. This tests byte transport and refusal boundaries, not parsing or research. The catalog must contain `documents` with `path` and `format` fields; an optional `WEBCITE_CORPUS_RECEIPT` path records private source hashes and size metadata.
+
 ## 1.9.14 release notes
 
 Saved document reviews distinguish model extraction dispositions from explicit analyst assessments. Model rows retain their source quote and classification reason; analyst rows retain their recorded reviewer identity and rationale. Reading either type does not create an analyst review or consume new review credits.

@@ -615,15 +615,15 @@ test('compact review output keeps an exact cursor for hidden gaps', async () => 
       claims: Array.from({ length: 4 }, (_, index) => ({ id: `c${index}`,
         claim: `Claim ${index} ${'x'.repeat(6000)}`, result: 'unverified' })) }),
   });
-  assert.equal(result.structuredContent.next_gap_offset, 3);
-  assert.equal(result.structuredContent.uncovered_source_spans.length, 3);
-  assert.match(result.text, /Next gap offset: 3/);
-  assert.equal(result.structuredContent.next_rejected_offset, 3);
-  assert.equal(result.structuredContent.rejected_claims.length, 3);
-  assert.match(result.text, /Next rejected offset: 3/);
-  assert.equal(result.structuredContent.next_disposition_offset, 3);
-  assert.equal(result.structuredContent.nonclaim_dispositions.length, 3);
-  assert.match(result.text, /Next disposition offset: 3/);
+  assert.equal(result.structuredContent.next_gap_offset, 5);
+  assert.equal(result.structuredContent.uncovered_source_spans.length, 5);
+  assert.match(result.text, /Next gap offset: 5/);
+  assert.equal(result.structuredContent.next_rejected_offset, 5);
+  assert.equal(result.structuredContent.rejected_claims.length, 5);
+  assert.match(result.text, /Next rejected offset: 5/);
+  assert.equal(result.structuredContent.next_disposition_offset, 5);
+  assert.equal(result.structuredContent.nonclaim_dispositions.length, 5);
+  assert.match(result.text, /Next disposition offset: 5/);
   assert.equal(result.structuredContent.nonclaim_dispositions[0].origin, 'model_extraction');
   assert.equal(Object.hasOwn(result.structuredContent.nonclaim_dispositions[0], 'reviewer_id'), false);
   assert.match(result.text, /model extraction \(heading\)/);
