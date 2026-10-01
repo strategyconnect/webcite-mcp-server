@@ -187,3 +187,25 @@ test('public MCP follows the exact continuation through the retained 64-claim an
         retained_dispositions: seen[3].length, saved_page_calls: calls }));
     } finally { await client.close(); await server.close(); }
   });
+
+for (const summary of ['Saved evidence supports one prerequisite, with the remaining scope unresolved.', undefined, '界'.repeat(20000)]) {
+  test(`compact saved summaries preserve evidence provenance (${summary === undefined ? 'unknown' : summary.length})`, async () => {
+    const url = 'https://example.org/original/path?opaque=unchanged';
+    const claim = { id: 'summary-row', claim: 'A material prerequisite requires verification.', result: 'unverified', summary,
+      citations: [{url, snippet: 'retained source passage '.repeat(3000)}] };
+    const page = {review_id: 'review', status: 'complete', prompt: 'Review', thread_id: 'stable', asset_ids: [],
+      total_claims: 1, completed_claims: 1, pending_claims: 0, claims: [claim], next_offset: null};
+    const output = await handlers.get_document_review({review_id: 'review', limit: 1}, {getDocumentReview: async () => page});
+    assert.ok(Buffer.byteLength(JSON.stringify(output)) <= 20000);
+    assert.equal(output.isError, undefined);
+    assert.equal(output.structuredContent.claims.length, 1);
+    assert.equal(output.structuredContent.next_page_input, null);
+    assert.equal(output.structuredContent.evidence_details_omitted, true);
+    assert.deepEqual(output.structuredContent.claims[0].citation_urls, [url]);
+    assert.equal(output.structuredContent.claims[0].summary, summary === undefined ? null : summary.slice(0, 1000));
+    assert.equal(output.structuredContent.claims[0].summary_truncated, summary && summary.length > 1000 ? true : undefined);
+    assert.match(output.text, /omitted from this compact view, not necessarily absent from storage/);
+    if (summary === undefined) assert.match(output.text, /Saved summary: unavailable on this row/);
+    else assert.ok(output.text.includes(summary.slice(0, 1000)));
+  });
+}
