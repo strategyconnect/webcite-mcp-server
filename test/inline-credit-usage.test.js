@@ -42,6 +42,8 @@ test('native usage events survive stream normalization without replacing legacy 
  assert.deepEqual(result.structuredContent.credit_usage,receipt);assert.deepEqual(result.structuredContent.stream_usage.usage,{credits:0});assert.match(result.text,/Request credits used: 0/);
 });
 test('batch header receipt is promoted without modifying individual item records',async()=>{
- const items=[{quote:'Exact quote',source:'https://example.org'}];const rows=[{quote:'Exact quote',binding:{grounded:true},verification:{grounded:true}}];const original=global.fetch;global.fetch=async()=>new Response(JSON.stringify(rows),{headers:{'X-Credits-Used':'2','X-Credits-Remaining':'172'}});
- try{const result=await handlers.verify_batch({items},new WebCiteApiClient('test','http://localhost'));assert.equal(result.structuredContent.credit_usage.credits_used,2);assert.deepEqual(result.structuredContent.results[0],rows[0]);assert.match(result.text,/Request credits used: 2/)}finally{global.fetch=original}
+ const items=[{quote:'Exact quote',source:'https://example.org'}];const rows=[{quote:'Exact quote',binding:{grounded:true},verification:{grounded:true}}];const original=global.fetch;global.fetch=async()=>new Response(JSON.stringify(rows),{headers:{'X-Credits-Used':'2','X-Credits-Remaining':'172','X-Credits-Operation-Id':'native-batch-operation'}});
+ try{const result=await handlers.verify_batch({items},new WebCiteApiClient('test','http://localhost'));assert.equal(result.structuredContent.credit_usage.credits_used,2);assert.equal(result.structuredContent.credit_usage.operation_id,'native-batch-operation');assert.deepEqual(result.structuredContent.results[0],rows[0]);assert.match(result.text,/Request credits used: 2/)}finally{global.fetch=original}
 });
+
+test("compact omissions do not imply missing saved weighting or analysis",()=>{for(const text of [renderWebciteGuide({workflow:"document_review"}),SERVER_INSTRUCTIONS]){assert.match(text,/Compact fields omitted are unknown, not absent/);assert.match(text,/Do not infer source weighting, prioritization or analysis absence/);assert.match(text,/only when that specific audit requires/);}});

@@ -33,9 +33,12 @@ export function withCreditHeaders<T>(body: T, headers: Headers | undefined): T {
     const raw = headers.get(name);
     return raw !== null && /^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(raw) && Number.isFinite(Number(raw)) ? Number(raw) : null;
   };
-  if (!['X-Credits-Used', 'X-Credits-Remaining', 'X-Credits-Monthly-Allocation', 'X-Credits-Overage-Enabled'].some(name => headers.has(name))) return body;
+  if (!['X-Credits-Used', 'X-Credits-Remaining', 'X-Credits-Monthly-Allocation', 'X-Credits-Overage-Enabled', 'X-Credits-Operation-Id'].some(name => headers.has(name))) return body;
   const overage = headers.get('X-Credits-Overage-Enabled');
-  const usage: CreditUsage = { credits_used: number('X-Credits-Used'), credits_remaining: number('X-Credits-Remaining'), monthly_allocation: number('X-Credits-Monthly-Allocation'), overage_enabled: overage === 'true' ? true : overage === 'false' ? false : null, operation_id: typeof (body as Record<string, unknown>).operation_id === 'string' ? (body as Record<string, unknown>).operation_id as string : null };
+  const bodyOperation = (body as Record<string, unknown>).operation_id;
+  const headerOperation = headers.get('X-Credits-Operation-Id');
+  const operationId = typeof bodyOperation === 'string' && bodyOperation.trim() ? bodyOperation : headerOperation?.trim() ? headerOperation : null;
+  const usage: CreditUsage = { credits_used: number('X-Credits-Used'), credits_remaining: number('X-Credits-Remaining'), monthly_allocation: number('X-Credits-Monthly-Allocation'), overage_enabled: overage === 'true' ? true : overage === 'false' ? false : null, operation_id: operationId };
   // Batch HTTP bodies remain arrays; the handler promotes this receipt to its envelope.
   return Object.assign(Array.isArray(body) ? [...body] : { ...body }, { credit_usage: usage }) as T;
 }

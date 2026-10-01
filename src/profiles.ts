@@ -112,7 +112,8 @@ export function profileExclusionMessage(
   );
 }
 
-export const SERVER_INSTRUCTIONS = `Webcite verifies claims and binds quotes to sources. Free plan: 100 credits/month.
+export const SERVER_INSTRUCTIONS = `Compact fields omitted are unknown, not absent. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them, not routinely.
+Webcite verifies claims and binds quotes to sources. Free plan: 100 credits/month.
 
 When a user asks to audit an entire uploaded document or every figure on a slide, use review_document directly with its existing asset_id, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.
 Keep returned extraction structuredContent and reuse it in the conversation; repeated extract calls incur the stated per-call credits.
