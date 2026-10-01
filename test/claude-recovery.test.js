@@ -235,6 +235,44 @@ test('saved review fails closed when counted rejected candidates or dispositions
   assert.match(positive.text, /Nonclaim disposition 1.*Navigation label/);
 });
 
+test('saved failed review preserves model dispositions and actual analyst actors together', async () => {
+  const model = { asset_id: 'asset-1', start: 146, end: 176,
+    source_quote: "Here's how it generally works.", reason: 'navigation', origin: 'model_extraction' };
+  const analyst = { asset_id: 'asset-1', start: 0, end: 8, source_quote: 'Contents',
+    origin: 'analyst_review', rationale: 'Navigation label', reviewer_id: 'user-1',
+    reviewed_at: '2026-10-01T00:00:00.000Z' };
+  const snapshot = { review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+    asset_ids: ['asset-1'], status: 'failed', total_claims: 0, completed_claims: 0,
+    pending_claims: 0, claims: [], rejected_claim_count: 1,
+    rejected_claims: [{ claim: 'Rejected claim', reason: 'Not grounded', source_fragments: ['Literal fragment'] }],
+    nonclaim_disposition_count: 2, nonclaim_dispositions: [model, analyst] };
+  const result = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => snapshot,
+  });
+  assert.deepEqual(result.structuredContent.nonclaim_dispositions, [model, analyst]);
+  assert.deepEqual(result.structuredContent.rejected_claims, snapshot.rejected_claims);
+  assert.match(result.text, /model extraction \(navigation\): "Here's how it generally works\."/);
+  assert.match(result.text, /reviewer user-1: Navigation label/);
+  assert.doesNotMatch(result.text, /reviewer undefined/);
+  assert.equal(Object.hasOwn(result.structuredContent.nonclaim_dispositions[0], 'reviewer_id'), false);
+});
+
+test('saved disposition union rejects incomplete sources, unknown origins and fabricated model actors', async () => {
+  const valid = { asset_id: 'asset-1', start: 0, end: 8,
+    source_quote: 'Contents', reason: 'heading', origin: 'model_extraction' };
+  for (const item of [null, { ...valid, reason: 'fact' }, { ...valid, origin: 'unknown' },
+    { ...valid, reviewer_id: 'user-1' }, { ...valid, reviewed_at: 'now' },
+    { ...valid, rationale: 'Reviewed by an analyst' }, { ...valid, start: -1 },
+    { ...valid, end: 0 }, { ...valid, source_quote: 'Content' },
+    { ...valid, origin: 'analyst_review', rationale: 'Label' }]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'complete', total_claims: 0, completed_claims: 0,
+        pending_claims: 0, claims: [], nonclaim_disposition_count: 1, nonclaim_dispositions: [item] }),
+    }), /invalid nonclaim disposition/);
+  }
+});
+
 test('Claude starts a durable full review, then polls saved progress without waiting for claims', async () => {
   const jobId = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   let posted;
@@ -388,7 +426,8 @@ test('compact review output keeps an exact cursor for hidden gaps', async () => 
       nonclaim_disposition_count: 5, next_disposition_offset: 5,
       nonclaim_dispositions: Array.from({ length: 5 }, (_, index) => ({
         asset_id: 'asset-1', start: index, end: index + 1, source_quote: 'x',
-        rationale: `Navigation label ${index + 1}`, reviewer_id: 'user-1' })),
+        ...(index % 2 === 0 ? { origin: 'model_extraction', reason: 'heading' }
+          : { rationale: `Navigation label ${index + 1}`, reviewer_id: 'user-1' }) })),
       claims: Array.from({ length: 4 }, (_, index) => ({ id: `c${index}`,
         claim: `Claim ${index} ${'x'.repeat(6000)}`, result: 'unverified' })) }),
   });
@@ -401,4 +440,7 @@ test('compact review output keeps an exact cursor for hidden gaps', async () => 
   assert.equal(result.structuredContent.next_disposition_offset, 3);
   assert.equal(result.structuredContent.nonclaim_dispositions.length, 3);
   assert.match(result.text, /Next disposition offset: 3/);
+  assert.equal(result.structuredContent.nonclaim_dispositions[0].origin, 'model_extraction');
+  assert.equal(Object.hasOwn(result.structuredContent.nonclaim_dispositions[0], 'reviewer_id'), false);
+  assert.match(result.text, /model extraction \(heading\)/);
 });

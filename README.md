@@ -7,6 +7,10 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.14 release notes
+
+Saved document reviews distinguish model extraction dispositions from explicit analyst assessments. Model rows retain their source quote and classification reason; analyst rows retain their recorded reviewer identity and rationale. Reading either type does not create an analyst review or consume new review credits.
+
 ## 1.9.13 release notes
 
 `review_document` now returns a job ID immediately. Poll `get_document_review_job` until it reaches `complete`, `partial_coverage`, `credits_exhausted`, or `failed`, then read claims and uncovered source passages with `get_document_review`. Claims and gaps have independent page offsets. A terminal failed or credit-exhausted job remains an immutable receipt; retry the same review inputs with a new `idempotency_key` after diagnosing the failure or adding credits. This flow requires the backend document-review-jobs API.

@@ -156,6 +156,24 @@ function ok(text: string, structuredContent?: Record<string, unknown>): ToolSucc
   return structuredContent ? { text, structuredContent } : { text };
 }
 
+function validReviewDisposition(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  if (typeof item.asset_id !== 'string' || !item.asset_id.trim() ||
+      !Number.isInteger(item.start) || (item.start as number) < 0 ||
+      !Number.isInteger(item.end) || (item.end as number) <= (item.start as number) ||
+      typeof item.source_quote !== 'string' ||
+      item.source_quote.length !== (item.end as number) - (item.start as number)) return false;
+  if (item.origin === 'model_extraction') {
+    return ['heading', 'navigation', 'opinion'].includes(item.reason as string) &&
+      item.reviewer_id === undefined && item.reviewed_at === undefined && item.rationale === undefined;
+  }
+  return (item.origin === undefined || item.origin === 'analyst_review') &&
+    typeof item.rationale === 'string' && Boolean(item.rationale.trim()) &&
+    typeof item.reviewer_id === 'string' && Boolean(item.reviewer_id.trim()) &&
+    (item.reviewed_at === undefined || typeof item.reviewed_at === 'string');
+}
+
 function requireApiShape(valid: boolean, tool: string): void {
   if (!valid) throw new ToolFailure('invalid_api_output', `${tool} response is incomplete`, {
     actionable: 'Do not infer missing data from this response or repeat a chargeable call. Inspect the saved result and API response.',
@@ -1527,16 +1545,16 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_api_output', 'Stored review omitted nonclaim dispositions');
     const dispositions = Array.isArray(result.nonclaim_dispositions)
       ? result.nonclaim_dispositions as Array<Record<string, unknown>> : [];
-    if (dispositions.some((item) => typeof item.asset_id !== 'string' || !Number.isInteger(item.start) ||
-        !Number.isInteger(item.end) || typeof item.source_quote !== 'string' ||
-        typeof item.rationale !== 'string' || typeof item.reviewer_id !== 'string'))
+    if (dispositions.some((item) => !validReviewDisposition(item)))
       throw new ToolFailure('invalid_api_output', 'Stored review has an invalid nonclaim disposition');
     if (Number.isInteger(result.nonclaim_disposition_count) &&
         (result.nonclaim_disposition_count as number) > (dispositionOffset as number) + dispositions.length &&
         !Number.isInteger(result.next_disposition_offset))
       throw new ToolFailure('invalid_api_output', 'Stored review omitted nonclaim disposition cursor');
     const dispositionRows = dispositions.map((item, index) =>
-      `- Nonclaim disposition ${(dispositionOffset as number) + index + 1}: asset ${item.asset_id}, offsets ${item.start}-${item.end}, reviewer ${item.reviewer_id}: ${item.rationale}`);
+      `- Nonclaim disposition ${(dispositionOffset as number) + index + 1}: asset ${item.asset_id}, offsets ${item.start}-${item.end}, ${item.origin === 'model_extraction'
+        ? `model extraction (${item.reason}): ${JSON.stringify(item.source_quote)}`
+        : `reviewer ${item.reviewer_id}: ${item.rationale}`}`);
     const nextDisposition = Number.isInteger(result.next_disposition_offset)
       ? `\nNext disposition offset: ${result.next_disposition_offset} (use disposition_offset and disposition_limit)` : '';
     const rows = claims.map((claim, index) => {
