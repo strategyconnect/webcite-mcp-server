@@ -2,9 +2,12 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const script=path.resolve(__dirname,'../scripts/check-guide-update.cjs');
 test('guide merge gate rejects stale public contracts and accepts updated guide or noncontract changes',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'webcite-guide-gate-'));fs.mkdirSync(path.join(dir,'src'));const git=(...args)=>cp.execFileSync('git',args,{cwd:dir,encoding:'utf8'}).trim();git('init','--quiet');git('config','user.email','test@example.invalid');git('config','user.name','Test');
- const write=(file,value)=>fs.writeFileSync(path.join(dir,file),value);const commit=()=>{git('add','src','README.md');git('commit','--quiet','-m','fixture');return git('rev-parse','HEAD')};write('src/guide.ts','Original workflow');write('src/tools.ts','Original tool contract');write('README.md','Notes');const base=commit();
+ const write=(file,value)=>fs.writeFileSync(path.join(dir,file),value);const commit=()=>{git('add','src','README.md');git('commit','--quiet','-m','fixture');return git('rev-parse','HEAD')};write('src/guide.ts','Original workflow');write('src/tools.ts','Original tool contract');write('src/version.ts',"export const SERVER_VERSION = '1.9.23';");write('README.md','Notes');const base=commit();
  const run=head=>cp.spawnSync(process.execPath,[script,'--base',base,'--head',head],{cwd:dir,encoding:'utf8'});
- write('src/new-runtime-helper.ts','New runtime contract');let head=commit();assert.equal(run(head).status,1);assert.match(run(head).stderr,/without updating src\/guide.ts/);
+ write('src/version.ts',"export const SERVER_VERSION = '1.9.24';");let head=commit();const release=run(head);assert.equal(release.status,0);assert.equal(JSON.parse(release.stdout).guide_update_required,false);
+ write('src/version.ts',"export const SERVER_VERSION = '1.9.24';\nexport const runtimeBehavior = true;");head=commit();assert.equal(run(head).status,1);
+ write('src/version.ts',"export const SERVER_VERSION = '1.9.24';");
+ write('src/new-runtime-helper.ts','New runtime contract');head=commit();assert.equal(run(head).status,1);assert.match(run(head).stderr,/without updating src\/guide.ts/);
  write('src/guide.ts','Updated workflow');head=commit();assert.equal(run(head).status,0);
  write('README.md','More notes');head=commit();const ordinary=cp.spawnSync(process.execPath,[script,'--base',git('rev-parse','HEAD~1'),'--head',head],{cwd:dir,encoding:'utf8'});assert.equal(ordinary.status,0);assert.equal(JSON.parse(ordinary.stdout).guide_update_required,false);
 });
