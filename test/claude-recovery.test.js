@@ -405,6 +405,42 @@ test('automatic dispositions reject fabricated analyst metadata and invalid sour
   }
 });
 
+test('automatic structural coverage preserves linked proofs across full and compact output', async () => {
+  const items = [
+    { asset_id: 'asset-1', start: 0, end: 3, source_quote: '3. ', reason: 'structure',
+      origin: 'automatic_classification', structure_kind: 'list_marker', grounded_claim_ids: ['claim-1'] },
+    { asset_id: 'asset-1', start: 10, end: 15, source_quote: ' and ', reason: 'structure',
+      origin: 'automatic_classification', structure_kind: 'coordination', grounded_claim_ids: ['claim-1', 'claim-2'] },
+  ];
+  for (const context of ['', 'x'.repeat(400000)]) {
+    const result = await handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'running', total_claims: 2, completed_claims: 0,
+        pending_claims: 2, nonclaim_disposition_count: 2, nonclaim_dispositions: items,
+        claims: [{ id: 'claim-1', claim: 'Obtain approval', context }] }),
+    });
+    assert.deepEqual(result.structuredContent.nonclaim_dispositions, items);
+    assert.match(result.text, /automatic classification \(structure\/coordination\)/);
+    assert.match(result.text, /grounded claims: claim-1, claim-2/);
+    assert.doesNotMatch(result.text, /reviewer undefined/);
+  }
+});
+
+test('structural coverage rejects unlinked, factual, analyst and model declarations', async () => {
+  const item = { asset_id: 'asset-1', start: 0, end: 5, source_quote: ' and ', reason: 'structure',
+    origin: 'automatic_classification', structure_kind: 'coordination', grounded_claim_ids: ['claim-1', 'claim-2'] };
+  for (const mutation of [{ origin: 'model_extraction' }, { origin: 'analyst_review', reviewer_id: 'u', rationale: 'Done' },
+    { grounded_claim_ids: [] }, { grounded_claim_ids: ['claim-1'] }, { grounded_claim_ids: ['claim-1', 'claim-1'] },
+    { grounded_claim_ids: ['claim-1', ''] }, { structure_kind: 'unknown' }, { source_quote: 'every' },
+    { source_quote: '2026.' }, { source_quote: ' and 1', end: 6 }, { reviewer_id: 'u' }, { reason: 'heading' }]) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'running', total_claims: 2, completed_claims: 0,
+        pending_claims: 2, nonclaim_disposition_count: 1, nonclaim_dispositions: [{ ...item, ...mutation }], claims: [] }),
+    }), /invalid nonclaim disposition/);
+  }
+});
+
 test('saved disposition union rejects incomplete sources, unknown origins and fabricated model actors', async () => {
   const valid = { asset_id: 'asset-1', start: 0, end: 8,
     source_quote: 'Contents', reason: 'heading', origin: 'model_extraction' };

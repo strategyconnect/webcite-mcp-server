@@ -99,6 +99,10 @@ citation or charge. `duplicate_claims` is separate from completed and non-factua
 counts. A `source_recovery` record preserves the original candidate when a temporal
 relationship is restored from the document's literal text.
 
+Automatic nonclaim dispositions with `reason: structure` identify a proven list
+marker or coordination token. `grounded_claim_ids` links the surrounding source
+assertions. These records describe source coverage, not external verification.
+
 Verification tools bind a quote back to its source and report **how** it matched
 (exact / normalized / fuzzy / unbound). A fuzzy match is capped at `needs_review` and
 is never reported as verified. The numeric tools are deterministic: they recompute
