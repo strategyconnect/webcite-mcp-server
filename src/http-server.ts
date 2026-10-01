@@ -7,9 +7,7 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { WebCiteApiClient } from './api-client.js';
 import { createMcpServer, runSmoke } from './index.js';
 import { resolveProfile } from './profiles.js';
@@ -34,33 +32,21 @@ export function extractApiKey(req: IncomingMessage): string | undefined {
   return undefined;
 }
 
-type Session = {
-  transport: StreamableHTTPServerTransport;
-  server: ReturnType<typeof createMcpServer>;
-  keyDigest: Buffer;
-};
-
-function keyDigest(key: string): Buffer {
-  return createHash('sha256').update(key).digest();
-}
-
 export function createRemoteMcpApp(options?: {
   apiBaseUrl?: string;
   profile?: ReturnType<typeof resolveProfile>;
 }): {
   handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>;
-  sessions: Map<string, Session>;
 } {
   const apiBaseUrl = options?.apiBaseUrl || process.env.WEBCITE_API_URL || DEFAULT_API_URL;
   const profile = options?.profile ?? resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public');
-  const sessions = new Map<string, Session>();
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization, x-api-key, mcp-session-id');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
@@ -118,21 +104,6 @@ export function createRemoteMcpApp(options?: {
       return;
     }
 
-    const sessionHeader = req.headers['mcp-session-id'];
-    const sessionId =
-      typeof sessionHeader === 'string'
-        ? sessionHeader
-        : Array.isArray(sessionHeader)
-          ? sessionHeader[0]
-          : undefined;
-
-    const activeSession = sessionId ? sessions.get(sessionId) : undefined;
-    if (activeSession && !timingSafeEqual(activeSession.keyDigest, keyDigest(apiKey))) {
-      res.writeHead(403, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'session_key_mismatch', message: 'This session belongs to another API key. Initialize a new MCP session.' }));
-      return;
-    }
-
     try {
       if (req.method === 'POST') {
         const chunks: Buffer[] = [];
@@ -159,47 +130,19 @@ export function createRemoteMcpApp(options?: {
           }
         }
 
-        if (sessionId && sessions.has(sessionId)) {
-          const existing = sessions.get(sessionId)!;
-          await existing.transport.handleRequest(req, res, body);
-          return;
-        }
-
-        if (!sessionId && isInitializeRequest(body)) {
-          const transport = new StreamableHTTPServerTransport({
-            sessionIdGenerator: () => randomUUID(),
-          });
-          const client = new WebCiteApiClient(apiKey, apiBaseUrl);
-          const server = createMcpServer(client, profile, true);
-          await server.connect(transport);
-          transport.onclose = () => {
-            const id = transport.sessionId;
-            if (id) sessions.delete(id);
-          };
-          await transport.handleRequest(req, res, body);
-          if (transport.sessionId) {
-            sessions.set(transport.sessionId, { transport, server, keyDigest: keyDigest(apiKey) });
-          }
-          return;
-        }
-
-        res.writeHead(400, { 'content-type': 'application/json' });
-        res.end(
-          JSON.stringify({
-            error: 'bad_request',
-            message: 'Missing mcp-session-id for non-initialize request',
-          }),
-        );
+        // Backend job IDs carry durable state. A fresh transport avoids lost browser
+        // session headers or process restarts blocking otherwise authenticated tools.
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+        const server = createMcpServer(new WebCiteApiClient(apiKey, apiBaseUrl), profile, true);
+        res.once('close', () => { void server.close().catch(error => console.error('MCP transport close failed', error)); });
+        await server.connect(transport);
+        await transport.handleRequest(req, res, body);
         return;
       }
 
       if (req.method === 'GET' || req.method === 'DELETE') {
-        if (!sessionId || !sessions.has(sessionId)) {
-          res.writeHead(400, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'invalid_session' }));
-          return;
-        }
-        await sessions.get(sessionId)!.transport.handleRequest(req, res);
+        res.writeHead(405, { 'content-type': 'application/json', allow: 'POST' });
+        res.end(JSON.stringify({ error: 'method_not_allowed', message: 'This MCP transport is stateless. Send authenticated POST requests.' }));
         return;
       }
 
@@ -214,7 +157,7 @@ export function createRemoteMcpApp(options?: {
     }
   };
 
-  return { handler, sessions };
+  return { handler };
 }
 
 async function main() {
