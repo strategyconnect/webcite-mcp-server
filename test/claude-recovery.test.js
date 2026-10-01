@@ -279,7 +279,7 @@ test('saved review preserves automatic classification separately from model extr
 
 test('saved automatically classified entries are not displayed as unchecked or verified', async () => {
   const claim = { id: 'claim-1', claim: 'Choose your institutional model', result_state: 'non_factual',
-    non_factual_reason: 'heading' };
+    classification_reason: 'heading', classification_origin: 'automatic_classification' };
   const result = await handlers.get_document_review({ review_id: 'review-1' }, {
     getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
       asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
@@ -288,6 +288,31 @@ test('saved automatically classified entries are not displayed as unchecked or v
   assert.deepEqual(result.structuredContent.claims, [claim]);
   assert.match(result.text, /non-factual \(automatic classification\)/);
   assert.doesNotMatch(result.text, /unchecked|verified/);
+});
+
+test('non-factual provenance and counts survive response compaction', async () => {
+  const claim = { id: 'claim-1', claim: 'Choose your institutional model', result_state: 'non_factual',
+    classification_origin: 'automatic_classification', classification_reason: 'heading', context: 'x'.repeat(400000) };
+  const result = await handlers.get_document_review({ review_id: 'review-1' }, {
+    getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+      asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+      pending_claims: 0, non_factual_claims: 1, claims: [claim] }),
+  });
+  assert.equal(result.structuredContent.full_evidence_saved, true);
+  assert.equal(result.structuredContent.non_factual_claims, 1);
+  assert.equal(result.structuredContent.claims[0].classification_origin, 'automatic_classification');
+  assert.equal(result.structuredContent.claims[0].classification_reason, 'heading');
+});
+
+test('non-factual entries reject absent or invented classification provenance', async () => {
+  for (const classification_origin of [undefined, 'analyst_review', 'model_extraction']) {
+    await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
+      getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
+        asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
+        pending_claims: 0, claims: [{ id: 'claim-1', claim: 'Choose your model',
+          result_state: 'non_factual', classification_reason: 'heading', classification_origin }] }),
+    }), /invalid classification provenance/);
+  }
 });
 
 test('automatic dispositions reject fabricated analyst metadata and invalid source spans', async () => {
