@@ -1,5 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+const { InMemoryTransport } = require('@modelcontextprotocol/sdk/inMemory.js');
+const { createMcpServer } = require('../dist/index.js');
 const { handlers } = require('../dist/handlers.js');
 
 for (const count of [16, 57, 100]) {
@@ -132,3 +136,54 @@ test('large side lists narrow independently and retain settlement-pending labels
   assert.equal(output.structuredContent.extraction_cursor, 3);
   assert.equal(output.structuredContent.source_read_complete, true);
 });
+
+const savedFixture = process.env.WEBCITE_SAVED_REVIEW_FIXTURE;
+test('public MCP follows the exact continuation through the retained 64-claim and 23-disposition fixture',
+  { skip: !savedFixture }, async () => {
+    const saved = JSON.parse(fs.readFileSync(savedFixture, 'utf8'));
+    const lists = ['claims', 'uncovered_source_spans', 'rejected_claims', 'nonclaim_dispositions'];
+    const cursors = ['next_offset', 'next_gap_offset', 'next_rejected_offset', 'next_disposition_offset'];
+    const backend = { getDocumentReview: async (id, ...args) => {
+      assert.equal(id, saved.review_id);
+      const page = { ...saved };
+      lists.forEach((key, i) => {
+        const rows = saved[key] ?? [], offset = args[i * 2], limit = args[i * 2 + 1];
+        page[key] = rows.slice(offset, offset + limit);
+        page[cursors[i]] = offset + limit < rows.length ? offset + limit : null;
+      }); return page;
+    } };
+    const server = createMcpServer(backend, 'public', true);
+    const client = new Client({ name: 'continuation-replay', version: '1' });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(b); await client.connect(a);
+    const seen = lists.map(() => []);
+    let args = { review_id: saved.review_id, limit: 100, gap_limit: 100, rejected_limit: 100, disposition_limit: 100 };
+    let calls = 0;
+    try {
+      while (args) {
+        assert.ok(++calls <= 20);
+        const output = await client.callTool({ name: 'get_document_review', arguments: args });
+        assert.notEqual(output.isError, true);
+        const page = output.structuredContent;
+        lists.forEach((key, i) => seen[i].push(...page[key]));
+        const next = page.next_page_input;
+        if (next) {
+          ['offset', 'gap_offset', 'rejected_offset', 'disposition_offset'].forEach((key, i) => {
+            assert.ok(next[key] >= (args[key] ?? 0));
+            if (page[cursors[i]] == null) assert.equal(next[key], (args[key] ?? 0) + page[lists[i]].length);
+          });
+          assert.match(output.content[0].text, /Next page input \(copy exactly/);
+        } else assert.ok(cursors.every(key => page[key] == null));
+        args = next;
+      }
+      lists.forEach((key, i) => {
+        const identity = row => i === 0 ? row.id : i === 2 ? row.claim
+          : JSON.stringify([row.asset_id, row.start, row.end, row.preview ?? row.source_quote]);
+        assert.deepEqual(seen[i].map(identity), (saved[key] ?? []).map(identity));
+        if (i === 0 || i === 3) assert.equal(new Set(seen[i].map(identity)).size, seen[i].length);
+      });
+      assert.equal(seen[0].length, 64); assert.equal(seen[3].length, 23);
+      console.log(JSON.stringify({ retained_candidate_records: seen[0].length,
+        retained_dispositions: seen[3].length, saved_page_calls: calls }));
+    } finally { await client.close(); await server.close(); }
+  });

@@ -1677,9 +1677,22 @@ export const handlers: Record<string, ToolHandler> = {
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
     const focusGuidance = focusedScope
       ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';
+    const nextPageInput = (counts: number[], cursors: unknown[]) => {
+      if (!cursors.some(Number.isInteger)) return null;
+      const starts = [offset, gapOffset, rejectedOffset, dispositionOffset] as number[];
+      const ends = cursors.map((cursor, i) => Number.isInteger(cursor) ? cursor as number : starts[i] + counts[i]);
+      return { review_id: reviewId, offset: ends[0], limit,
+        gap_offset: ends[1], gap_limit: gapLimit, rejected_offset: ends[2], rejected_limit: rejectedLimit,
+        disposition_offset: ends[3], disposition_limit: dispositionLimit };
+    };
+    const continuationText = (input: ReturnType<typeof nextPageInput>) => input
+      ? `\nNext page input (copy exactly, including exhausted streams): ${JSON.stringify(input)}`
+      : '\nAll four result streams are exhausted.';
+    const fullContinuation = nextPageInput([claims.length, gaps.length, rejected.length, dispositions.length],
+      [result.next_offset, result.next_gap_offset, result.next_rejected_offset, result.next_disposition_offset]);
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
     const linkGuidance = '\nFor citation links in the final report, use source titles as labels and complete returned URLs as link targets. Never shorten URL paths or replace them with ellipses.';
-    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput });
+    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}${continuationText(fullContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput, next_page_input: fullContinuation });
     if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
     const compactClaims = claims.map((claim) => ({
       id: claim.id, claim: String(claim.claim).slice(0, 500),
@@ -1721,7 +1734,10 @@ export const handlers: Record<string, ToolHandler> = {
         ? (dispositionOffset as number) + shownDispositions.length : result.next_disposition_offset;
       const compactDispositionHint = Number.isInteger(compactNextDisposition)
         ? `\nNext disposition offset: ${compactNextDisposition} (use disposition_offset and disposition_limit)` : '';
-      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+      const compactNextClaim = nextPage < (offset as number) + claims.length ? nextPage : result.next_offset;
+      const compactContinuation = nextPageInput([shown.length, shownGaps.length, shownRejected.length, shownDispositions.length],
+        [compactNextClaim, compactNextGap, compactNextRejected, compactNextDisposition]);
+      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${continuationText(compactContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
         review_id: reviewId, status: result.status, total_claims: result.total_claims,
         completed_claims: result.completed_claims, pending_claims: result.pending_claims,
         non_factual_claims: result.non_factual_claims,
@@ -1730,7 +1746,7 @@ export const handlers: Record<string, ToolHandler> = {
         extraction_complete: result.extraction_complete ?? null,
         extraction_cursor: result.extraction_cursor ?? null, chunk_count: result.chunk_count ?? null,
         source_read_complete: result.source_read_complete ?? null, source_readiness: result.source_readiness ?? null,
-        claims: shown, next_offset: nextPage < (offset as number) + claims.length ? nextPage : result.next_offset,
+        claims: shown, next_offset: compactNextClaim, next_page_input: compactContinuation,
         resume_input: resumeInput, claims_omitted: claims.length - shown.length,
         coverage_complete: result.coverage_complete ?? null,
         uncovered_source_span_count: result.uncovered_source_span_count ?? null,
