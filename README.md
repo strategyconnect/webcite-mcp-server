@@ -15,6 +15,8 @@ Saved document reviews distinguish model extraction dispositions from explicit a
 
 `review_document` now returns a job ID immediately. Poll `get_document_review_job` until it reaches `complete`, `partial_coverage`, `credits_exhausted`, or `failed`, then read claims and uncovered source passages with `get_document_review`. Claims and gaps have independent page offsets. A terminal failed or credit-exhausted job remains an immutable receipt; retry the same review inputs with a new `idempotency_key` after diagnosing the failure or adding credits. This flow requires the backend document-review-jobs API.
 
+Version 1.9.18 adds `revise_document_claim_analysis` for an owned, settled claim in an inactive review. Read `original_result_hash` first. The operation applies the current evidence policy to saved snippets, with no research, model call or credit change. Original results and receipts remain in history; missing scope assessments stay inconclusive. The saved reader displays the current revision and retains the original analysis. Large evidence objects remain available through the API with explicit bounded metadata in MCP.
+
 ## 1.9.11 release notes
 
 `review_document` now aborts a quiet, in-flight review before a 180-second Claude client deadline and bounds its saved-status check within the same call budget. If the backend has not released the review lock, the tool returns the saved review ID with an explicit error. Check progress with `get_document_review` before resuming.
@@ -76,6 +78,7 @@ The table below describes common tools across profiles. It is not the remote ser
 | `get_credit_balance` | Read remaining, used and total credits | 0 |
 | `get_document_review` | Page saved claims and uncovered source passages independently | 0 |
 | `get_document_review_job` | Poll a durable review job | 0 |
+| `revise_document_claim_analysis` | Apply the current policy to retained saved snippets, preserving original analysis and receipts | 0 |
 | `review_document` | Start a full review and return its job ID immediately | Per claim after start |
 | `verify_claim_stream` | Streaming verification for complex/long-running claims | 2-4 |
 | `search_sources` | Quick citation search without analysis | 2 |

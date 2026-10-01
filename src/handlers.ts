@@ -1,4 +1,5 @@
 import { storedVerification, validateBatch, validateVerification } from './verification-response.js';
+import { validateAnalysisRevision, validateSavedRevision } from './analysis-revision.js';
 /**
  * Tool handlers — one per entry in ALL_TOOLS.
  * Context tools validate API responses before structuredContent and render text
@@ -1477,6 +1478,26 @@ export const handlers: Record<string, ToolHandler> = {
     return ok(`Recorded explicit nonclaim disposition for review ${reviewId}, asset ${assetId}, offsets ${start}-${end}. Re-read get_document_review for updated coverage.`, result);
   },
 
+  revise_document_claim_analysis: async (args, client) => {
+    const reviewId = requireString(args, 'review_id');
+    const claimId = requireString(args, 'claim_id');
+    const hash = requireString(args, 'original_result_hash');
+    if (!wakeIdentityComplete(reviewId) || !wakeIdentityComplete(claimId) || !/^[a-f0-9]{64}$/.test(hash))
+      throw new ToolFailure('invalid_argument', 'Use exact saved review/claim IDs and original_result_hash');
+    const result = await wrapApi(client.reviseDocumentClaimAnalysis(reviewId, claimId, hash));
+    if (result.review_id !== reviewId || result.claim_id !== claimId)
+      throw new ToolFailure('invalid_api_output', 'Saved analysis revision identity differs');
+    const revision = validateAnalysisRevision(result.analysis_revision, hash);
+    const text = `Saved analysis revision ${revision.id}: ${revision.claim_result.verdict}. ${revision.claim_result.summary}\nBasis: retained snippets, policy ${revision.policy_version}, assessment ${revision.assessment_status}. Original result and credit receipt preserved; no new research, model calls or credits.`;
+    const output = ok(text, result);
+    if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
+    const { citations, ...summary } = revision;
+    return ok(text + '\nRetained citations exceed the tool response limit; full evidence remains saved in Webcite.', {
+      review_id: reviewId, claim_id: claimId, analysis_revision_summary: summary,
+      retained_citation_count: citations.length, citations_omitted: true,
+    });
+  },
+
   get_document_review: async (args, client) => {
     const reviewId = requireString(args, 'review_id');
     if (!wakeIdentityComplete(reviewId)) throw new ToolFailure('invalid_argument', 'review_id cannot have surrounding whitespace');
@@ -1568,6 +1589,7 @@ export const handlers: Record<string, ToolHandler> = {
     const nextDisposition = Number.isInteger(result.next_disposition_offset)
       ? `\nNext disposition offset: ${result.next_disposition_offset} (use disposition_offset and disposition_limit)` : '';
     const rows = claims.map((claim, index) => {
+      validateSavedRevision(claim);
       if (typeof claim.id !== 'string' || typeof claim.claim !== 'string') {
         throw new ToolFailure('invalid_api_output', 'Stored document review has an invalid claim');
       }
@@ -1611,7 +1633,7 @@ export const handlers: Record<string, ToolHandler> = {
           printedLinks.some((url) => typeof url !== 'string' || !url.trim()))) {
         throw new ToolFailure('invalid_api_output', 'Stored document review has invalid printed links');
       }
-      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${typeof claim.error === 'string' ? `\n   ${claim.error}` : ''}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Found citations: ${urls.join(', ')}` : ''}${Array.isArray(printedLinks) && printedLinks.length ? `\n   Links printed in document: ${printedLinks.join(', ')}` : ''}`;
+      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${claim.analysis_revision ? '\n   Policy revision using retained snippets; original paid result preserved.' : ''}${typeof claim.error === 'string' ? `\n   ${claim.error}` : ''}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Found citations: ${urls.join(', ')}` : ''}${Array.isArray(printedLinks) && printedLinks.length ? `\n   Links printed in document: ${printedLinks.join(', ')}` : ''}`;
     });
     const next = Number.isInteger(result.next_offset) ? `\nNext offset: ${result.next_offset}` : '';
     const credits = typeof result.credits_remaining === 'number' ? `\nCredits remaining: ${result.credits_remaining}` : '';
@@ -1650,6 +1672,13 @@ export const handlers: Record<string, ToolHandler> = {
       duplicate_reason: claim.duplicate_reason,
       source_recovery: claim.source_recovery,
       page_number: claim.page_number, error_code: claim.error_code,
+      original_result_hash: claim.original_result_hash,
+      ...(claim.analysis_revision ? { analysis_revision_summary: {
+        id: (claim.analysis_revision as Record<string, unknown>).id,
+        policy_version: (claim.analysis_revision as Record<string, unknown>).policy_version,
+        origin: 'policy_re_evaluation', basis: 'retained_snippets',
+        assessment_status: (claim.analysis_revision as Record<string, unknown>).assessment_status,
+      } } : {}),
       error: typeof claim.error === 'string' ? claim.error.slice(0, 500) : undefined,
       cited_source_urls: claim.cited_source_urls,
       citation_urls: (Array.isArray(claim.citations) ? claim.citations : Array.isArray(claim.top_citations) ? claim.top_citations : [])

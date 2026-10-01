@@ -217,6 +217,13 @@ export class WebCiteApiClient {
     return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}/source-span?${query}`, { method: 'GET' });
   }
 
+  async reviseDocumentClaimAnalysis(reviewId: string, claimId: string,
+    originalResultHash: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}/claims/${encodeURIComponent(claimId)}/analysis-revisions`, {
+      method: 'POST', body: JSON.stringify({ original_result_hash: originalResultHash }),
+    });
+  }
+
   async recordDocumentReviewNonclaim(reviewId: string, input: {
     asset_id: string; start: number; end: number; source_quote: string; rationale: string;
   }): Promise<Record<string, unknown>> {
