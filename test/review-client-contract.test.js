@@ -4,6 +4,44 @@ const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { InMemoryTransport } = require('@modelcontextprotocol/sdk/inMemory.js');
 const { createMcpServer } = require('../dist/index.js');
 
+test('public MCP explicitly retries a failed review without changing its input identity', async () => {
+  const original = 'a'.repeat(64), child = 'b'.repeat(64), review = 'c'.repeat(64);
+  const retryKey = `review-retry:${original}`;
+  const calls = [];
+  const failed = { job_id: original, review_id: review, status: 'failed',
+    retry_idempotency_key: retryKey, progress: { completed_claims: 2, total_claims: 43 } };
+  const backend = {
+    startDocumentReviewJob: async (input, key) => {
+      calls.push({ input, key });
+      return input.retry_failed ? { job_id: child, review_id: review, status: 'queued' } : failed;
+    },
+    getDocumentReviewJob: async () => failed,
+  };
+  const server = createMcpServer(backend, 'public', true);
+  const client = new Client({ name: 'retry-contract-qa', version: '1' });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport); await client.connect(clientTransport);
+  try {
+    const catalog = await client.listTools();
+    assert.equal(catalog.tools.find(t => t.name === 'review_document').inputSchema.properties.retry_failed.type, 'boolean');
+    const input = { prompt: 'Check every claim', thread_id: 'same-thread', asset_ids: ['12345678-1234-4234-8234-123456789abc'] };
+    const first = await client.callTool({ name: 'review_document', arguments: input });
+    assert.equal(first.isError, true);
+    assert.equal(first.structuredContent.progress.completed_claims, 2);
+    const retry = await client.callTool({ name: 'review_document', arguments: { ...input, retry_failed: true } });
+    assert.ok(!retry.isError); assert.equal(retry.structuredContent.review_id, review);
+    assert.equal(calls[0].key, calls[1].key);
+    assert.deepEqual(calls[1].input, { ...calls[0].input, retry_failed: true });
+    await client.callTool({ name: 'review_document', arguments: { ...input, retry_failed: true, idempotency_key: retryKey } });
+    assert.equal(calls[2].key, retryKey);
+    const invalid = await client.callTool({ name: 'review_document', arguments: { ...input, retry_failed: 'true' } });
+    assert.equal(invalid.isError, true); assert.equal(calls.length, 3);
+    const saved = await client.callTool({ name: 'get_document_review_job', arguments: { job_id: original } });
+    assert.equal(saved.isError, true); assert.equal(saved.structuredContent.job_id, original);
+    assert.equal(calls.length, 3);
+  } finally { await client.close(); await server.close(); }
+});
+
 test('hosted public MCP exposes the bounded saved-review and source-gap journey', async () => {
   const reviewId = 'b'.repeat(64);
   const jobId = 'a'.repeat(64);

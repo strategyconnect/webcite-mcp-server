@@ -207,7 +207,7 @@ function requireString(args: Args, key: string): string {
 }
 
 function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
-  const statuses = ['queued', 'running', 'waiting_review', 'waiting_parse', 'complete', 'partial_coverage', 'credits_exhausted', 'failed'];
+  const statuses = ['queued', 'running', 'waiting_review', 'waiting_parse', 'complete', 'partial_coverage', 'credits_exhausted', 'failed', 'interrupted'];
   if (typeof result.job_id !== 'string' || !/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(result.job_id) ||
       typeof result.status !== 'string' || !statuses.includes(result.status) ||
       (result.review_id !== undefined && typeof result.review_id !== 'string') ||
@@ -227,8 +227,14 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
   const wait = ['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
     ? `Call get_document_review_job with job_id ${result.job_id} to check progress.` : '';
   const error = typeof result.error === 'string' ? ` Error: ${result.error}` : '';
-  return { text: `Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait}`.trim(),
-    isError: result.status === 'failed' || result.status === 'credits_exhausted', structuredContent: result };
+  if (result.retry_idempotency_key !== undefined && (typeof result.retry_idempotency_key !== 'string' ||
+      result.retry_idempotency_key !== `review-retry:${result.job_id}` ||
+      !['failed', 'interrupted', 'credits_exhausted'].includes(result.status)))
+    throw new ToolFailure('invalid_api_output', 'Document review retry key is invalid');
+  const retry = typeof result.retry_idempotency_key === 'string'
+    ? `After resolving the failure, call review_document with the same inputs, retry_failed: true, and idempotency_key: ${result.retry_idempotency_key}.` : '';
+  return { text: `Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(),
+    isError: ['failed', 'interrupted', 'credits_exhausted'].includes(result.status), structuredContent: result };
 }
 
 function base64File(args: Args) {
@@ -1765,7 +1771,8 @@ export const handlers: Record<string, ToolHandler> = {
         (filters !== undefined && (!filters || typeof filters !== 'object' || Array.isArray(filters))) ||
         (args?.review_scope !== undefined && args.review_scope !== 'full') ||
         (args?.include_stance !== undefined && typeof args.include_stance !== 'boolean') ||
-        (args?.include_verdict !== undefined && typeof args.include_verdict !== 'boolean'))
+        (args?.include_verdict !== undefined && typeof args.include_verdict !== 'boolean') ||
+        (args?.retry_failed !== undefined && typeof args.retry_failed !== 'boolean'))
       throw new ToolFailure('invalid_argument', 'Pass distinct asset_ids, a stable thread_id, full review scope, and valid HTTPS source URLs, filters and billing flags');
     const options: ReviewDocumentOptions = { prompt, asset_ids: assetIds as string[], thread_id: threadId,
       review_scope: 'full',
@@ -1779,7 +1786,9 @@ export const handlers: Record<string, ToolHandler> = {
         suppliedKey.length < 1 || suppliedKey.length > 128 || suppliedKey.trim() !== suppliedKey))
       throw new ToolFailure('invalid_argument', 'idempotency_key must be a non-empty string of at most 128 characters');
     const key = (suppliedKey as string | undefined) ?? createHash('sha256').update(JSON.stringify(options)).digest('hex');
-    return documentReviewJobOutput(await wrapApi(client.startDocumentReviewJob(options, key)));
+    const request = { ...options,
+      ...(args?.retry_failed !== undefined ? { retry_failed: args.retry_failed as boolean } : {}) };
+    return documentReviewJobOutput(await wrapApi(client.startDocumentReviewJob(request, key)));
   },
 
   verify_claim: async (args, client) => {

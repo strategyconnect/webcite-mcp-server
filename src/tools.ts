@@ -609,7 +609,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'review_document',
-    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this after extract_document. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts a durable full review and immediately returns a job_id. Poll get_document_review_job until terminal, then page through get_document_review. Repeating the same input reuses its job without a new charge. After credits are replenished or a failed job is diagnosed, retry the same thread and input with a new idempotency_key; completed claims replay from the saved review. Only report full coverage when coverage_complete is true.',
+    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this after extract_document. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts a durable full review and immediately returns a job_id. Poll get_document_review_job until terminal, then page through get_document_review. Repeating the same input reuses its job without a new charge. After credits are replenished or a failed job is diagnosed, resume the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); preserve completed claims and the failed job receipt. Only report full coverage when coverage_complete is true.',
     inputSchema: { type: 'object', properties: {
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
@@ -619,7 +619,8 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
       filters: sourceFiltersInput,
       include_stance: { type: 'boolean', default: true, description: 'Analyze source stance; adds 1 credit per claim.' },
       include_verdict: { type: 'boolean', default: true, description: 'Generate a verdict; adds 1 credit per claim.' },
-      idempotency_key: { type: 'string', minLength: 1, maxLength: 128, description: 'Optional retry key. Omit on first start; use a new value only after a terminal failed or credits_exhausted job is diagnosed.' },
+      retry_failed: { type: 'boolean', default: false, description: 'Explicitly resume a diagnosed failed review on the same thread and inputs. Preserve the original idempotency key, or use the returned retry_idempotency_key. Completed claims and extraction responses are reused; the failed job receipt is retained.' },
+      idempotency_key: { type: 'string', minLength: 1, maxLength: 128, description: 'Omit on first start. For retry_failed: true, reuse the original key or the returned retry_idempotency_key with exactly the same inputs.' },
     }, required: ['prompt', 'asset_ids', 'thread_id'] },
   },
   {

@@ -109,14 +109,14 @@ test('document review guide tells Claude to resume with saved work and no count 
   const guide = renderWebciteGuide({ workflow: 'document_review' });
   assert.match(guide, /no fixed claim count/i);
   assert.match(guide, /get_credit_balance/);
-  assert.match(guide, /Completed claims replay without a new charge/);
+  assert.match(guide, /completed claims replay without a new charge/i);
   assert.match(guide, /connectors show only MCP text and omit structuredContent/);
   assert.match(guide, /16,000 characters and lists links beyond that limit/);
   assert.match(guide, /An asset_id is not a source_version_id/);
   assert.match(guide, /get_latest_representation.*read_source_unit/);
   assert.match(guide, /extract_pages.*costs 1 credit/);
   assert.match(guide, /get_document_review_job.*job_id at zero credits/);
-  assert.match(guide, /review_document.*new idempotency_key/);
+  assert.match(guide, /review_document.*retry_failed: true.*retry_idempotency_key/);
   assert.match(guide, /cannot read a local path or automatically access the attachment/);
   assert.match(guide, /Playground or through authenticated HTTP multipart\/resumable upload/);
   assert.match(guide, /parse_job_id.*wait for parsing.*parse_required.*parse_endpoint/);
