@@ -157,6 +157,10 @@ function ok(text: string, structuredContent?: Record<string, unknown>): ToolSucc
   return structuredContent ? { text, structuredContent } : { text };
 }
 
+function extractionResult(text: string, result: Record<string, unknown>): ToolSuccess {
+  return { ...ok(text, result), isError: result.state === 'error' || result.state === 'unsupported' };
+}
+
 function validReviewDisposition(value: unknown): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const item = value as Record<string, unknown>;
@@ -2022,7 +2026,7 @@ export const handlers: Record<string, ToolHandler> = {
     const result = await wrapApi(client.extractDocument(assetRef(args)));
     requireApiShape(typeof result?.format === 'string' && typeof result?.markdown === 'string' &&
       Array.isArray(result?.units), 'extract_document');
-    return ok(formatExtractedDoc(result), { ...result });
+    return extractionResult(formatExtractedDoc(result), { ...result });
   },
 
   ask_document: async (args, client) => {
@@ -2087,7 +2091,7 @@ export const handlers: Record<string, ToolHandler> = {
 
   extract_pages: async (args, client) => {
     const result = await wrapApi(client.extractPages(assetRef(args)));
-    return ok(JSON.stringify(result), result);
+    return extractionResult(JSON.stringify(result), result);
   },
 
   prepare_ocr_rescue: async (args, client) => {

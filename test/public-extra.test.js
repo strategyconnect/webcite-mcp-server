@@ -178,3 +178,20 @@ test('document analysis exposes exact unavailable source lexemes', async () => {
   assert.match(result.text,/Unsafe!B1: unsafe_integer/);
   assert.doesNotMatch(result.text,/9007199254740992/);
 });
+
+
+test('document and page extraction propagate native failure state without losing receipts or mislabeling partial reads', async () => {
+  for (const tool of ['extract_document', 'extract_pages']) {
+    for (const state of ['error', 'unsupported', 'partial', 'complete', undefined]) {
+      const result = { format: 'docx', markdown: '', units: [], state,
+        reason: state === 'error' ? 'Cannot find native binding' : null,
+        code: state === 'error' ? 'extraction_error' : undefined,
+        complete: state === 'complete', operation_id: 'native-read-op', usage: { credits: 0 } };
+      const client = { extractDocument: async () => result, extractPages: async () => result };
+      const output = await handlers[tool]({ asset_id: 'asset-1' }, client);
+      assert.equal(Boolean(output.isError), state === 'error' || state === 'unsupported', tool + ':' + state);
+      assert.deepEqual(output.structuredContent, result);
+      assert.match(output.text, state === 'error' && tool === 'extract_document' ? /Cannot find native binding/ : /./);
+    }
+  }
+});
