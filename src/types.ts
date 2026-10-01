@@ -39,6 +39,7 @@ export interface ReviewDocumentOptions {
   filters?: SourceFilters;
   include_stance?: boolean;
   include_verdict?: boolean;
+  retry_failed?: boolean;
 }
 
 export interface ListCitationsOptions {
