@@ -112,7 +112,7 @@ export function profileExclusionMessage(
   );
 }
 
-export const SERVER_INSTRUCTIONS = `Compact fields omitted are unknown, not absent. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them, not routinely.
+export const SERVER_INSTRUCTIONS = `Compact fields omitted are unknown, not absent. Report pending, failed, rejected and uncovered counts separately. Null or missing counts are unknown, never zero. Do not group unknown rejected or uncovered counts with known zero pending or failed counts. A completed job means processing finished; it does not prove complete source coverage. For a queued or running review, obey poll_after_ms with waits of at most 30 seconds. Never multiply remaining claims by per-claim latency into a long blind sleep. Stop polling immediately on a terminal status and report failed or interrupted work. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them, not routinely.
 Webcite verifies claims and binds quotes to sources. Free plan: 100 credits/month.
 
 When a user asks to audit an entire uploaded document or every figure on a slide, use review_document directly with its existing asset_id, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.

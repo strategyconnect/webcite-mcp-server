@@ -234,8 +234,12 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
     ? ` Coverage incomplete: ${progress.uncovered_source_span_count ?? 'unknown'} uncovered source spans.` : '';
   const next = result.review_id && !['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
     ? `Call get_document_review with review_id ${result.review_id} for saved claim results.` : '';
-  const wait = ['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
-    ? `Call get_document_review_job with job_id ${result.job_id} to check progress. Wait about 30 seconds between checks; do not repeatedly fetch unfinished result pages unless the user requests interim results.` : '';
+  const active = ['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status);
+  const pollAfter = active ? Math.max(1000, Math.min(30000,
+    typeof result.poll_after_ms === 'number' && Number.isFinite(result.poll_after_ms) && result.poll_after_ms > 0
+      ? Math.ceil(result.poll_after_ms) : 30000)) : 0;
+  const wait = active
+    ? `Call get_document_review_job with job_id ${result.job_id} to check progress. Wait ${pollAfter} milliseconds before the next check, never more than 30 seconds. Do not estimate one long sleep from the remaining claim count. Stop polling on a terminal status. Do not repeatedly fetch unfinished result pages unless the user requests interim results.` : '';
   const error = typeof result.error === 'string' ? ` Error: ${result.error}` : '';
   if (result.retry_idempotency_key !== undefined && (typeof result.retry_idempotency_key !== 'string' ||
       result.retry_idempotency_key !== `review-retry:${result.job_id}` ||
@@ -243,8 +247,9 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
     throw new ToolFailure('invalid_api_output', 'Document review retry key is invalid');
   const retry = typeof result.retry_idempotency_key === 'string'
     ? `After resolving the failure, call review_document with the same inputs, retry_failed: true, and idempotency_key: ${result.retry_idempotency_key}.` : '';
-  return { ...ok(`Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(), result),
-    isError: ['failed', 'interrupted', 'credits_exhausted'].includes(result.status), structuredContent: result };
+  const output = { ...result, poll_after_ms: pollAfter };
+  return { ...ok(`Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(), output),
+    isError: ['failed', 'interrupted', 'credits_exhausted'].includes(result.status), structuredContent: output };
 }
 
 function base64File(args: Args) {

@@ -209,3 +209,18 @@ for (const summary of ['Saved evidence supports one prerequisite, with the remai
     else assert.ok(output.text.includes(summary.slice(0, 1000)));
   });
 }
+
+test('legacy unknown counts stay separate from known zero processing counts and server guidance', async () => {
+ const backend={getDocumentReview:async()=>({review_id:'a'.repeat(64),thread_id:'stable',asset_ids:['asset'],prompt:'Review',status:'complete',total_claims:1,completed_claims:1,pending_claims:0,failed_claims:0,coverage_complete:null,rejected_claim_count:null,uncovered_source_span_count:null,claims:[{id:'claim-1',claim:'A factual claim',result:'unverified',citations:[]}],next_offset:null})};
+ const client=new Client({name:'unknown-counts-control',version:'1'});
+ const [ct,st]=InMemoryTransport.createLinkedPair();const server=createMcpServer(backend,'public');
+ await server.connect(st);await client.connect(ct);
+ try {
+   assert.match(client.getInstructions(),/Null or missing counts are unknown, never zero/);
+   assert.match(client.getInstructions(),/Do not group unknown rejected or uncovered counts with known zero/);
+   const output=await client.callTool({name:'get_document_review',arguments:{review_id:'a'.repeat(64)}});assert.notEqual(output.isError,true,JSON.stringify(output));
+   const page=output.structuredContent;assert.equal(page.pending_claims,0);assert.equal(page.failed_claims,0);assert.equal(page.rejected_claim_count,null);assert.equal(page.uncovered_source_span_count,null);assert.equal(page.coverage_complete,null);
+   const guide=await client.callTool({name:'webcite_guide',arguments:{workflow:'document_review'}});
+   assert.match(guide.content[0].text,/completed job means processing finished; it does not prove complete source coverage/);
+ } finally {await client.close();await server.close();}
+});
