@@ -583,6 +583,14 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
     }, required: ['review_id', 'asset_id', 'start', 'end'] },
   },
   {
+    name: 'revise_document_claim_analysis',
+    description: 'Re-evaluate one owned, settled saved claim using retained snippets and the current evidence policy, without new research, model calls or credits. The review must be inactive. Read original_result_hash from get_document_review first. Idempotent for the original result and policy version. Preserves the original result and credit receipt; missing scope assessment remains inconclusive.',
+    inputSchema: { type: 'object', properties: {
+      review_id: { type: 'string', minLength: 1 }, claim_id: { type: 'string', minLength: 1 },
+      original_result_hash: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+    }, required: ['review_id', 'claim_id', 'original_result_hash'] },
+  },
+  {
     name: 'record_review_nonclaim',
     description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. Inspect its full text first with get_review_source_span; a structural role alone never proves nonclaim. Leave assertion-bearing passages uncovered. Records rationale and authenticated reviewer identity. Costs 0 credits.',
     inputSchema: { type: 'object', properties: {
@@ -693,6 +701,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
 export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
   'GET /api/v1/payment/credits/balance': 'get_credit_balance',
   'GET /api/v1/playground/chat/document-reviews/:reviewId': 'get_document_review',
+  'POST /api/v1/playground/chat/document-reviews/:reviewId/claims/:claimId/analysis-revisions': 'revise_document_claim_analysis',
   'GET /api/v1/playground/chat/document-reviews/:reviewId/source-span': 'get_review_source_span',
   'POST /api/v1/playground/chat/document-reviews/:reviewId/nonclaim-dispositions': 'record_review_nonclaim',
   'GET /api/v1/playground/chat/document-review-jobs/:jobId': 'get_document_review_job',
