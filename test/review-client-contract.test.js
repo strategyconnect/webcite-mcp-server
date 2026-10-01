@@ -121,3 +121,13 @@ test('hosted public MCP exposes the bounded saved-review and source-gap journey'
     await server.close();
   }
 });
+
+test('review job polling is bounded and stops on a recorded terminal failure', async () => {
+ const {handlers}=require('../dist/handlers.js');const job='a'.repeat(64);
+ for(const [status,serverWait,expected] of [['queued',590000,30000],['running',1000,1000],['waiting_parse',undefined,30000],['failed',590000,0],['interrupted',30000,0]]) {
+   const output=await handlers.get_document_review_job({job_id:job},{getDocumentReviewJob:async()=>({job_id:job,status,poll_after_ms:serverWait,error:status==='failed'?'Recorded provider failure':undefined})});
+   assert.equal(output.structuredContent.poll_after_ms,expected);
+   if(expected) {assert.match(output.text,new RegExp(`Wait ${expected} milliseconds`));assert.match(output.text,/Do not estimate one long sleep/);}
+   else {assert.equal(output.isError,true);assert.doesNotMatch(output.text,/Wait \d+ milliseconds/);}
+ }
+});
