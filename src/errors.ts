@@ -1,3 +1,4 @@
+import type { CreditUsage } from './credit-usage.js';
 /**
  * Typed failures for MCP tool results (isError:true) vs protocol errors.
  */
@@ -26,6 +27,7 @@ export class ToolFailure extends Error {
       code: this.code,
       message: this.message,
       ...(this.details ? { details: this.details } : {}),
+      ...(this.details?.credit_usage ? { credit_usage: this.details.credit_usage as CreditUsage } : {}),
       ...(this.actionable ? { actionable: this.actionable } : {}),
     };
   }
@@ -35,7 +37,7 @@ export class ApiClientError extends Error {
   readonly status: number;
   readonly body: string;
 
-  constructor(status: number, body: string) {
+  constructor(status: number, body: string, readonly credit_usage?: CreditUsage) {
     super(`WebCite API error (${status}): ${body}`);
     this.name = 'ApiClientError';
     this.status = status;
@@ -43,6 +45,13 @@ export class ApiClientError extends Error {
   }
 
   toToolFailure(): ToolFailure {
+    const failure = this.classifyFailure();
+    return this.credit_usage ? new ToolFailure(failure.code, failure.message, {
+      details: { ...failure.details, credit_usage: this.credit_usage }, actionable: failure.actionable,
+    }) : failure;
+  }
+
+  private classifyFailure(): ToolFailure {
     if ((this.status === 400 || this.status === 402 || this.status === 429) && /insufficient credits|credit.balance.exhausted|credit limit exceeded|INSUFFICIENT_CREDITS/i.test(this.body)) {
       const required = /Required:\s*(\d+)|"credits_required"\s*:\s*(\d+)/i.exec(this.body);
       const remaining = /Available:\s*(\d+)|"credits_remaining"\s*:\s*(\d+)/i.exec(this.body);
