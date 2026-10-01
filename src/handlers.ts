@@ -164,7 +164,7 @@ function validReviewDisposition(value: unknown): boolean {
       !Number.isInteger(item.end) || (item.end as number) <= (item.start as number) ||
       typeof item.source_quote !== 'string' ||
       item.source_quote.length !== (item.end as number) - (item.start as number)) return false;
-  if (item.origin === 'model_extraction') {
+  if (item.origin === 'model_extraction' || item.origin === 'automatic_classification') {
     return ['heading', 'navigation', 'opinion'].includes(item.reason as string) &&
       item.reviewer_id === undefined && item.reviewed_at === undefined && item.rationale === undefined;
   }
@@ -1552,8 +1552,8 @@ export const handlers: Record<string, ToolHandler> = {
         !Number.isInteger(result.next_disposition_offset))
       throw new ToolFailure('invalid_api_output', 'Stored review omitted nonclaim disposition cursor');
     const dispositionRows = dispositions.map((item, index) =>
-      `- Nonclaim disposition ${(dispositionOffset as number) + index + 1}: asset ${item.asset_id}, offsets ${item.start}-${item.end}, ${item.origin === 'model_extraction'
-        ? `model extraction (${item.reason}): ${JSON.stringify(item.source_quote)}`
+      `- Nonclaim disposition ${(dispositionOffset as number) + index + 1}: asset ${item.asset_id}, offsets ${item.start}-${item.end}, ${item.origin === 'model_extraction' || item.origin === 'automatic_classification'
+        ? `${item.origin === 'model_extraction' ? 'model extraction' : 'automatic classification'} (${item.reason}): ${JSON.stringify(item.source_quote)}`
         : `reviewer ${item.reviewer_id}: ${item.rationale}`}`);
     const nextDisposition = Number.isInteger(result.next_disposition_offset)
       ? `\nNext disposition offset: ${result.next_disposition_offset} (use disposition_offset and disposition_limit)` : '';
@@ -1561,7 +1561,8 @@ export const handlers: Record<string, ToolHandler> = {
       if (typeof claim.id !== 'string' || typeof claim.claim !== 'string') {
         throw new ToolFailure('invalid_api_output', 'Stored document review has an invalid claim');
       }
-      const verdict = claim.result_state === 'result_saved'
+      const verdict = claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
+        : claim.result_state === 'result_saved'
         ? `saved, settlement pending${typeof claim.result === 'string' ? `: ${claim.result}` : ''}`
         : claim.result_state === 'failed' ? `failed, retryable${typeof claim.error_code === 'string' ? `: ${claim.error_code}` : ''}`
         : typeof claim.result === 'string' ? claim.result : 'unchecked';
