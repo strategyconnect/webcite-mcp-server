@@ -164,6 +164,16 @@ function validReviewDisposition(value: unknown): boolean {
       !Number.isInteger(item.end) || (item.end as number) <= (item.start as number) ||
       typeof item.source_quote !== 'string' ||
       item.source_quote.length !== (item.end as number) - (item.start as number)) return false;
+  if (item.reason === 'structure' || item.structure_kind !== undefined || item.grounded_claim_ids !== undefined) {
+    const ids = item.grounded_claim_ids;
+    const marker = item.structure_kind === 'list_marker';
+    return item.reason === 'structure' && item.origin === 'automatic_classification' &&
+      item.reviewer_id === undefined && item.reviewed_at === undefined && item.rationale === undefined &&
+      (marker || item.structure_kind === 'coordination') &&
+      (marker ? /^\s*\d+[.)]\s*$/.test(item.source_quote) : /^[\s,;:]*(?:and|or)[\s,;:]*$/i.test(item.source_quote)) &&
+      Array.isArray(ids) && ids.length >= (marker ? 1 : 2) &&
+      ids.every((id) => typeof id === 'string' && Boolean(id.trim())) && new Set(ids).size === ids.length;
+  }
   if (item.origin === 'model_extraction' || item.origin === 'automatic_classification') {
     return ['heading', 'navigation', 'opinion'].includes(item.reason as string) &&
       item.reviewer_id === undefined && item.reviewed_at === undefined && item.rationale === undefined;
@@ -1553,7 +1563,7 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_api_output', 'Stored review omitted nonclaim disposition cursor');
     const dispositionRows = dispositions.map((item, index) =>
       `- Nonclaim disposition ${(dispositionOffset as number) + index + 1}: asset ${item.asset_id}, offsets ${item.start}-${item.end}, ${item.origin === 'model_extraction' || item.origin === 'automatic_classification'
-        ? `${item.origin === 'model_extraction' ? 'model extraction' : 'automatic classification'} (${item.reason}): ${JSON.stringify(item.source_quote)}`
+        ? `${item.origin === 'model_extraction' ? 'model extraction' : 'automatic classification'} (${item.reason}${item.reason === 'structure' ? `/${item.structure_kind}` : ''}): ${JSON.stringify(item.source_quote)}${item.reason === 'structure' ? `; grounded claims: ${(item.grounded_claim_ids as string[]).join(', ')}` : ''}`
         : `reviewer ${item.reviewer_id}: ${item.rationale}`}`);
     const nextDisposition = Number.isInteger(result.next_disposition_offset)
       ? `\nNext disposition offset: ${result.next_disposition_offset} (use disposition_offset and disposition_limit)` : '';
