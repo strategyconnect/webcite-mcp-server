@@ -224,12 +224,17 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
       (result.progress !== undefined && (!result.progress || typeof result.progress !== 'object' || Array.isArray(result.progress))))
     throw new ToolFailure('invalid_api_output', 'Document review job response is incomplete');
   const progress = result.progress as Record<string, unknown> | undefined;
+  for (const field of ['completed_claims', 'total_claims', 'material_claims', 'duplicate_claims',
+    'pending_claims', 'failed_claims', 'rejected_claim_count', 'uncovered_source_span_count']) {
+    if (progress?.[field] !== undefined && progress[field] !== null &&
+        (!Number.isInteger(progress[field]) || (progress[field] as number) < 0))
+      throw new ToolFailure('invalid_api_output', `Document review job has an invalid ${field} count`);
+  }
   if (['complete', 'partial_coverage'].includes(result.status) &&
       (typeof result.review_id !== 'string' || !progress || progress.extraction_complete !== true ||
         progress.pending_claims !== 0 || progress.coverage_complete !== (result.status === 'complete')))
     throw new ToolFailure('invalid_api_output', 'Completed review job has inconsistent coverage or pending claims');
-  const counts = progress && Number.isInteger(progress.completed_claims) && Number.isInteger(progress.total_claims)
-    ? ` ${progress.completed_claims}/${progress.total_claims} claims checked.` : '';
+  const counts = progress ? ` Completed: ${progress.completed_claims ?? 'unknown'}/${progress.total_claims ?? 'unknown'} physical rows; material: ${progress.material_claims ?? 'unknown'}; duplicates: ${progress.duplicate_claims ?? 'unknown'}; pending: ${progress.pending_claims ?? 'unknown'}; failed: ${progress.failed_claims ?? 'unknown'}; rejected: ${progress.rejected_claim_count ?? 'unknown'}; uncovered: ${progress.uncovered_source_span_count ?? 'unknown'}.` : '';
   const gaps = progress?.coverage_complete === false && progress.extraction_complete === true
     ? ` Coverage incomplete: ${progress.uncovered_source_span_count ?? 'unknown'} uncovered source spans.` : '';
   const next = result.review_id && !['queued', 'running', 'waiting_review', 'waiting_parse'].includes(result.status)
@@ -1631,6 +1636,8 @@ export const handlers: Record<string, ToolHandler> = {
           (!Number.isInteger(claim.duplicate_of_index) || (claim.duplicate_of_index as number) < 0 ||
            (claim.duplicate_of_index as number) >= (offset as number) + index ||
            typeof claim.duplicate_of_id !== 'string' || !claim.duplicate_of_id.trim() || claim.duplicate_of_id === claim.id ||
+           (claim.original_claim_id !== undefined && claim.original_claim_id !== null &&
+             claim.original_claim_id !== claim.duplicate_of_id) ||
            claim.duplicate_reason !== 'same_source_assertion' ||
            (canonical && (canonical.id !== claim.duplicate_of_id || canonical.result_state === 'duplicate')) ||
            ['result', 'verdict', 'confidence', 'citation_id', 'credits_used', 'credits_charged', 'operation_id'].some((key) =>
@@ -1675,10 +1682,15 @@ export const handlers: Record<string, ToolHandler> = {
          (result.non_factual_claims as number) > (result.total_claims as number)))
       throw new ToolFailure('invalid_api_output', 'Stored review has an invalid non-factual count');
     const nonFactualCount = Number.isInteger(result.non_factual_claims) ? `; non-factual: ${result.non_factual_claims}` : '';
-    if (result.duplicate_claims !== undefined &&
+    if (result.duplicate_claims !== undefined && result.duplicate_claims !== null &&
         (!Number.isInteger(result.duplicate_claims) || (result.duplicate_claims as number) < 0 ||
          (result.duplicate_claims as number) > (result.total_claims as number)))
       throw new ToolFailure('invalid_api_output', 'Stored review has an invalid duplicate count');
+    if (result.material_claims !== undefined && result.material_claims !== null &&
+        (!Number.isInteger(result.material_claims) || (result.material_claims as number) < 0 ||
+         (result.material_claims as number) > (result.total_claims as number)))
+      throw new ToolFailure('invalid_api_output', 'Stored review has an invalid material count');
+    const materialCount = `; material: ${result.material_claims ?? 'unknown'}`;
     const duplicateCount = Number.isInteger(result.duplicate_claims) ? `; duplicates: ${result.duplicate_claims}` : '';
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
     const focusGuidance = focusedScope
@@ -1698,7 +1710,7 @@ export const handlers: Record<string, ToolHandler> = {
       [result.next_offset, result.next_gap_offset, result.next_rejected_offset, result.next_disposition_offset]);
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
     const linkGuidance = '\nFor citation links in the final report, use source titles as labels and complete returned URLs as link targets. Never shorten URL paths or replace them with ellipses.';
-    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}${continuationText(fullContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput, next_page_input: fullContinuation });
+    const output = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${materialCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\n${gapRows.join('\n')}${nextGap}\n${rejectedRows.join('\n')}${nextRejected}\n${dispositionRows.join('\n')}${nextDisposition}\n${rows.join('\n')}${next}${focusGuidance}${continuationText(fullContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, { ...result, resume_input: resumeInput, next_page_input: fullContinuation });
     if (Buffer.byteLength(JSON.stringify(output)) <= REVIEW_RESPONSE_MAX_BYTES) return output;
     const compactClaims = claims.map((claim) => ({
       id: claim.id, claim: String(claim.claim).slice(0, 500),
@@ -1707,6 +1719,7 @@ export const handlers: Record<string, ToolHandler> = {
       summary: typeof claim.summary === 'string' ? claim.summary.slice(0, 1000) : null,
       ...(typeof claim.summary === 'string' && claim.summary.length > 1000 ? { summary_truncated: true } : {}),
       classification_origin: claim.classification_origin, classification_reason: claim.classification_reason,
+      original_claim_id: claim.original_claim_id,
       duplicate_of_index: claim.duplicate_of_index, duplicate_of_id: claim.duplicate_of_id,
       duplicate_reason: claim.duplicate_reason,
       source_recovery: claim.source_recovery,
@@ -1745,11 +1758,11 @@ export const handlers: Record<string, ToolHandler> = {
       const compactNextClaim = nextPage < (offset as number) + claims.length ? nextPage : result.next_offset;
       const compactContinuation = nextPageInput([shown.length, shownGaps.length, shownRejected.length, shownDispositions.length],
         [compactNextClaim, compactNextGap, compactNextRejected, compactNextDisposition]);
-      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Saved verdict summaries are included where available. Detailed evidence is omitted from this compact view, not necessarily absent from storage. A null summary means unavailable on this saved row, not absent evidence. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.summary !== null ? `\n   Saved summary: ${claim.summary}${claim.summary_truncated ? ' [summary truncated; full text remains saved]' : ''}` : '\n   Saved summary: unavailable on this row'}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${continuationText(compactContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending: ${result.pending_claims}${failedCount}${nonFactualCount}${materialCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Saved verdict summaries are included where available. Detailed evidence is omitted from this compact view, not necessarily absent from storage. A null summary means unavailable on this saved row, not absent evidence. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.summary !== null ? `\n   Saved summary: ${claim.summary}${claim.summary_truncated ? ' [summary truncated; full text remains saved]' : ''}` : '\n   Saved summary: unavailable on this row'}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${continuationText(compactContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
         review_id: reviewId, status: result.status, total_claims: result.total_claims,
         completed_claims: result.completed_claims, pending_claims: result.pending_claims,
         non_factual_claims: result.non_factual_claims,
-        duplicate_claims: result.duplicate_claims,
+        material_claims: result.material_claims ?? null, duplicate_claims: result.duplicate_claims ?? null,
         failed_claims: result.failed_claims,
         extraction_complete: result.extraction_complete ?? null,
         extraction_cursor: result.extraction_cursor ?? null, chunk_count: result.chunk_count ?? null,
@@ -1789,8 +1802,8 @@ export const handlers: Record<string, ToolHandler> = {
         }
       }
     }
-    return { ...ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims}; pending: ${result.pending_claims}${coverage}\nThe requested page exceeds Claude's tool response limit. Even one item per stream exceeds the limit. No claim or side-list item was consumed. Use the Webcite API for full citation objects and coverage lists at these offsets; repeating this tool call cannot retrieve this oversized page.`, {
-      review_id: reviewId, status: result.status, total_claims: result.total_claims,
+    return { ...ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending: ${result.pending_claims}${failedCount}${materialCount}${duplicateCount}${coverage}\nThe requested page exceeds Claude's tool response limit. Even one item per stream exceeds the limit. No claim or side-list item was consumed. Use the Webcite API for full citation objects and coverage lists at these offsets; repeating this tool call cannot retrieve this oversized page.`, {
+      review_id: reviewId, status: result.status, total_claims: result.total_claims, material_claims: result.material_claims ?? null,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       non_factual_claims: result.non_factual_claims,
       duplicate_claims: result.duplicate_claims,
