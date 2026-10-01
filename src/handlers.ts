@@ -1691,7 +1691,7 @@ export const handlers: Record<string, ToolHandler> = {
          (result.material_claims as number) > (result.total_claims as number)))
       throw new ToolFailure('invalid_api_output', 'Stored review has an invalid material count');
     const materialCount = `; material: ${result.material_claims ?? 'unknown'}`;
-    const duplicateCount = Number.isInteger(result.duplicate_claims) ? `; duplicates: ${result.duplicate_claims}` : '';
+    const duplicateCount = `; duplicates: ${result.duplicate_claims ?? 'unknown'}`;
     const failedCount = Number.isInteger(result.failed_claims) ? `; failed: ${result.failed_claims}` : '';
     const focusGuidance = focusedScope
       ? '\nThis saved review is focused. MCP review_document accepts only full scope. Resume this focused review through the API with the saved input below; to start a full MCP review, use a new thread_id.' : '';

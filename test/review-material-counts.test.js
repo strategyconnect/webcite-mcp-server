@@ -18,6 +18,7 @@ test('terminal job text retains known physical, material, duplicate, pending and
     total_claims: 65, material_claims: 57, completed_claims: 6, duplicate_claims: 8,
     pending_claims: 51, failed_claims: 4, rejected_claim_count: null } };
   await withClient({ getDocumentReviewJob: async () => { calls++; return job; } }, async client => {
+    assert.match(client.getInstructions(), /material_claims \(physical rows excluding duplicates\)/);
     const output = await client.callTool({ name: 'get_document_review_job', arguments: { job_id: job.job_id } });
     assert.equal(output.isError, true);
     assert.match(output.content[0].text, /6\/65 physical rows; material: 57; duplicates: 8; pending: 51; failed: 4; rejected: unknown; uncovered: unknown/);
@@ -38,7 +39,7 @@ test('legacy absent and null counts remain unknown, never zero', async () => {
 });
 
 test('compact alias rows preserve stored original identity and physical offsets with known material count', async () => {
-  const id = 'b'.repeat(64); let calls = 0, invalid = false;
+  const id = 'b'.repeat(64); let calls = 0, invalid = false, corruptAlias = false;
   const canonical = { id: 'canonical', claim: 'An original source assertion.', result_state: 'pending',
     citations: [{ url: 'https://example.org/source', snippet: 'Retained details '.repeat(3000) }] };
   const alias = { id: 'canonical:duplicate:1', original_claim_id: 'canonical', claim: canonical.claim,
@@ -47,7 +48,7 @@ test('compact alias rows preserve stored original identity and physical offsets 
   const data = { review_id: id, thread_id: 'same-input', prompt: 'Saved review', asset_ids: ['12345678-1234-4234-8234-123456789abc'],
     status: 'failed', total_claims: 2, material_claims: 1, completed_claims: 0, pending_claims: 1, failed_claims: 1,
     duplicate_claims: 1, claims: [canonical, alias], next_offset: null };
-  await withClient({ getDocumentReview: async () => { calls++; return invalid ? { ...data, material_claims: 3 } : data; } }, async client => {
+  await withClient({ getDocumentReview: async () => { calls++; return invalid ? { ...data, material_claims: 3 } : corruptAlias ? { ...data, claims: [canonical, { ...alias, original_claim_id: 'different-original' }] } : data; } }, async client => {
     const output = await client.callTool({ name: 'get_document_review', arguments: { review_id: id, detail_level: 'compact', limit: 50 } });
     assert.ok(!output.isError, JSON.stringify(output));
     assert.match(output.content[0].text, /material: 1; duplicates: 1/);
@@ -61,7 +62,11 @@ test('compact alias rows preserve stored original identity and physical offsets 
     const bad = await client.callTool({ name: 'get_document_review', arguments: { review_id: id } });
     assert.equal(bad.isError, true);
     assert.match(bad.content[0].text, /invalid material count/);
-    assert.equal(calls, 2);
+    invalid = false; corruptAlias = true;
+    const wrongAlias = await client.callTool({ name: 'get_document_review', arguments: { review_id: id } });
+    assert.equal(wrongAlias.isError, true);
+    assert.match(wrongAlias.content[0].text, /duplicate.*invalid|invalid.*duplicate/);
+    assert.equal(calls, 3);
   });
 });
 
