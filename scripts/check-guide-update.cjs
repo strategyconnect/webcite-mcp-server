@@ -1,9 +1,9 @@
 const {execFileSync}=require('node:child_process');
-const CONTRACT_FILES=['src/**/*.ts (except src/guide.ts)'];
+const CONTRACT_FILES=['src/**/*.ts (except src/guide.ts and release-only src/version.ts)'];
 function checkGuideUpdate(base,head){
   const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
   base=git('rev-parse','--verify','--end-of-options',`${base}^{commit}`);head=git('rev-parse','--verify','--end-of-options',`${head}^{commit}`);
-  const changed=git('diff','--name-only',base,head,'--','src').split('\n').filter(file=>file.endsWith('.ts')&&file!=='src/guide.ts');
+  const changed=git('diff','--name-only',base,head,'--','src').split('\n').filter(file=>file.endsWith('.ts')&&file!=='src/guide.ts'&&file!=='src/version.ts');
   if(changed.length&&git('show',`${base}:src/guide.ts`)===git('show',`${head}:src/guide.ts`))throw Error(`Public SDK contract changed without updating src/guide.ts: ${changed.join(', ')}`);
   return {base,head,contract_files_changed:changed,guide_update_required:changed.length>0};
 }
