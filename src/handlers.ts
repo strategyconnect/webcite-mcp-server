@@ -1976,6 +1976,7 @@ export const handlers: Record<string, ToolHandler> = {
     parts.push(`**Filename:** ${result.filename}`);
     parts.push(`**Size:** ${result.size} bytes`);
     if (result.source_version_id) parts.push(`**Source version ID:** ${result.source_version_id}`);
+    if (!creditUsage(result)) parts.push('Request credit usage: unknown. A missing upload receipt does not mean zero credits were charged.');
 
     return ok(parts.join('\n'), { ...result });
   },
