@@ -153,7 +153,7 @@ export type ToolSuccess = {
   isError?: boolean;
 };
 
-export type ToolHandler = (args: Args, client: WebCiteApiClient) => Promise<ToolSuccess>;
+export type ToolHandler = (args: Args, client: WebCiteApiClient, signal?: AbortSignal) => Promise<ToolSuccess>;
 
 function ok(text: string, structuredContent?: Record<string, unknown>): ToolSuccess {
   return structuredContent ? { text: text + creditUsageText(structuredContent) + reviewUsageText(structuredContent), structuredContent } : { text };
@@ -1892,10 +1892,10 @@ export const handlers: Record<string, ToolHandler> = {
     return ok(formatVerifyResult(options.claim, result), { ...result });
   },
 
-  verify_claim_stream: async (args, client) => {
+  verify_claim_stream: async (args, client, signal) => {
     const options = verifyOptions(args);
     try {
-      const { result, events } = await collectStreamEvents(client.verifyClaimStream(options));
+      const { result, events } = await collectStreamEvents(client.verifyClaimStream(options, signal));
       return ok(formatVerifyResult(options.claim, result), { ...result, stream_events: events });
     } catch (error) {
       if (error instanceof ApiClientError) throw error.toToolFailure();
