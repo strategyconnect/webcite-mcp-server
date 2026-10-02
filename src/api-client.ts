@@ -494,12 +494,14 @@ export class WebCiteApiClient {
     if (result.successCode !== 200 || typeof data?.asset_id !== 'string' || !data.asset_id) {
       throw new ApiClientError(502, 'Upload response did not contain a usable asset_id');
     }
+    const usage = creditUsage(result);
     return {
       asset_id: data.asset_id,
       ...(typeof data.asset_url === 'string' ? { asset_url: data.asset_url } : {}),
       ...(typeof data.source_version_id === 'string' ? { source_version_id: data.source_version_id } : {}),
       filename: path.basename(fileName),
       size: fileBuffer.length,
+      ...(usage ? { credit_usage: usage } : {}),
     };
   }
 

@@ -165,6 +165,7 @@ export interface UploadResponse {
   source_version_id?: string;
   filename: string;
   size: number;
+  credit_usage?: CreditUsage;
 }
 
 /* ---------------------------------------------------------- source preview */
