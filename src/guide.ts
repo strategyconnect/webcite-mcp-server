@@ -38,6 +38,7 @@ export function renderWebciteGuide(input: {
     '# Webcite guide',
     '',
     'Free plan: **100 credits/month**. This tool costs **0 credits**.',
+    'When metadata.retrieval_attempts is returned, preserve its search scope and evidence limitation. An unresolved supplied source or a bounded search with insufficient evidence does not prove that the data does not exist. Official-only restrictions apply to the final publisher after redirects. For numerical claims, match metric, observation period, currency and scale; publication year alone is not the observation period. Keep conflicting official publications distinct until their scope and precision are reconciled.',
     'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.',
     ...(question ? [`Your question: ${question}`] : []),
     '',
@@ -88,6 +89,7 @@ export function renderWebciteGuide(input: {
       header +
       [
         '## Workflow: document_review',
+        'Canonical binary upload reuses one structured OCR pass for raster content and preserves partial reads and errors. Native PDF coordinates preserve table year/value bindings; unreadable raster regions remain partial. PPTX native rendering retains the slide inventory, including unreadable slides. Native-only source reads do not establish complete raster coverage. OCR output is not certification and does not provide bounding boxes; inspect the original for exact visual placement and unresolved content.',
         'For a numbered heading with ordered actions, keep the complete literal action sequence and its exact numbered source passage. Identical action wording at separate numbered locations is distinct evidence; do not merge it by text alone.',
         'Split independently checkable facts using ordered literal source_fragments and the complete source passage. Keep shared conditions, qualifications and negation on each applicable claim. A composed source_quote can be anchored back to one uniquely matching literal source unit; the claim must still pass wording and scope checks. Ambiguous anchors or invented wording remain rejected.',
         'When parsing omits list numbers, literal inline heading boundaries still distinguish headings from their factual body. Structural choice headings are not facts; procedural requirements, action ordering and shared conditions remain part of the review.',

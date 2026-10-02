@@ -11,6 +11,7 @@ import { ApiClientError, ToolFailure, type WebCiteApiClient } from './api-client
 import { createHash } from 'node:crypto';
 import {
   formatAccuracyReport,
+  formatRetrievalScope,
   formatAnalyzeResult,
   formatBatchResults,
   formatChangeImpact,
@@ -1891,6 +1892,8 @@ export const handlers: Record<string, ToolHandler> = {
 
     const parts: string[] = [];
     parts.push(`# Search Results: "${query}"\n`);
+    const scope = formatRetrievalScope(result.metadata);
+    if (scope) parts.push(scope);
 
     const groupedCitations = result.claim_groups?.flatMap((group) => group.citations ?? []) ?? [];
     const citations = result.citations?.length ? result.citations : groupedCitations;
@@ -1902,7 +1905,7 @@ export const handlers: Record<string, ToolHandler> = {
       });
       if (citations.length > limit) parts.push(`Showing ${limit} here; the full source list is in structuredContent.`);
     } else {
-      parts.push('No sources found for this query.');
+      parts.push('No sources were retained from this search. This does not establish that the data does not exist.');
     }
 
     return ok(parts.join('\n'), { ...result });

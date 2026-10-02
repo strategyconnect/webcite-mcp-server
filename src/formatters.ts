@@ -255,12 +255,28 @@ export function formatClaimGroup(group: ClaimGroup): string {
   return parts.join('\n');
 }
 
+export function formatRetrievalScope(metadata: unknown): string {
+  if (!metadata || typeof metadata !== 'object') return '';
+  const attempts = (metadata as Record<string, unknown>).retrieval_attempts;
+  if (!Array.isArray(attempts)) return '';
+  return attempts.flatMap((attempt) => {
+    if (!attempt || typeof attempt !== 'object') return [];
+    const { retrieval_status: status, search_scope: scope, evidence_limitation: limitation } = attempt;
+    if (!['sources_retained', 'supplied_sources_unresolved', 'insufficient_evidence'].includes(status) ||
+        !['supplied_sources', 'bounded_web_search'].includes(scope)) return [];
+    const label = scope === 'supplied_sources' ? 'Supplied sources' : 'Bounded web search';
+    return [`${label}: ${status.replaceAll('_', ' ')}.${typeof limitation === 'string' ? ` ${limitation}` : ''}`];
+  }).join('\n');
+}
+
 /**
  * Format a VerifyClaimResponse into readable text
  */
 export function formatVerifyResult(claim: string, result: VerifyClaimResponse): string {
   const parts: string[] = [];
   parts.push(`# Fact Check: "${claim}"\n`);
+  const scope = formatRetrievalScope(result.metadata);
+  if (scope) parts.push(scope);
 
   for (const [label, id] of Object.entries({
     'Citation ID': result.citation_id, 'Request ID': result.request_id,

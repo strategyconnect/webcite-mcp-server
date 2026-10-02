@@ -163,7 +163,7 @@ test('saved review pages expose completed and pending work without a total claim
     source_urls: ['https://example.test/official.pdf'], filters: { is_primary_source: true },
     include_stance: true, include_verdict: false,
   });
-  assert.match(result.text, /Completed: 51\/101; pending: 50/);
+  assert.match(result.text, /Completed: 51\/101 physical rows; pending \(includes failed\): 50/);
   assert.match(result.text, /Add credits or enable overage/);
   assert.match(result.text, /Next offset: 50/);
   assert.match(result.text, /Extraction chunks: 2\/3/);
@@ -378,7 +378,10 @@ test('duplicates reject broken links, invented outcomes and invalid counts', asy
     { citations: [{ url: 'https://example.com' }] }, { top_citations: {} }]) {
     await assert.rejects(() => read(invalid), /invalid canonical reference or verification fields/);
   }
-  for (const count of [-1, 0.5, 3, '1', null]) await assert.rejects(() => read({}, count), /invalid duplicate count/);
+  for (const count of [-1, 0.5, 3, '1']) await assert.rejects(() => read({}, count), /invalid duplicate count/);
+  const unknownCount = await read({}, null);
+  assert.equal(unknownCount.structuredContent.duplicate_claims, null);
+  assert.match(unknownCount.text, /duplicates: unknown/);
   const positive = await read({ result: null, confidence: null, citation_id: null, citations: [] });
   assert.match(positive.text, /not separately checked/);
   for (const canonical of [{ id: 'wrong-id', claim: 'Submitting proposals' },
@@ -487,7 +490,7 @@ test('Claude starts a durable full review, then polls saved progress without wai
     const status = await client.callTool({ name: 'get_document_review_job', arguments: { job_id: jobId } });
     assert.equal(status.structuredContent.status, 'partial_coverage');
     assert.equal(status.structuredContent.progress.uncovered_source_span_count, 6);
-    assert.match(status.content[0].text, /Coverage incomplete: 6 uncovered source spans/);
+    assert.match(status.content[0].text, /uncovered: 6.*source coverage complete: false/);
     assert.match(status.content[0].text, /get_document_review/);
   } finally {
     await client.close();

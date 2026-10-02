@@ -101,7 +101,7 @@ test('search contract drift does not become an empty successful search', async (
   await withPublicClient({ searchSources: async () => ({ citations: [], claim_groups: [], totalResults: 0 }) }, async (client) => {
     const result = await client.callTool({ name: 'search_sources', arguments: { query: 'impossible source' } });
     assert.equal(result.isError, undefined);
-    assert.match(result.content[0].text, /No sources found/);
+    assert.match(result.content[0].text, /No sources were retained.*does not establish that the data does not exist/);
   });
 });
 
