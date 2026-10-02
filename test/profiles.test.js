@@ -144,3 +144,15 @@ test('runSmoke reports core defaults', () => {
   assert.equal(smoke.ok, true);
   assert.equal(smoke.toolCount, filterToolsByProfile(ALL_TOOLS, 'core').length);
 });
+
+
+test('numeric guide preserves exact-config durable context reads without API execution', async () => {
+  const api = new Proxy({}, { get() { throw new Error('Guide must not execute an API request'); } });
+  const result = await handlers.webcite_guide({ workflow: 'numeric' }, api);
+  assert.match(result.text, /automaticExtractionContext/);
+  assert.match(result.text, /automaticSourceLedger/);
+  assert.match(result.text, /never invokes a provider/);
+  assert.match(result.text, /not_requested/);
+  assert.match(result.text, /Graph-operator refusal is independent of ledger availability/);
+  assert.match(result.text, /never relabelled as resolved graph assertions/);
+});
