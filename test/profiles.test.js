@@ -100,6 +100,10 @@ test('document review guide covers every claim without treating metric extractio
   assert.match(result.text, /Structural topic headings and connectors between retained literal clauses do not become extra claims; omitted qualifications remain coverage gaps/);
   assert.match(result.text, /Source evidence and successful judgments retain their server-verified identity across response projection and cache replay for the exact claim/);
   assert.match(result.text, /A copied or changed receipt cannot supply that identity/);
+  assert.match(result.text, /literal source context without treating proximity or relevance as proof of a metric, observation period or unit/);
+  assert.match(result.text, /standard ISO currency codes, literal currency symbols and explicit nonfinancial Unit: or Units: declarations/);
+  assert.match(result.text, /Unknown or ambiguous headers, units and periods stay unknown/);
+  assert.match(result.text, /do not infer a currency from an ambiguous symbol/);
   assert.match(SERVER_INSTRUCTIONS, /document_review/);
 });
 
