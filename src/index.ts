@@ -79,7 +79,7 @@ export function createMcpServer(
     tools,
   }));
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const { name, arguments: args } = request.params;
 
     if (!name || typeof name !== 'string') {
@@ -114,7 +114,7 @@ export function createMcpServer(
       if (remote && name === 'upload_file' && (args?.file_path !== undefined || args?.file_base64 === undefined)) {
         throw new ToolFailure('invalid_argument', 'Hosted upload_file accepts filename and file_base64, not file_path');
       }
-      const result = await handler(args, client);
+      const result = await handler(args, client, extra.signal);
       return {
         content: [{ type: 'text', text: result.text }],
         ...(result.isError ? { isError: true } : {}),

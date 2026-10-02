@@ -65,6 +65,7 @@ export function renderWebciteGuide(input: {
         ),
         '```',
         '2. Optional: `get_source_preview` on a citation URL/quote to show bind-back.',
+        'Cancelling a verify_claim_stream MCP request forwards cancellation to its backend HTTP request. A stopped or failed stream requests cancellation of its unfinished response body. Partial events do not confirm a result without a done marker. Cancellation does not establish completion, rollback or a credit refund; inspect saved operation receipts before retrying uncertain paid work.',
         'Credits: typically 2–4 for verify_claim.',
       ].join('\n')
     );

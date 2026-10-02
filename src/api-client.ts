@@ -252,8 +252,8 @@ export class WebCiteApiClient {
     return this.request(`/api/v1/playground/chat/document-review-jobs/${encodeURIComponent(jobId)}`, { method: 'GET' });
   }
 
-  async *verifyClaimStream(options: VerifyClaimOptions): AsyncGenerator<SSEEvent> {
-    yield* this.streamRequest('/api/v1/verify/stream', this.verifyBody(options));
+  async *verifyClaimStream(options: VerifyClaimOptions, signal?: AbortSignal): AsyncGenerator<SSEEvent> {
+    yield* this.streamRequest('/api/v1/verify/stream', this.verifyBody(options), signal);
   }
 
   private async *streamRequest(endpoint: string, body: string, signal?: AbortSignal): AsyncGenerator<SSEEvent> {
@@ -283,10 +283,12 @@ export class WebCiteApiClient {
 
     let currentEvent = 'message';
     let currentData: string[] = [];
+    let completed = false;
+    let failed = false;
     try {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) { completed = true; break; }
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
@@ -306,8 +308,18 @@ export class WebCiteApiClient {
       }
       // An unterminated event is incomplete, including an unterminated done marker.
 
+    } catch (error) {
+      failed = true;
+      throw error;
     } finally {
-      reader.releaseLock();
+      try {
+        if (!completed) await reader.cancel();
+      } catch (error) {
+        // Cleanup must not replace the stream's original failure.
+        if (!failed) throw error;
+      } finally {
+        reader.releaseLock();
+      }
     }
   }
 
