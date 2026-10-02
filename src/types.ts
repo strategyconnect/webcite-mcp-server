@@ -122,6 +122,7 @@ export interface ClaimGroup {
 }
 
 export interface VerifyClaimResponse {
+  metadata?: Record<string, unknown>;
   claim_groups: ClaimGroup[];
   totalResults: number;
   thread_id: string;
