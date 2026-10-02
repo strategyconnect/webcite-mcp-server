@@ -42,6 +42,7 @@ export function renderWebciteGuide(input: {
     'Retain literal source context without treating proximity or relevance as proof of a metric, observation period or unit. HTML table units can retain standard ISO currency codes, literal currency symbols and explicit nonfinancial Unit: or Units: declarations. Unknown or ambiguous headers, units and periods stay unknown; do not infer a currency from an ambiguous symbol.',
     'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.',
     'Keep the public thread_id stable when continuing work with the same authenticated owner. Internal agent checkpoints bind the owner and thread together; sharing a thread_id across accounts does not share agent history. Older unscoped agent checkpoints are not resumed because their owner cannot be established. This does not change saved review IDs, claims or completed receipts. In-memory agent checkpoints do not survive a process restart; use saved job and review receipts to recover completed work.',
+    'Standalone document searches and mappings require active, undeleted assets owned by the authenticated account. Asset IDs supplied by a model are checked before document retrieval. A missing, inactive or foreign asset fails the ownership check; do not treat that failure as evidence that its document has no relevant content.',
     ...(question ? [`Your question: ${question}`] : []),
     '',
     '',
