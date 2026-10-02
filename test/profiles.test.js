@@ -109,7 +109,10 @@ test('full slide audits and image numerics route to supported tools', () => {
   assert.match(numericGuide, /zero metrics does not mean/);
   assert.match(numericGuide, /JPEG\/PNG\/WebP.*review_document/);
   assert.match(numericGuide, /Rejected prose may retain its original assumption-basis annotation as context only/);
-  assert.match(numericGuide, /A year label or identifier with any basis annotation remains ineligible/);
+  assert.match(numericGuide, /A year, date or year-range label or identifier with any basis annotation remains ineligible/);
+  assert.match(numericGuide, /date label, ordered year-range label/);
+  assert.match(numericGuide, /whole retained spreadsheet cell under its Date or Year context/);
+  assert.match(numericGuide, /not a public MCP tool or an approved Figure/);
   assert.match(numericGuide, /count contextual decisions separately from reviewed numeric assertions/);
   assert.match(numericGuide, /candidate\.raw can be printed display text.*sourceRawLexeme is the sealed stored cell value/);
   assert.match(numericGuide, /expectedRawLexeme must use that stored value, never the rounded display/);
