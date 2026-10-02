@@ -561,7 +561,7 @@ test('malformed review job status fails closed and saved coverage is visible', a
       uncovered_source_spans: [{ asset_id: 'asset-1', start: 20, end: 40, preview: 'Missing claim' }],
       claims: [{ id: 'c1', claim: 'Present claim', result: 'verified' }] }),
   });
-  assert.match(saved.text, /Source coverage: incomplete; 1 uncovered spans/);
+  assert.match(saved.text, /Input source coverage: incomplete; 1 uncovered spans/);
   assert.equal(saved.structuredContent.uncovered_source_spans[0].preview, 'Missing claim');
 });
 
