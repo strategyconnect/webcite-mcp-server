@@ -88,6 +88,11 @@ test('document review guide covers every claim without treating metric extractio
   assert.match(result.text, /verify_claim/);
   assert.match(result.text, /get_document_review/);
   assert.match(result.text, /There is no fixed claim count/);
+  assert.match(result.text, /one structured OCR pass.*partial reads and errors/);
+  assert.match(result.text, /PDF coordinates preserve table year\/value bindings/);
+  assert.match(result.text, /PPTX native rendering retains the slide inventory, including unreadable slides/);
+  assert.match(result.text, /Native-only source reads do not establish complete raster coverage/);
+  assert.match(result.text, /OCR output is not certification and does not provide bounding boxes/);
   assert.match(SERVER_INSTRUCTIONS, /document_review/);
 });
 
