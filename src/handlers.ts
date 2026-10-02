@@ -231,6 +231,28 @@ function requireString(args: Args, key: string): string {
   return value;
 }
 
+function compactSourceAssessment(value: unknown) {
+  if (value === undefined || value === null) return {};
+  const item = value as Record<string, unknown>;
+  requireApiShape(typeof value === 'object' && !Array.isArray(value) && item.version === 1 &&
+    typeof item.basis === 'string' && ['original_claim', 'source_table'].includes(item.basis) &&
+    typeof item.claim === 'string' && Boolean(item.claim.trim()) &&
+    typeof item.judgment_claim === 'string' && Boolean(item.judgment_claim.trim()) &&
+    (item.source_asset_id === undefined || (typeof item.source_asset_id === 'string' &&
+      Boolean(item.source_asset_id.trim()) && item.source_asset_id.length <= 1000)) &&
+    (item.source_quote_hash === undefined || (typeof item.source_quote_hash === 'string' &&
+      /^[a-f0-9]{64}$/.test(item.source_quote_hash))), 'Source assessment');
+  const claim = item.claim as string, judgment = item.judgment_claim as string;
+  return { source_assessment_summary: {
+    version: item.version, basis: item.basis, claim: claim.slice(0, 1000),
+    judgment_claim: judgment.slice(0, 1000),
+    ...(claim.length > 1000 ? { claim_truncated: true } : {}),
+    ...(judgment.length > 1000 ? { judgment_claim_truncated: true } : {}),
+    ...(item.source_asset_id !== undefined ? { source_asset_id: item.source_asset_id } : {}),
+    ...(item.source_quote_hash !== undefined ? { source_quote_hash: item.source_quote_hash } : {}),
+  } };
+}
+
 function savedClaimLabel(claim: Record<string, unknown>): string {
   return claim.result_state === 'duplicate' ? `duplicate of claim ${claim.duplicate_of_id} (not separately checked)`
         : claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
@@ -1772,6 +1794,7 @@ export const handlers: Record<string, ToolHandler> = {
       id: claim.id, claim: String(claim.claim).slice(0, 500),
       ...(String(claim.claim).length > 500 ? { claim_truncated: true } : {}),
       result: claim.result, result_state: claim.result_state, citation_id: claim.citation_id,
+      ...compactSourceAssessment(claim.source_assessment),
       summary: typeof claim.summary === 'string' ? claim.summary.slice(0, 1000) : null,
       ...(typeof claim.summary === 'string' && claim.summary.length > 1000 ? { summary_truncated: true } : {}),
       classification_origin: claim.classification_origin, classification_reason: claim.classification_reason,
@@ -1814,7 +1837,7 @@ export const handlers: Record<string, ToolHandler> = {
       const compactNextClaim = nextPage < (offset as number) + claims.length ? nextPage : result.next_offset;
       const compactContinuation = nextPageInput([shown.length, shownGaps.length, shownRejected.length, shownDispositions.length],
         [compactNextClaim, compactNextGap, compactNextRejected, compactNextDisposition]);
-      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending (includes failed): ${result.pending_claims}${failedCount}${nonFactualCount}${materialCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Saved verdict summaries are included where available. Detailed evidence is omitted from this compact view, not necessarily absent from storage. A null summary means unavailable on this saved row, not absent evidence. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.summary !== null ? `\n   Saved summary: ${claim.summary}${claim.summary_truncated ? ' [summary truncated; full text remains saved]' : ''}` : '\n   Saved summary: unavailable on this row'}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${continuationText(compactContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending (includes failed): ${result.pending_claims}${failedCount}${nonFactualCount}${materialCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Saved verdict summaries are included where available. Detailed evidence is omitted from this compact view, not necessarily absent from storage. Optional source_assessment_summary retains the assessed assertion separately from the original report description. Truncation flags identify shortened text; a summary is not the exact saved judgment identity. Full source_assessment remains saved. A null summary means unavailable on this saved row, not absent evidence. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.summary !== null ? `\n   Saved summary: ${claim.summary}${claim.summary_truncated ? ' [summary truncated; full text remains saved]' : ''}` : '\n   Saved summary: unavailable on this row'}${claim.source_assessment_summary ? `\n   Assessed assertion: ${claim.source_assessment_summary.claim}${claim.source_assessment_summary.claim_truncated ? ' [assessed assertion truncated; full identity remains saved]' : ''}` : ''}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${continuationText(compactContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
         review_id: reviewId, status: result.status, total_claims: result.total_claims,
         completed_claims: result.completed_claims, pending_claims: result.pending_claims,
         non_factual_claims: result.non_factual_claims,

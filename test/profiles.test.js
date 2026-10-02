@@ -112,6 +112,8 @@ test('document review guide covers every claim without treating metric extractio
   assert.match(result.text, /Bind HTML table numbers to exact original cells and headers, including uniquely matched footer years/);
   assert.match(result.text, /Do not flatten table cells into prose or guess ambiguous years; leave unresolved bindings as source gaps/);
   assert.match(result.text, /source_assessment \(version: 1\)/);
+  assert.match(result.text, /source_assessment_summary separately from the original report claim/);
+  assert.match(result.text, /summary is not the exact saved stance identity/);
   assert.match(result.text, /outer claim and claim_id retain the original report description and identity/);
   assert.match(result.text, /basis is original_claim or source_table/);
   assert.match(result.text, /Missing metadata on older saved rows is unknown/);
