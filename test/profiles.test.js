@@ -155,4 +155,6 @@ test('numeric guide preserves exact-config durable context reads without API exe
   assert.match(result.text, /not_requested/);
   assert.match(result.text, /Graph-operator refusal is independent of ledger availability/);
   assert.match(result.text, /never relabelled as resolved graph assertions/);
+  assert.match(result.text, /Contradictory or unmarked scope stays unknown/);
+  assert.match(result.text, /fiscal quarters retain fiscal identity without inventing an interval/);
 });
