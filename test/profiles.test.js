@@ -108,6 +108,9 @@ test('full slide audits and image numerics route to supported tools', () => {
   const numericGuide = require('../dist/guide.js').renderWebciteGuide({ workflow: 'numeric' });
   assert.match(numericGuide, /zero metrics does not mean/);
   assert.match(numericGuide, /JPEG\/PNG\/WebP.*review_document/);
+  assert.match(numericGuide, /Rejected prose may retain its original assumption-basis annotation as context only/);
+  assert.match(numericGuide, /A year label or identifier with any basis annotation remains ineligible/);
+  assert.match(numericGuide, /count contextual decisions separately from reviewed numeric assertions/);
 });
 
 test('runSmoke reports core defaults', () => {
