@@ -120,6 +120,7 @@ export function renderWebciteGuide(input: {
       header +
       [
         '## Workflow: numeric',
+        'For a selected original spreadsheet cell, retain its sheet and address, literal display and number format, and nearby labels. A source-only cell reading is not an approved Figure or a recalculated formula result.',
         '1. `extract_document` to read every page and identify its file format. `extract_figures` only finds recognized metrics; zero metrics does not mean the page has no numbers.',
         '2. Use `analyze_document` for PDF, spreadsheet or JPEG/PNG/WebP numeric analysis. Image figures are OCR/model reads and need source review. For a whole-slide external fact-check, also use `review_document`; use `analyze_conflicts` only when you have figures to compare.',
         '```json',
