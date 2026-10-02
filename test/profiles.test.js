@@ -97,6 +97,11 @@ test('document review guide covers every claim without treating metric extractio
   assert.match(result.text, /mixed full-scope review includes narrative assertions and scope qualifications as well as numbers/);
   assert.match(result.text, /Bind HTML table numbers to exact original cells and headers, including uniquely matched footer years/);
   assert.match(result.text, /Do not flatten table cells into prose or guess ambiguous years; leave unresolved bindings as source gaps/);
+  assert.match(result.text, /source_assessment \(version: 1\)/);
+  assert.match(result.text, /outer claim and claim_id retain the original report description and identity/);
+  assert.match(result.text, /basis is original_claim or source_table/);
+  assert.match(result.text, /Missing metadata on older saved rows is unknown/);
+  assert.match(result.text, /changing its predicate requires fresh analysis/);
   assert.match(result.text, /Structural topic headings and connectors between retained literal clauses do not become extra claims; omitted qualifications remain coverage gaps/);
   assert.match(result.text, /Source evidence and successful judgments retain their server-verified identity across response projection and cache replay for the exact claim/);
   assert.match(result.text, /A copied or changed receipt cannot supply that identity/);
