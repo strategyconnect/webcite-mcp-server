@@ -2,6 +2,7 @@
  * Human-readable formatting of WebCite API responses for MCP tool output.
  */
 
+import { citationReaderCoverage, formatPublisherReaderCoverage } from './publisher-reader-coverage.js';
 import type {
   AccuracyReport,
   AnalyzeResult,
@@ -137,6 +138,7 @@ export function formatCitation(citation: Citation, index: number): string {
   const parts: string[] = [];
   parts.push(`${index + 1}. **${citation.title || 'Untitled'}**`);
   parts.push(`   URL: ${citation.url}`);
+  parts.push(`   ${formatPublisherReaderCoverage(citationReaderCoverage([citation], index))}`);
 
   if (citation.stance) {
     const stanceEmoji: Record<string, string> = {
