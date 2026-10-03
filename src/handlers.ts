@@ -1554,7 +1554,7 @@ export const handlers: Record<string, ToolHandler> = {
     });
   },
 
-  get_document_review: async (args, client) => {
+  get_document_review: async (args, client, signal) => {
     const reviewId = requireString(args, 'review_id');
     if (!wakeIdentityComplete(reviewId)) throw new ToolFailure('invalid_argument', 'review_id cannot have surrounding whitespace');
     const offset = args?.offset ?? 0;
@@ -1579,7 +1579,7 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_argument', 'disposition_offset must be >= 0 and disposition_limit must be 1 to 100');
     const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number,
       gapOffset as number, gapLimit as number, rejectedOffset as number, rejectedLimit as number,
-      dispositionOffset as number, dispositionLimit as number));
+      dispositionOffset as number, dispositionLimit as number, signal));
     if (result.review_id !== reviewId || !Array.isArray(result.claims) ||
         !Number.isInteger(result.total_claims) || !Number.isInteger(result.completed_claims) ||
         !Number.isInteger(result.pending_claims) || typeof result.status !== 'string' ||
