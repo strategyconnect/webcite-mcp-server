@@ -83,13 +83,20 @@ test('job polling preserves an account cap and rejects malformed budget metadata
   for (const cap of [0, -1, 1.5, '12', null, true, 2147483648]) {
     await assert.rejects(() => handlers.get_document_review_job({ job_id }, {
       getDocumentReviewJob: async () => ({ job_id, status: 'running', max_account_credits: cap,
-        credit_usage: { credits_used: 0 } }),
+        credit_usage: { credits_used: 0, credits_remaining: null } }),
     }), error => {
       assert.match(error.message, /invalid max_account_credits.*do not resubmit/);
       assert.equal(error.details.job_id, job_id); assert.equal(error.details.status, 'running');
-      assert.deepEqual(error.toPayload().credit_usage, { credits_used: 0 }); return true;
+      assert.deepEqual(error.toPayload().credit_usage, { credits_used: 0, credits_remaining: null }); return true;
     });
   }
+  await assert.rejects(() => handlers.get_document_review_job({ job_id }, {
+    getDocumentReviewJob: async () => ({ job_id, status: 'running', max_account_credits: 0,
+      credit_usage: { credits_used: 0 } }),
+  }), error => {
+    assert.match(error.message, /Incomplete request credit receipt/);
+    assert.equal(error.toPayload().credit_usage, undefined); return true;
+  });
 });
 
 test('public MCP explicitly retries a failed review without changing its input identity', async () => {

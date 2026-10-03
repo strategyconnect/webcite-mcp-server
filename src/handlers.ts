@@ -272,7 +272,7 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
   if (cap !== undefined && (!Number.isSafeInteger(cap) || (cap as number) < 1 || (cap as number) > 2147483647))
     throw new ToolFailure('invalid_api_output', 'Document review job has an invalid max_account_credits. Enforcement is unknown; do not resubmit.', {
       details: { job_id: result.job_id, status: result.status,
-        ...(result.credit_usage ? { credit_usage: result.credit_usage } : {}) },
+        ...(creditUsage(result) ? { credit_usage: result.credit_usage } : {}) },
       actionable: 'Inspect the existing job before further paid work.',
     });
   const progress = result.progress as Record<string, unknown> | undefined;
