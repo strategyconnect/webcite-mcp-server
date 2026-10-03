@@ -78,6 +78,17 @@ test('source tracing uses extraction, source search and preview instead of numer
     /does not search for external source URLs/);
 });
 
+test('document quote guide describes PDF text target boxes and their absence', async () => {
+  const result = await handlers.webcite_guide(
+    { workflow: 'document_quote' },
+    /** @type {any} */ ({}),
+  );
+  assert.match(result.text, /frame \(PDF points, top-left of the displayed page, with its rotation\) only when the page was read and has a text layer/);
+  assert.match(result.text, /busy means retry later/);
+  assert.match(result.text, /one or more \[x0, y0, x1, y1\] per text line/);
+  assert.match(result.text, /boxes_unavailable gives the reason when no match has boxes \(encrypted, unreadable_pdf, too_large, timeout, busy,/);
+});
+
 test('document review guide covers every claim without treating metric extraction as complete', async () => {
   const result = await handlers.webcite_guide(
     { workflow: 'document_review' },
