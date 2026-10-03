@@ -107,6 +107,9 @@ import type {
   EvaluationCompareResponse,
   EvaluationDescribeResponse,
   ExtractedDoc,
+  ExtractDocumentOptions,
+  VisualRendition,
+  ReviewVisualReference,
   ExtractedFigure,
   AssetRefOptions,
   FeedbackVerdict,
@@ -249,6 +252,7 @@ export class WebCiteApiClient {
 
   async recordDocumentReviewNonclaim(reviewId: string, input: {
     asset_id: string; start: number; end: number; source_quote: string; rationale: string;
+    visual_evidence?: ReviewVisualReference;
   }): Promise<Record<string, unknown>> {
     return this.request(`/api/v1/playground/chat/document-reviews/${encodeURIComponent(reviewId)}/nonclaim-dispositions`, {
       method: 'POST', body: JSON.stringify(input),
@@ -422,11 +426,15 @@ export class WebCiteApiClient {
     });
   }
 
-  async extractDocument(options: AssetRefOptions): Promise<ExtractedDoc> {
-    return this.request('/api/v1/extract', {
+  extractDocument(options: ExtractDocumentOptions & { visual_rendition: true }): Promise<VisualRendition>;
+  extractDocument(options: AssetRefOptions & { visual_rendition?: false }): Promise<ExtractedDoc>;
+  extractDocument(options: ExtractDocumentOptions): Promise<ExtractedDoc | VisualRendition>;
+  async extractDocument(options: ExtractDocumentOptions): Promise<ExtractedDoc | VisualRendition> {
+    const { idempotency_key, ...body } = options;
+    return this.request(options.visual_rendition === true ? '/api/v1/extract/visual-rendition' : '/api/v1/extract', {
       method: 'POST',
-      body: JSON.stringify(options),
-    });
+      body: JSON.stringify(body),
+    }, { idempotencyKey: idempotency_key });
   }
 
   async extractFigures(options: AssetRefOptions): Promise<FiguresResponse> {
