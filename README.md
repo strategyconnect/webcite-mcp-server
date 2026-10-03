@@ -628,6 +628,17 @@ The numeric engine's measured accuracy against its gold-set corpus: conflict det
 | `WEBCITE_API_KEY` | Your WebCite API key (required) | - |
 | `WEBCITE_API_URL` | API base URL | `https://api.webcite.co` |
 
+For new agent conversations using MongoDB checkpoints, configure your local SDK or self-hosted MCP server with the durable API base:
+
+```bash
+# WEBCITE_API_KEY must already be configured.
+WEBCITE_API_URL=https://api.webcite.co/durable npx webcite-mcp-server
+```
+
+For development, use `https://devapi.webcite.co/durable`. Keep the same API base, authenticated owner and `thread_id` for every continuation. Existing conversations keep their original base; changing the base does not move their in-memory checkpoints. Saved review and job records are already durable, separately from agent checkpoints.
+
+The public hosted MCP at `https://api.webcite.co/mcp` keeps its existing API base. `/durable` is an API base, not a hosted MCP connection URL. Self-hosted HTTP servers can also set the existing `apiBaseUrl` option when creating `createRemoteMcpApp`.
+
 ## Response Format
 
 All verification results include:
