@@ -155,7 +155,7 @@ test('saved review pages expose completed and pending work without a total claim
   const result = await handlers.get_document_review({ review_id: 'review-1', offset: 0, limit: 50 }, {
     getDocumentReview: async (...args) => { requested = args; return snapshot; },
   });
-  assert.deepEqual(requested, ['review-1', 0, 50, 0, 20, 0, 20, 0, 20]);
+  assert.deepEqual(requested, ['review-1', 0, 50, 0, 20, 0, 20, 0, 20, undefined]);
   assert.equal(result.structuredContent.total_claims, 101);
   assert.equal(result.structuredContent.claims[0].citation_id, 'citation-1');
   assert.deepEqual(result.structuredContent.resume_input, {

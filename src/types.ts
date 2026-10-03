@@ -158,6 +158,7 @@ export interface ListCitationsResponse {
 export interface SSEEvent {
   event: string;
   data: unknown;
+  credit_usage?: CreditUsage;
 }
 
 export interface UploadResponse {
