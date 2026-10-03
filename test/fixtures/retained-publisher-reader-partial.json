@@ -1,0 +1,29 @@
+{
+  "claim": "The source table \"UAE economy\" lists Real GDP Growth, % as 4.3% for 2023.",
+  "result": "verified",
+  "confidence": null,
+  "citation": {
+    "id": "retained-publisher",
+    "title": "centralbank.ae",
+    "url": "https://centralbank.ae/media/3ekdwl2f/qer-sep-2025.pdf",
+    "snippet": "Table 2.1 Real GDP Growth in the UAE (%)\n | 2023\nOverall GDP | 4.3\nHydrocarbon GDP | -3.0\nNon- hydrocarbon GDP | 7.0",
+    "stance": "supports",
+    "stance_confidence": 95,
+    "stance_confidence_basis": "unknown",
+    "evidence": {
+      "version": 1,
+      "state": "matched",
+      "readerCoverage": "partial",
+      "readerLimitations": [
+        "page 1: embedded_raster_unread",
+        "page 5: embedded_raster_unread",
+        "page 12: embedded_raster_unread",
+        "page 16: embedded_raster_unread",
+        "page 18: embedded_raster_unread",
+        "page 21: page_limit",
+        "page 22: page_limit",
+        "page 23: page_limit"
+      ]
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { creditUsage } from './credit-usage.js';
+import { creditUsage, type CreditUsage } from './credit-usage.js';
 /** Consume the backend result and explicit terminal marker. Partial evidence is not a result. */
 import type { SSEEvent, VerifyClaimResponse } from './types.js';
 import { ToolFailure } from './errors.js';
@@ -11,12 +11,17 @@ export async function collectStreamEvents(
   let result: VerifyClaimResponse | undefined;
   let done = false;
   let usage: Record<string, unknown> | undefined;
+  let receipt: CreditUsage | undefined;
+  let streamReceipt: CreditUsage | undefined;
+  let resultReceipt: CreditUsage | undefined;
+  const currentReceipt = () => streamReceipt ?? resultReceipt ?? receipt;
   const incomplete = (reason: string, creditError = false): ToolFailure =>
     new ToolFailure(creditError ? 'credit_exhausted' : 'partial_result', reason, {
       details: {
         partial_events: events,
         ...(result ? { unconfirmed_result: result } : {}),
-        ...(usage ? { stream_usage: usage, ...(creditUsage(usage) ? { credit_usage: creditUsage(usage) } : {}) } : {}),
+        ...(usage ? { stream_usage: usage } : {}),
+        ...(currentReceipt() ? { credit_usage: currentReceipt() } : {}),
       },
       actionable: creditError
         ? 'Stop chargeable calls. Give the user completed results and unchecked items. An account owner can add credits or enable overage where available. Preserve partial events; do not repeat uncertain paid work.'
@@ -25,6 +30,7 @@ export async function collectStreamEvents(
   try {
     for await (const event of stream) {
       events.push(event);
+      if (event.credit_usage !== undefined) receipt = creditUsage(event);
       const envelope = event.data && typeof event.data === 'object'
         ? event.data as Record<string, unknown> : undefined;
       const kind = event.event === 'message' ? envelope?.type : event.event;
@@ -36,8 +42,12 @@ export async function collectStreamEvents(
       }
       if (kind === 'result' || kind === 'complete') {
         result = validateVerification(event.event === 'message' ? envelope?.data : event.data);
+        resultReceipt = creditUsage(result);
       }
-      if (kind === 'usage' && envelope) usage = envelope;
+      if (kind === 'usage' && envelope) {
+        streamReceipt = creditUsage(envelope);
+        usage = envelope;
+      }
       if (kind === 'done') {
         if (!result) throw incomplete('Stream completion arrived before its result');
         done = true;
@@ -47,13 +57,14 @@ export async function collectStreamEvents(
     if (error instanceof ToolFailure && error.code !== 'invalid_api_output') throw error;
     if (error instanceof ToolFailure) {
       throw new ToolFailure(error.code, error.message, {
-        details: { ...error.details, partial_events: events }, actionable: error.actionable,
+        details: { ...error.details, partial_events: events,
+          ...(currentReceipt() ? { credit_usage: currentReceipt() } : {}) }, actionable: error.actionable,
       });
     }
     if (!events.length) throw error;
     throw incomplete(`Verification stream disconnected: ${error instanceof Error ? error.message : 'unknown error'}`);
   }
   if (!result || !done) throw incomplete('Verification stream ended without a result and completion marker');
-  return { result: { ...result, ...(usage ? { stream_usage: usage, ...(creditUsage(usage) ? { credit_usage: creditUsage(usage) } : {}),
+  return { result: { ...result, ...(currentReceipt() ? { credit_usage: currentReceipt() } : {}), ...(usage ? { stream_usage: usage,
     ...(typeof usage.operation_id === 'string' && !result.operation_id ? { operation_id: usage.operation_id } : {}) } : {}) }, events };
 }

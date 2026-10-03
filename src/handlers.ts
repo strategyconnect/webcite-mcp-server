@@ -1,4 +1,5 @@
 import { creditUsage, creditUsageText, reviewUsageText } from './credit-usage.js';
+import { citationReaderCoverage, formatPublisherReaderCoverage } from './publisher-reader-coverage.js';
 import { storedVerification, validateBatch, validateVerification } from './verification-response.js';
 import { validateAnalysisRevision, validateSavedRevision } from './analysis-revision.js';
 /**
@@ -80,6 +81,8 @@ import type {
   ResearchRunPayload,
   FormalRevenueBridgeOptions,
   AssetRefOptions,
+  ExtractedDoc,
+  ReviewVisualReference,
   BatchItem,
   Citation,
   ClaimScope,
@@ -153,7 +156,7 @@ export type ToolSuccess = {
   isError?: boolean;
 };
 
-export type ToolHandler = (args: Args, client: WebCiteApiClient) => Promise<ToolSuccess>;
+export type ToolHandler = (args: Args, client: WebCiteApiClient, signal?: AbortSignal) => Promise<ToolSuccess>;
 
 function ok(text: string, structuredContent?: Record<string, unknown>): ToolSuccess {
   return structuredContent ? { text: text + creditUsageText(structuredContent) + reviewUsageText(structuredContent), structuredContent } : { text };
@@ -191,6 +194,27 @@ function validReviewDisposition(value: unknown): boolean {
     (item.reviewed_at === undefined || typeof item.reviewed_at === 'string');
 }
 
+function validateReviewPageBoundary(
+  result: Record<string, unknown>, offsetKey: string, start: number,
+  rows: number, totalKey: string, cursorKey: string,
+): void {
+  const echoed = result[offsetKey], total = result[totalKey], cursor = result[cursorKey];
+  const known = total !== undefined && total !== null;
+  const end = start + rows;
+  if (!Number.isSafeInteger(end) || (echoed !== undefined && echoed !== null && echoed !== start) ||
+      (known && (!Number.isSafeInteger(total) || (total as number) < 0 ||
+        rows > Math.max(0, (total as number) - start))) ||
+      (cursor !== undefined && cursor !== null &&
+        (!Number.isSafeInteger(cursor) || rows === 0 || cursor !== end ||
+          (known && (cursor as number) >= (total as number)))) ||
+      (known && end < (total as number) && (cursor === undefined || cursor === null))) {
+    throw new ToolFailure('invalid_api_output', `Stored review has an invalid ${cursorKey} page boundary`, {
+      ...(creditUsage(result) ? { details: { credit_usage: creditUsage(result) } } : {}),
+      actionable: 'Inspect the saved page and API response. Do not invent a continuation or repeat a chargeable review.',
+    });
+  }
+}
+
 function requireApiShape(valid: boolean, tool: string): void {
   if (!valid) throw new ToolFailure('invalid_api_output', `${tool} response is incomplete`, {
     actionable: 'Do not infer missing data from this response or repeat a chargeable call. Inspect the saved result and API response.',
@@ -208,6 +232,28 @@ function requireString(args: Args, key: string): string {
   return value;
 }
 
+function compactSourceAssessment(value: unknown) {
+  if (value === undefined || value === null) return {};
+  const item = value as Record<string, unknown>;
+  requireApiShape(typeof value === 'object' && !Array.isArray(value) && item.version === 1 &&
+    typeof item.basis === 'string' && ['original_claim', 'source_table'].includes(item.basis) &&
+    typeof item.claim === 'string' && Boolean(item.claim.trim()) &&
+    typeof item.judgment_claim === 'string' && Boolean(item.judgment_claim.trim()) &&
+    (item.source_asset_id === undefined || (typeof item.source_asset_id === 'string' &&
+      Boolean(item.source_asset_id.trim()) && item.source_asset_id.length <= 1000)) &&
+    (item.source_quote_hash === undefined || (typeof item.source_quote_hash === 'string' &&
+      /^[a-f0-9]{64}$/.test(item.source_quote_hash))), 'Source assessment');
+  const claim = item.claim as string, judgment = item.judgment_claim as string;
+  return { source_assessment_summary: {
+    version: item.version, basis: item.basis, claim: claim.slice(0, 1000),
+    judgment_claim: judgment.slice(0, 1000),
+    ...(claim.length > 1000 ? { claim_truncated: true } : {}),
+    ...(judgment.length > 1000 ? { judgment_claim_truncated: true } : {}),
+    ...(item.source_asset_id !== undefined ? { source_asset_id: item.source_asset_id } : {}),
+    ...(item.source_quote_hash !== undefined ? { source_quote_hash: item.source_quote_hash } : {}),
+  } };
+}
+
 function savedClaimLabel(claim: Record<string, unknown>): string {
   return claim.result_state === 'duplicate' ? `duplicate of claim ${claim.duplicate_of_id} (not separately checked)`
         : claim.result_state === 'non_factual' ? 'non-factual (automatic classification)'
@@ -218,12 +264,19 @@ function savedClaimLabel(claim: Record<string, unknown>): string {
 }
 
 function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
+  const cap = result.max_account_credits;
   const statuses = ['queued', 'running', 'waiting_review', 'waiting_parse', 'complete', 'partial_coverage', 'credits_exhausted', 'failed', 'interrupted'];
   if (typeof result.job_id !== 'string' || !/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(result.job_id) ||
       typeof result.status !== 'string' || !statuses.includes(result.status) ||
       (result.review_id !== undefined && typeof result.review_id !== 'string') ||
       (result.progress !== undefined && (!result.progress || typeof result.progress !== 'object' || Array.isArray(result.progress))))
     throw new ToolFailure('invalid_api_output', 'Document review job response is incomplete');
+  if (cap !== undefined && (!Number.isSafeInteger(cap) || (cap as number) < 1 || (cap as number) > 2147483647))
+    throw new ToolFailure('invalid_api_output', 'Document review job has an invalid max_account_credits. Enforcement is unknown; do not resubmit.', {
+      details: { job_id: result.job_id, status: result.status,
+        ...(creditUsage(result) ? { credit_usage: result.credit_usage } : {}) },
+      actionable: 'Inspect the existing job before further paid work.',
+    });
   const progress = result.progress as Record<string, unknown> | undefined;
   for (const field of ['completed_claims', 'total_claims', 'material_claims', 'duplicate_claims',
     'pending_claims', 'failed_claims', 'rejected_claim_count', 'uncovered_source_span_count']) {
@@ -256,7 +309,7 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
   const retry = typeof result.retry_idempotency_key === 'string'
     ? `After resolving the failure, call review_document with the same inputs, retry_failed: true, and idempotency_key: ${result.retry_idempotency_key}.` : '';
   const output = { ...result, poll_after_ms: pollAfter };
-  return { ...ok(`Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(), output),
+  return { ...ok(`Document review job ${result.job_id}: ${result.status}.${cap !== undefined ? ` Account-credit cap for this execution: ${cap}.` : ''}${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(), output),
     isError: ['failed', 'interrupted', 'credits_exhausted'].includes(result.status), structuredContent: output };
 }
 
@@ -1489,8 +1542,9 @@ export const handlers: Record<string, ToolHandler> = {
     const { reviewId, assetId, start, end } = reviewSpanInput(args);
     const result = await wrapApi(client.getDocumentReviewSourceSpan(reviewId, assetId, start, end));
     if (result.asset_id !== assetId || result.start !== start || result.end !== end ||
-        !['heading', 'table_title', 'navigation'].includes(String(result.role)) || typeof result.block_id !== 'string' ||
-        typeof result.role_basis !== 'string' || typeof result.source_quote !== 'string' ||
+        !['heading', 'table_title', 'navigation', 'unknown'].includes(String(result.role)) ||
+        (result.role !== 'unknown' && (typeof result.block_id !== 'string' || typeof result.role_basis !== 'string')) ||
+        typeof result.source_quote !== 'string' ||
         result.source_quote.length !== end - start || result.source_quote.length > 16_000)
       throw new ToolFailure('invalid_api_output', 'Saved source span lacks exact structural proof');
     return ok(`Exact source passage for review ${reviewId}, asset ${assetId}, offsets ${start}-${end}, role ${result.role}:\n${result.source_quote}\nInspect the entire passage. Structural role does not prove this is nonclaim.`, result);
@@ -1503,12 +1557,26 @@ export const handlers: Record<string, ToolHandler> = {
     if (sourceQuote.length !== end - start || sourceQuote.length > 16_000 ||
         rationale.trim().length < 10 || rationale.length > 1_000)
       throw new ToolFailure('invalid_argument', 'Provide the exact source quote and a 10 to 1000 character rationale');
+    const visual = args?.visual_evidence;
+    if (visual !== undefined && (!visual || typeof visual !== 'object' || Array.isArray(visual) ||
+        Object.keys(visual).some(key => !['representation_id', 'unit_key'].includes(key)) ||
+        typeof (visual as ReviewVisualReference).representation_id !== 'string' ||
+        !(visual as ReviewVisualReference).representation_id || (visual as ReviewVisualReference).representation_id.length > 191 ||
+        (visual as ReviewVisualReference).representation_id !== (visual as ReviewVisualReference).representation_id.trim() ||
+        typeof (visual as ReviewVisualReference).unit_key !== 'string' ||
+        !/^visual-page:\d+:element:\d+$/.test((visual as ReviewVisualReference).unit_key) || (visual as ReviewVisualReference).unit_key.length > 191))
+      throw new ToolFailure('invalid_argument', 'Provide only the exact visual representation_id and unit_key; client roles or geometry cannot supply proof');
     const result = await wrapApi(client.recordDocumentReviewNonclaim(reviewId, {
       asset_id: assetId, start, end, source_quote: sourceQuote, rationale,
+      ...(visual !== undefined ? { visual_evidence: visual as ReviewVisualReference } : {}),
     }));
     if (result.asset_id !== assetId || result.start !== start || result.end !== end ||
         result.source_quote !== sourceQuote || result.rationale !== rationale ||
-        typeof result.reviewer_id !== 'string' || typeof result.reviewed_at !== 'string')
+        typeof result.reviewer_id !== 'string' || typeof result.reviewed_at !== 'string' ||
+        (visual !== undefined && (!result.visual_evidence || typeof result.visual_evidence !== 'object' ||
+          (result.visual_evidence as ReviewVisualReference).representation_id !== (visual as ReviewVisualReference).representation_id ||
+          (result.visual_evidence as ReviewVisualReference).unit_key !== (visual as ReviewVisualReference).unit_key ||
+          (result.visual_evidence as Record<string, unknown>).origin !== 'model_generated_layout')))
       throw new ToolFailure('invalid_api_output', 'Nonclaim disposition response is incomplete');
     return ok(`Recorded explicit nonclaim disposition for review ${reviewId}, asset ${assetId}, offsets ${start}-${end}. Re-read get_document_review for updated coverage.`, result);
   },
@@ -1533,7 +1601,7 @@ export const handlers: Record<string, ToolHandler> = {
     });
   },
 
-  get_document_review: async (args, client) => {
+  get_document_review: async (args, client, signal) => {
     const reviewId = requireString(args, 'review_id');
     if (!wakeIdentityComplete(reviewId)) throw new ToolFailure('invalid_argument', 'review_id cannot have surrounding whitespace');
     const offset = args?.offset ?? 0;
@@ -1544,21 +1612,21 @@ export const handlers: Record<string, ToolHandler> = {
     const rejectedLimit = args?.rejected_limit ?? 20;
     const dispositionOffset = args?.disposition_offset ?? 0;
     const dispositionLimit = args?.disposition_limit ?? 20;
-    if (!Number.isInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 100) {
+    if (!Number.isSafeInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 100) {
       throw new ToolFailure('invalid_argument', 'offset must be >= 0 and page limit must be 1 to 100');
     }
-    if (!Number.isInteger(gapOffset) || (gapOffset as number) < 0 ||
+    if (!Number.isSafeInteger(gapOffset) || (gapOffset as number) < 0 ||
         !Number.isInteger(gapLimit) || (gapLimit as number) < 1 || (gapLimit as number) > 100)
       throw new ToolFailure('invalid_argument', 'gap_offset must be >= 0 and gap_limit must be 1 to 100');
-    if (!Number.isInteger(rejectedOffset) || (rejectedOffset as number) < 0 ||
+    if (!Number.isSafeInteger(rejectedOffset) || (rejectedOffset as number) < 0 ||
         !Number.isInteger(rejectedLimit) || (rejectedLimit as number) < 1 || (rejectedLimit as number) > 100)
       throw new ToolFailure('invalid_argument', 'rejected_offset must be >= 0 and rejected_limit must be 1 to 100');
-    if (!Number.isInteger(dispositionOffset) || (dispositionOffset as number) < 0 ||
+    if (!Number.isSafeInteger(dispositionOffset) || (dispositionOffset as number) < 0 ||
         !Number.isInteger(dispositionLimit) || (dispositionLimit as number) < 1 || (dispositionLimit as number) > 100)
       throw new ToolFailure('invalid_argument', 'disposition_offset must be >= 0 and disposition_limit must be 1 to 100');
     const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number,
       gapOffset as number, gapLimit as number, rejectedOffset as number, rejectedLimit as number,
-      dispositionOffset as number, dispositionLimit as number));
+      dispositionOffset as number, dispositionLimit as number, signal));
     if (result.review_id !== reviewId || !Array.isArray(result.claims) ||
         !Number.isInteger(result.total_claims) || !Number.isInteger(result.completed_claims) ||
         !Number.isInteger(result.pending_claims) || typeof result.status !== 'string' ||
@@ -1611,6 +1679,10 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_api_output', 'Stored review omitted nonclaim dispositions');
     const dispositions = Array.isArray(result.nonclaim_dispositions)
       ? result.nonclaim_dispositions as Array<Record<string, unknown>> : [];
+    validateReviewPageBoundary(result, 'offset', offset as number, claims.length, 'total_claims', 'next_offset');
+    validateReviewPageBoundary(result, 'gap_offset', gapOffset as number, gaps.length, 'uncovered_source_span_count', 'next_gap_offset');
+    validateReviewPageBoundary(result, 'rejected_offset', rejectedOffset as number, rejected.length, 'rejected_claim_count', 'next_rejected_offset');
+    validateReviewPageBoundary(result, 'disposition_offset', dispositionOffset as number, dispositions.length, 'nonclaim_disposition_count', 'next_disposition_offset');
     if (dispositions.some((item) => !validReviewDisposition(item)))
       throw new ToolFailure('invalid_api_output', 'Stored review has an invalid nonclaim disposition');
     if (Number.isInteger(result.nonclaim_disposition_count) &&
@@ -1665,7 +1737,7 @@ export const handlers: Record<string, ToolHandler> = {
           printedLinks.some((url) => typeof url !== 'string' || !url.trim()))) {
         throw new ToolFailure('invalid_api_output', 'Stored document review has invalid printed links');
       }
-      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${claim.analysis_revision ? '\n   Policy revision using retained snippets; original paid result preserved.' : ''}${typeof claim.error === 'string' ? `\n   ${claim.error}` : ''}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}${urls.length ? `\n   Found citations: ${urls.join(', ')}` : ''}${Array.isArray(printedLinks) && printedLinks.length ? `\n   Links printed in document: ${printedLinks.join(', ')}` : ''}`;
+      return `${(offset as number) + index + 1}. [${verdict}] ${claim.claim}${page}${claim.analysis_revision ? '\n   Policy revision using retained snippets; original paid result preserved.' : ''}${typeof claim.error === 'string' ? `\n   ${claim.error}` : ''}${typeof claim.summary === 'string' ? `\n   ${claim.summary}` : ''}\n   ${formatPublisherReaderCoverage(citationReaderCoverage(citations))}${urls.length ? `\n   Found citations: ${urls.join(', ')}` : ''}${Array.isArray(printedLinks) && printedLinks.length ? `\n   Links printed in document: ${printedLinks.join(', ')}` : ''}`;
     });
     const next = Number.isInteger(result.next_offset) ? `\nNext offset: ${result.next_offset}` : '';
     const credits = typeof result.credits_remaining === 'number' ? `\nCredits remaining: ${result.credits_remaining}` : '';
@@ -1676,10 +1748,10 @@ export const handlers: Record<string, ToolHandler> = {
         : '\nAdd credits or enable overage if available, then resume with the exact input below.' : '';
     const extraction = Number.isInteger(result.extraction_cursor) && Number.isInteger(result.chunk_count)
       ? `\nExtraction chunks: ${result.extraction_cursor}/${result.chunk_count}` : '';
-    const coverage = result.coverage_complete === true ? '\nSource coverage: complete.'
+    const coverage = result.coverage_complete === true ? '\nInput source coverage: complete.'
       : result.coverage_complete === false && result.extraction_complete === true
-        ? `\nSource coverage: incomplete; ${result.uncovered_source_span_count ?? 'unknown'} uncovered spans, ${result.ungrounded_claims ?? 'unknown'} ungrounded claims. Checked claim results do not cover these passages.`
-        : '\nSource coverage: not established for this saved review.';
+        ? `\nInput source coverage: incomplete; ${result.uncovered_source_span_count ?? 'unknown'} uncovered spans, ${result.ungrounded_claims ?? 'unknown'} ungrounded claims. Checked claim results do not cover these passages.`
+        : '\nInput source coverage: not established for this saved review.';
     if (result.non_factual_claims !== undefined &&
         (!Number.isInteger(result.non_factual_claims) || (result.non_factual_claims as number) < 0 ||
          (result.non_factual_claims as number) > (result.total_claims as number)))
@@ -1706,9 +1778,13 @@ export const handlers: Record<string, ToolHandler> = {
         gap_offset: ends[1], gap_limit: gapLimit, rejected_offset: ends[2], rejected_limit: rejectedLimit,
         disposition_offset: ends[3], disposition_limit: dispositionLimit };
     };
+    const knownPageTotals = ['total_claims', 'uncovered_source_span_count', 'rejected_claim_count', 'nonclaim_disposition_count']
+      .every(key => Number.isSafeInteger(result[key]));
+    const terminalReview = ['complete', 'failed', 'credits_exhausted', 'interrupted'].includes(result.status as string);
     const continuationText = (input: ReturnType<typeof nextPageInput>) => input
       ? `\nNext page input (copy exactly, including exhausted streams): ${JSON.stringify(input)}`
-      : '\nAll four result streams are exhausted.';
+      : knownPageTotals && terminalReview ? '\nAll four result streams are exhausted.'
+        : '\nNo further page cursor was returned. Pending or unknown stream totals do not establish exhaustion or complete coverage.';
     const fullContinuation = nextPageInput([claims.length, gaps.length, rejected.length, dispositions.length],
       [result.next_offset, result.next_gap_offset, result.next_rejected_offset, result.next_disposition_offset]);
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
@@ -1719,6 +1795,7 @@ export const handlers: Record<string, ToolHandler> = {
       id: claim.id, claim: String(claim.claim).slice(0, 500),
       ...(String(claim.claim).length > 500 ? { claim_truncated: true } : {}),
       result: claim.result, result_state: claim.result_state, citation_id: claim.citation_id,
+      ...compactSourceAssessment(claim.source_assessment),
       summary: typeof claim.summary === 'string' ? claim.summary.slice(0, 1000) : null,
       ...(typeof claim.summary === 'string' && claim.summary.length > 1000 ? { summary_truncated: true } : {}),
       classification_origin: claim.classification_origin, classification_reason: claim.classification_reason,
@@ -1727,6 +1804,7 @@ export const handlers: Record<string, ToolHandler> = {
       duplicate_reason: claim.duplicate_reason,
       source_recovery: claim.source_recovery,
       page_number: claim.page_number, error_code: claim.error_code,
+      citation_reader_coverage: citationReaderCoverage(Array.isArray(claim.citations) ? claim.citations : claim.top_citations),
       original_result_hash: claim.original_result_hash,
       ...(claim.analysis_revision ? { analysis_revision_summary: {
         id: (claim.analysis_revision as Record<string, unknown>).id,
@@ -1761,7 +1839,7 @@ export const handlers: Record<string, ToolHandler> = {
       const compactNextClaim = nextPage < (offset as number) + claims.length ? nextPage : result.next_offset;
       const compactContinuation = nextPageInput([shown.length, shownGaps.length, shownRejected.length, shownDispositions.length],
         [compactNextClaim, compactNextGap, compactNextRejected, compactNextDisposition]);
-      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending (includes failed): ${result.pending_claims}${failedCount}${nonFactualCount}${materialCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Saved verdict summaries are included where available. Detailed evidence is omitted from this compact view, not necessarily absent from storage. A null summary means unavailable on this saved row, not absent evidence. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.summary !== null ? `\n   Saved summary: ${claim.summary}${claim.summary_truncated ? ' [summary truncated; full text remains saved]' : ''}` : '\n   Saved summary: unavailable on this row'}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${continuationText(compactContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
+      const compact = ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending (includes failed): ${result.pending_claims}${failedCount}${nonFactualCount}${materialCount}${duplicateCount}${credits}${needed}${extraction}${coverage}${creditAction}${rejectedCount}\nThis page exceeds the tool response limit. Showing ${shown.length} of ${claims.length} requested claims with source URLs and citation IDs. Saved verdict summaries are included where available. Detailed evidence is omitted from this compact view, not necessarily absent from storage. Optional source_assessment_summary retains the assessed assertion separately from the original report description. Truncation flags identify shortened text; a summary is not the exact saved judgment identity. Full source_assessment remains saved. A null summary means unavailable on this saved row, not absent evidence. Full saved evidence remains in Webcite.\n${gapRows.slice(0, sideLimit).join('\n')}${compactGapHint}\n${compactRejectedRows.join('\n')}${compactRejectedHint}\n${dispositionRows.slice(0, sideLimit).join('\n')}${compactDispositionHint}\n${shown.map((claim, index) => `${(offset as number) + index + 1}. [${savedClaimLabel(claim)}] ${claim.claim}${claim.claim_truncated ? ' [claim text truncated; full assertion remains saved]' : ''}${claim.summary !== null ? `\n   Saved summary: ${claim.summary}${claim.summary_truncated ? ' [summary truncated; full text remains saved]' : ''}` : '\n   Saved summary: unavailable on this row'}${claim.source_assessment_summary ? `\n   Assessed assertion: ${claim.source_assessment_summary.claim}${claim.source_assessment_summary.claim_truncated ? ' [assessed assertion truncated; full identity remains saved]' : ''}` : ''}${claim.error_code ? `\n   Error: ${claim.error_code}${claim.error ? `: ${claim.error}` : ''}` : ''}\n   ${formatPublisherReaderCoverage(claim.citation_reader_coverage)}\n   Citation ID: ${claim.citation_id ?? 'none'}\n   Found citations: ${claim.citation_urls.join(', ') || 'none'}`).join('\n')}\n${nextPage < (offset as number) + claims.length ? `Next offset: ${nextPage} (limit: ${shown.length})` : next}${continuationText(compactContinuation)}${linkGuidance}\n${resumeLabel}: ${JSON.stringify(resumeInput)}`, {
         review_id: reviewId, status: result.status, total_claims: result.total_claims,
         completed_claims: result.completed_claims, pending_claims: result.pending_claims,
         non_factual_claims: result.non_factual_claims,
@@ -1832,6 +1910,10 @@ export const handlers: Record<string, ToolHandler> = {
   review_document: async (args, client) => {
     const prompt = requireString(args, 'prompt');
     const threadId = requireString(args, 'thread_id');
+    const maxCredits = args?.max_account_credits;
+    if (maxCredits !== undefined && (!Number.isSafeInteger(maxCredits) ||
+        (maxCredits as number) < 1 || (maxCredits as number) > 2147483647))
+      throw new ToolFailure('invalid_argument', 'max_account_credits must be an integer from 1 to 2147483647');
     const assetIds = args?.asset_ids;
     const sourceUrls = args?.source_urls;
     const filters = args?.filters;
@@ -1859,8 +1941,16 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_argument', 'idempotency_key must be a non-empty string of at most 128 characters');
     const key = (suppliedKey as string | undefined) ?? createHash('sha256').update(JSON.stringify(options)).digest('hex');
     const request = { ...options,
+      ...(maxCredits !== undefined ? { max_account_credits: maxCredits as number } : {}),
       ...(args?.retry_failed !== undefined ? { retry_failed: args.retry_failed as boolean } : {}) };
-    return documentReviewJobOutput(await wrapApi(client.startDocumentReviewJob(request, key)));
+    const result = await wrapApi(client.startDocumentReviewJob(request, key));
+    const output = documentReviewJobOutput(result);
+    if (maxCredits !== undefined && result.max_account_credits !== maxCredits)
+      throw new ToolFailure('invalid_api_output', 'Review response did not confirm max_account_credits. Enforcement is unknown; do not resubmit. Inspect the existing job before further paid work.', {
+        details: { job_id: result.job_id, status: result.status, requested_max_account_credits: maxCredits,
+          ...(result.credit_usage ? { credit_usage: result.credit_usage } : {}) },
+      });
+    return output;
   },
 
   verify_claim: async (args, client) => {
@@ -1869,10 +1959,10 @@ export const handlers: Record<string, ToolHandler> = {
     return ok(formatVerifyResult(options.claim, result), { ...result });
   },
 
-  verify_claim_stream: async (args, client) => {
+  verify_claim_stream: async (args, client, signal) => {
     const options = verifyOptions(args);
     try {
-      const { result, events } = await collectStreamEvents(client.verifyClaimStream(options));
+      const { result, events } = await collectStreamEvents(client.verifyClaimStream(options, signal));
       return ok(formatVerifyResult(options.claim, result), { ...result, stream_events: events });
     } catch (error) {
       if (error instanceof ApiClientError) throw error.toToolFailure();
@@ -2107,10 +2197,38 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   extract_document: async (args, client) => {
-    const result = await wrapApi(client.extractDocument(assetRef(args)));
+    const ref = assetRef(args);
+    const visual = args?.visual_rendition;
+    const version = args?.source_version_id, key = args?.idempotency_key;
+    if ((visual !== undefined && typeof visual !== 'boolean') ||
+        (visual !== true && (version !== undefined || key !== undefined)) ||
+        (visual === true && (!ref.asset_id || ref.asset_url || typeof version !== 'string' ||
+          !version || version !== version.trim() || version.length > 191 || typeof key !== 'string' || !/^[\x21-\x7E]{1,128}$/.test(key))))
+      throw new ToolFailure('invalid_argument', 'Visual rendition requires owned asset_id, exact source_version_id and explicit idempotency_key; URLs are unsupported');
+    const result = await wrapApi(client.extractDocument({ ...ref,
+      ...(visual === true ? { visual_rendition: true, source_version_id: version as string, idempotency_key: key as string } : {}),
+    }));
+    if (visual === true) {
+      if (!result || typeof result !== 'object' || Array.isArray(result) || result.format !== 'image' || typeof result.markdown !== 'string' || result.state !== 'partial' || result.complete !== false ||
+          !('source_version_id' in result) || result.source_version_id !== version || typeof result.representation_id !== 'string' ||
+          !result.representation_id || result.representation_id !== result.representation_id.trim() || result.representation_id.length > 191 ||
+          result.source_read_status !== 'partial' || result.visual_provenance?.origin !== 'model_generated' ||
+          !/^[a-f0-9]{64}$/.test(result.visual_provenance.source_bytes_hash) || result.provider_usage_status !== 'inspect_operation_receipts' ||
+          !Array.isArray(result.source_units) || !result.source_units.length || result.source_units.length > 2000 ||
+          result.source_units.some(unit => !unit || typeof unit.sourceUnitId !== 'string' || !unit.sourceUnitId ||
+            unit.sourceUnitId !== unit.sourceUnitId.trim() || unit.sourceUnitId.length > 191 || !unit.locator ||
+            unit.locator.kind !== 'page' || !Number.isSafeInteger(unit.locator.page) || (unit.locator.page as number) < 1 ||
+            !['partial', 'unreadable', 'error'].includes(unit.state)) ||
+          new Set(result.source_units.map(unit => unit.sourceUnitId)).size !== result.source_units.length)
+        throw new ToolFailure('invalid_api_output', 'Visual rendition lacks exact partial source identity', {
+          details: { ...(creditUsage(result) ? { credit_usage: creditUsage(result) } : {}) },
+          actionable: 'Preserve the operation receipt and inspect the API response. Do not repeat this chargeable call with a new key.',
+        });
+      return extractionResult(`Partial model-generated visual rendition ${result.representation_id}. Original source selection is unchanged; layout is not certification.\n${result.markdown}`, { ...result });
+    }
     requireApiShape(typeof result?.format === 'string' && typeof result?.markdown === 'string' &&
-      Array.isArray(result?.units), 'extract_document');
-    return extractionResult(formatExtractedDoc(result), { ...result });
+      'units' in result && Array.isArray(result.units), 'extract_document');
+    return extractionResult(formatExtractedDoc(result as ExtractedDoc), { ...result });
   },
 
   ask_document: async (args, client) => {

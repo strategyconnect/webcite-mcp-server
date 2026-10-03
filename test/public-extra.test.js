@@ -82,8 +82,9 @@ test('review source span and explicit nonclaim tools bind exact coordinates befo
     assert.equal(heading.structuredContent.role, 'heading');
     global.fetch = async () => Response.json({ asset_id: asset, start: 0, end: 8,
       source_quote: 'Overview', role: 'unknown', block_id: 'heading-1', role_basis: 'unknown' });
-    await assert.rejects(() => handlers.get_review_source_span({ review_id: 'review-1', asset_id: asset,
-      start: 0, end: 8 }, client), /structural proof/);
+    const unknown = await handlers.get_review_source_span({ review_id: 'review-1', asset_id: asset,
+      start: 0, end: 8 }, client);
+    assert.equal(unknown.structuredContent.role, 'unknown');
     await assert.rejects(() => handlers.record_review_nonclaim({ review_id: 'review-1', asset_id: asset,
       start: 0, end: 8, source_quote: 'Rewritten', rationale: 'A table of contents label' }, client),
     /exact source quote/);
