@@ -191,6 +191,27 @@ function validReviewDisposition(value: unknown): boolean {
     (item.reviewed_at === undefined || typeof item.reviewed_at === 'string');
 }
 
+function validateReviewPageBoundary(
+  result: Record<string, unknown>, offsetKey: string, start: number,
+  rows: number, totalKey: string, cursorKey: string,
+): void {
+  const echoed = result[offsetKey], total = result[totalKey], cursor = result[cursorKey];
+  const known = total !== undefined && total !== null;
+  const end = start + rows;
+  if (!Number.isSafeInteger(end) || (echoed !== undefined && echoed !== null && echoed !== start) ||
+      (known && (!Number.isSafeInteger(total) || (total as number) < 0 ||
+        rows > Math.max(0, (total as number) - start))) ||
+      (cursor !== undefined && cursor !== null &&
+        (!Number.isSafeInteger(cursor) || rows === 0 || cursor !== end ||
+          (known && (cursor as number) >= (total as number)))) ||
+      (known && end < (total as number) && (cursor === undefined || cursor === null))) {
+    throw new ToolFailure('invalid_api_output', `Stored review has an invalid ${cursorKey} page boundary`, {
+      ...(creditUsage(result) ? { details: { credit_usage: creditUsage(result) } } : {}),
+      actionable: 'Inspect the saved page and API response. Do not invent a continuation or repeat a chargeable review.',
+    });
+  }
+}
+
 function requireApiShape(valid: boolean, tool: string): void {
   if (!valid) throw new ToolFailure('invalid_api_output', `${tool} response is incomplete`, {
     actionable: 'Do not infer missing data from this response or repeat a chargeable call. Inspect the saved result and API response.',
@@ -1544,16 +1565,16 @@ export const handlers: Record<string, ToolHandler> = {
     const rejectedLimit = args?.rejected_limit ?? 20;
     const dispositionOffset = args?.disposition_offset ?? 0;
     const dispositionLimit = args?.disposition_limit ?? 20;
-    if (!Number.isInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 100) {
+    if (!Number.isSafeInteger(offset) || (offset as number) < 0 || !Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 100) {
       throw new ToolFailure('invalid_argument', 'offset must be >= 0 and page limit must be 1 to 100');
     }
-    if (!Number.isInteger(gapOffset) || (gapOffset as number) < 0 ||
+    if (!Number.isSafeInteger(gapOffset) || (gapOffset as number) < 0 ||
         !Number.isInteger(gapLimit) || (gapLimit as number) < 1 || (gapLimit as number) > 100)
       throw new ToolFailure('invalid_argument', 'gap_offset must be >= 0 and gap_limit must be 1 to 100');
-    if (!Number.isInteger(rejectedOffset) || (rejectedOffset as number) < 0 ||
+    if (!Number.isSafeInteger(rejectedOffset) || (rejectedOffset as number) < 0 ||
         !Number.isInteger(rejectedLimit) || (rejectedLimit as number) < 1 || (rejectedLimit as number) > 100)
       throw new ToolFailure('invalid_argument', 'rejected_offset must be >= 0 and rejected_limit must be 1 to 100');
-    if (!Number.isInteger(dispositionOffset) || (dispositionOffset as number) < 0 ||
+    if (!Number.isSafeInteger(dispositionOffset) || (dispositionOffset as number) < 0 ||
         !Number.isInteger(dispositionLimit) || (dispositionLimit as number) < 1 || (dispositionLimit as number) > 100)
       throw new ToolFailure('invalid_argument', 'disposition_offset must be >= 0 and disposition_limit must be 1 to 100');
     const result = await wrapApi(client.getDocumentReview(reviewId, offset as number, limit as number,
@@ -1611,6 +1632,10 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_api_output', 'Stored review omitted nonclaim dispositions');
     const dispositions = Array.isArray(result.nonclaim_dispositions)
       ? result.nonclaim_dispositions as Array<Record<string, unknown>> : [];
+    validateReviewPageBoundary(result, 'offset', offset as number, claims.length, 'total_claims', 'next_offset');
+    validateReviewPageBoundary(result, 'gap_offset', gapOffset as number, gaps.length, 'uncovered_source_span_count', 'next_gap_offset');
+    validateReviewPageBoundary(result, 'rejected_offset', rejectedOffset as number, rejected.length, 'rejected_claim_count', 'next_rejected_offset');
+    validateReviewPageBoundary(result, 'disposition_offset', dispositionOffset as number, dispositions.length, 'nonclaim_disposition_count', 'next_disposition_offset');
     if (dispositions.some((item) => !validReviewDisposition(item)))
       throw new ToolFailure('invalid_api_output', 'Stored review has an invalid nonclaim disposition');
     if (Number.isInteger(result.nonclaim_disposition_count) &&
@@ -1706,9 +1731,13 @@ export const handlers: Record<string, ToolHandler> = {
         gap_offset: ends[1], gap_limit: gapLimit, rejected_offset: ends[2], rejected_limit: rejectedLimit,
         disposition_offset: ends[3], disposition_limit: dispositionLimit };
     };
+    const knownPageTotals = ['total_claims', 'uncovered_source_span_count', 'rejected_claim_count', 'nonclaim_disposition_count']
+      .every(key => Number.isSafeInteger(result[key]));
+    const terminalReview = ['complete', 'failed', 'credits_exhausted', 'interrupted'].includes(result.status as string);
     const continuationText = (input: ReturnType<typeof nextPageInput>) => input
       ? `\nNext page input (copy exactly, including exhausted streams): ${JSON.stringify(input)}`
-      : '\nAll four result streams are exhausted.';
+      : knownPageTotals && terminalReview ? '\nAll four result streams are exhausted.'
+        : '\nNo further page cursor was returned. Pending or unknown stream totals do not establish exhaustion or complete coverage.';
     const fullContinuation = nextPageInput([claims.length, gaps.length, rejected.length, dispositions.length],
       [result.next_offset, result.next_gap_offset, result.next_rejected_offset, result.next_disposition_offset]);
     const resumeLabel = focusedScope ? 'API resume input' : 'Resume input';
