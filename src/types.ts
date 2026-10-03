@@ -722,6 +722,12 @@ export interface FindContradictionsOptions {
     interval: { from: string | null; to: string | null };
     /** Null/blank/surrounding-padded on conflicting/unknown pairs → missing_decimal_value (#289). */
     decimal_value: string | null;
+    /**
+     * flow = total over the interval; stock = level at a date; omitted/null =
+     * unknown (nested/overlapping periods → insufficient_comparison_context).
+     * A stated flow and a stated stock are distinct, never compared.
+     */
+    period_kind?: 'flow' | 'stock' | 'unknown' | null;
   }>;
   /**
    * Optional. When string: non-blank unpadded; blank/padded →
@@ -733,8 +739,8 @@ export interface FindContradictionsOptions {
 export interface FindContradictionsResponse {
   count: number;
   pairs: Array<{
-    left: { interval: unknown; decimal_value: string | null };
-    right: { interval: unknown; decimal_value: string | null };
+    left: { interval: unknown; decimal_value: string | null; period_kind?: 'flow' | 'stock' };
+    right: { interval: unknown; decimal_value: string | null; period_kind?: 'flow' | 'stock' };
   }>;
   /** complete = certified scan; unknown must not be accepted as all-clear. */
   coverage: 'complete' | 'unknown';
