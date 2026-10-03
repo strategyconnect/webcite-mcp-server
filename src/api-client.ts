@@ -167,7 +167,21 @@ export class WebCiteApiClient {
       throw await this.responseError(response);
     }
 
-    return withCreditHeaders(await response.json() as T, response.headers);
+    return this.responseJson<T>(response, options.signal);
+  }
+
+  private responseFailure(response: Response, message: string): ApiClientError {
+    return new ApiClientError(response.status, message,
+      creditUsage(withCreditHeaders({}, response.headers)));
+  }
+
+  private async responseJson<T>(response: Response, signal?: AbortSignal | null): Promise<T> {
+    let body: T;
+    try { body = await response.json() as T; } catch (error) {
+      if (signal?.aborted || !(error instanceof SyntaxError)) throw error;
+      throw this.responseFailure(response, 'API response did not contain valid JSON');
+    }
+    return withCreditHeaders(body, response.headers);
   }
 
   private async responseError(response: Response): Promise<ApiClientError> {
@@ -274,9 +288,10 @@ export class WebCiteApiClient {
     }
 
     if (!response.body) {
-      throw new Error('No response body received from streaming endpoint');
+      throw this.responseFailure(response, 'No response body received from streaming endpoint');
     }
 
+    const receipt = creditUsage(withCreditHeaders({}, response.headers));
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -285,6 +300,7 @@ export class WebCiteApiClient {
     let currentData: string[] = [];
     let completed = false;
     let failed = false;
+    let emitted = false;
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -300,13 +316,15 @@ export class WebCiteApiClient {
             const raw = currentData.join('\n');
             let data: unknown;
             try { data = JSON.parse(raw); } catch { data = raw; }
-            yield { event: currentEvent, data };
+            emitted = true;
+            yield { event: currentEvent, data, ...(receipt ? { credit_usage: receipt } : {}) };
             currentEvent = 'message';
             currentData = [];
           }
         }
       }
       // An unterminated event is incomplete, including an unterminated done marker.
+      if (!emitted) throw this.responseFailure(response, 'Streaming response contained no complete events');
 
     } catch (error) {
       failed = true;
@@ -494,7 +512,7 @@ export class WebCiteApiClient {
       throw await this.responseError(response);
     }
 
-    return withCreditHeaders(await response.json(), response.headers);
+    return this.responseJson(response);
   }
 
   async uploadBytes(fileBuffer: Uint8Array, fileName: string): Promise<UploadResponse> {
