@@ -41,6 +41,7 @@ export interface ReviewDocumentOptions {
   include_stance?: boolean;
   include_verdict?: boolean;
   retry_failed?: boolean;
+  max_account_credits?: number;
 }
 
 export interface ListCitationsOptions {

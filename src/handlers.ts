@@ -239,6 +239,9 @@ function savedClaimLabel(claim: Record<string, unknown>): string {
 }
 
 function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
+  const cap = result.max_account_credits;
+  if (cap !== undefined && (!Number.isSafeInteger(cap) || (cap as number) < 1 || (cap as number) > 2147483647))
+    throw new ToolFailure('invalid_api_output', 'Document review job has an invalid max_account_credits');
   const statuses = ['queued', 'running', 'waiting_review', 'waiting_parse', 'complete', 'partial_coverage', 'credits_exhausted', 'failed', 'interrupted'];
   if (typeof result.job_id !== 'string' || !/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(result.job_id) ||
       typeof result.status !== 'string' || !statuses.includes(result.status) ||
@@ -277,7 +280,7 @@ function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
   const retry = typeof result.retry_idempotency_key === 'string'
     ? `After resolving the failure, call review_document with the same inputs, retry_failed: true, and idempotency_key: ${result.retry_idempotency_key}.` : '';
   const output = { ...result, poll_after_ms: pollAfter };
-  return { ...ok(`Document review job ${result.job_id}: ${result.status}.${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(), output),
+  return { ...ok(`Document review job ${result.job_id}: ${result.status}.${cap !== undefined ? ` Account-credit cap for this execution: ${cap}.` : ''}${counts}${gaps}${error} ${next} ${wait} ${retry}`.trim(), output),
     isError: ['failed', 'interrupted', 'credits_exhausted'].includes(result.status), structuredContent: output };
 }
 
@@ -1861,6 +1864,10 @@ export const handlers: Record<string, ToolHandler> = {
   review_document: async (args, client) => {
     const prompt = requireString(args, 'prompt');
     const threadId = requireString(args, 'thread_id');
+    const maxCredits = args?.max_account_credits;
+    if (maxCredits !== undefined && (!Number.isSafeInteger(maxCredits) ||
+        (maxCredits as number) < 1 || (maxCredits as number) > 2147483647))
+      throw new ToolFailure('invalid_argument', 'max_account_credits must be an integer from 1 to 2147483647');
     const assetIds = args?.asset_ids;
     const sourceUrls = args?.source_urls;
     const filters = args?.filters;
@@ -1888,8 +1895,16 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_argument', 'idempotency_key must be a non-empty string of at most 128 characters');
     const key = (suppliedKey as string | undefined) ?? createHash('sha256').update(JSON.stringify(options)).digest('hex');
     const request = { ...options,
+      ...(maxCredits !== undefined ? { max_account_credits: maxCredits as number } : {}),
       ...(args?.retry_failed !== undefined ? { retry_failed: args.retry_failed as boolean } : {}) };
-    return documentReviewJobOutput(await wrapApi(client.startDocumentReviewJob(request, key)));
+    const result = await wrapApi(client.startDocumentReviewJob(request, key));
+    const output = documentReviewJobOutput(result);
+    if (maxCredits !== undefined && result.max_account_credits !== maxCredits)
+      throw new ToolFailure('invalid_api_output', 'Review response did not confirm max_account_credits. Enforcement is unknown; do not resubmit. Inspect the existing job before further paid work.', {
+        details: { job_id: result.job_id, status: result.status, requested_max_account_credits: maxCredits,
+          ...(result.credit_usage ? { credit_usage: result.credit_usage } : {}) },
+      });
+    return output;
   },
 
   verify_claim: async (args, client) => {
