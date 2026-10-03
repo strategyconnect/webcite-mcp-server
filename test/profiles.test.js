@@ -103,7 +103,12 @@ test('document review guide covers every claim without treating metric extractio
   assert.match(result.text, /PDF coordinates preserve table year\/value bindings/);
   assert.match(result.text, /PPTX native rendering retains the slide inventory, including unreadable slides/);
   assert.match(result.text, /Native-only source reads do not establish complete raster coverage/);
-  assert.match(result.text, /OCR output is not certification and does not provide bounding boxes/);
+  const ordinaryOcr = /Ordinary text OCR does not provide bounding boxes or certification/;
+  const visualEvidence = /separate model-generated partial representation[\s\S]*server rechecks source bytes, literal offsets and geometry/;
+  assert.match(result.text, ordinaryOcr);
+  assert.match(result.text, visualEvidence);
+  assert.throws(() => assert.match(result.text.replace(ordinaryOcr, ''), ordinaryOcr));
+  assert.throws(() => assert.match(result.text.replace('server rechecks source bytes, literal offsets and geometry', ''), visualEvidence));
   assert.match(result.text, /partial, unreadable and error states and their OCR method across PDF and PowerPoint/);
   assert.match(result.text, /mixed full-scope review includes narrative assertions and scope qualifications as well as numbers/);
   assert.match(result.text, /Bind HTML table numbers to exact original cells and headers, including uniquely matched footer years/);
