@@ -503,10 +503,16 @@ Only the text display is truncated. Some Claude connectors omit structuredConten
 
 After extraction, use review_document for a whole-document or whole-slide external fact-check; poll get_document_review_job, then read saved results and gaps with get_document_review. Do not verify each extracted figure separately with verify_claim.
 
+Optional visual_rendition: true creates model-generated layout evidence for an owned JPEG/PNG and exact source_version_id. Supply an explicit idempotency_key and preserve it on uncertain recovery. Returns a partial representation and source_units IDs for read_source_unit without replacing the selected source. The dedicated visual endpoint refuses on an unsupported server; never fall back to ordinary extraction. Default extraction is unchanged. Inspect operation receipts for provider usage; a layout role is not certification.
+
 Credits: 1`,
     inputSchema: {
       type: 'object' as const,
-      properties: { ...assetRefProperties },
+      properties: { ...assetRefProperties,
+        visual_rendition: { type: 'boolean', description: 'Explicit JPEG/PNG layout evidence; requires owned asset_id, source_version_id and idempotency_key.' },
+        source_version_id: { type: 'string', minLength: 1, maxLength: 191, description: 'Exact immutable owned source version, only with visual_rendition:true.' },
+        idempotency_key: { type: 'string', pattern: '^[!-~]{1,128}$', description: 'Explicit operation identity for visual rendition. Preserve this key; never automatically redispatch under a new key.' },
+      },
     },
   },
   {
@@ -576,7 +582,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_review_source_span',
-    description: 'Read the exact text of one saved uncovered source passage for review. Only works for an owned completed v6 review and a source-attested heading, table title or navigation gap within the attestation size limit. Costs 0 credits.',
+    description: 'Read the exact text of one owned saved uncovered source passage for review, including an inactive failed residual review. A role may be unknown; this read does not establish structural or nonclaim proof. Exact source and saved gap binding are required within the attestation size limit. Costs 0 credits.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 }, asset_id: { type: 'string', format: 'uuid' },
       start: { type: 'integer', minimum: 0 }, end: { type: 'integer', minimum: 1 },
@@ -592,12 +598,16 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'record_review_nonclaim',
-    description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. Inspect its full text first with get_review_source_span; a structural role alone never proves nonclaim. Leave assertion-bearing passages uncovered. Records rationale and authenticated reviewer identity. Costs 0 credits.',
+    description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. Inspect its full text first with get_review_source_span; a structural role alone never proves nonclaim. Optional visual_evidence references stored model layout for the same immutable source; the server rechecks literal offsets and geometry. An isolated page footer can qualify, factual/numeric headings cannot. Agent actions are not analyst approval. Failed residual-only reviews may reconcile retained complete extraction responses without new generation; missing evidence refuses. Leave assertion-bearing passages uncovered and source partial. Records rationale and authenticated reviewer identity. Costs 0 credits.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 }, asset_id: { type: 'string', format: 'uuid' },
       start: { type: 'integer', minimum: 0 }, end: { type: 'integer', minimum: 1 },
       source_quote: { type: 'string', minLength: 1, maxLength: 16000 },
       rationale: { type: 'string', minLength: 10, maxLength: 1000 },
+      visual_evidence: { type: 'object', additionalProperties: false, properties: {
+        representation_id: { type: 'string', minLength: 1, maxLength: 191 },
+        unit_key: { type: 'string', maxLength: 191, pattern: '^visual-page:[0-9]+:element:[0-9]+$' },
+      }, required: ['representation_id', 'unit_key'] },
     }, required: ['review_id', 'asset_id', 'start', 'end', 'source_quote', 'rationale'] },
   },
   {

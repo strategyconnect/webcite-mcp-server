@@ -80,6 +80,8 @@ import type {
   ResearchRunPayload,
   FormalRevenueBridgeOptions,
   AssetRefOptions,
+  ExtractedDoc,
+  ReviewVisualReference,
   BatchItem,
   Citation,
   ClaimScope,
@@ -1517,8 +1519,9 @@ export const handlers: Record<string, ToolHandler> = {
     const { reviewId, assetId, start, end } = reviewSpanInput(args);
     const result = await wrapApi(client.getDocumentReviewSourceSpan(reviewId, assetId, start, end));
     if (result.asset_id !== assetId || result.start !== start || result.end !== end ||
-        !['heading', 'table_title', 'navigation'].includes(String(result.role)) || typeof result.block_id !== 'string' ||
-        typeof result.role_basis !== 'string' || typeof result.source_quote !== 'string' ||
+        !['heading', 'table_title', 'navigation', 'unknown'].includes(String(result.role)) ||
+        (result.role !== 'unknown' && (typeof result.block_id !== 'string' || typeof result.role_basis !== 'string')) ||
+        typeof result.source_quote !== 'string' ||
         result.source_quote.length !== end - start || result.source_quote.length > 16_000)
       throw new ToolFailure('invalid_api_output', 'Saved source span lacks exact structural proof');
     return ok(`Exact source passage for review ${reviewId}, asset ${assetId}, offsets ${start}-${end}, role ${result.role}:\n${result.source_quote}\nInspect the entire passage. Structural role does not prove this is nonclaim.`, result);
@@ -1531,12 +1534,26 @@ export const handlers: Record<string, ToolHandler> = {
     if (sourceQuote.length !== end - start || sourceQuote.length > 16_000 ||
         rationale.trim().length < 10 || rationale.length > 1_000)
       throw new ToolFailure('invalid_argument', 'Provide the exact source quote and a 10 to 1000 character rationale');
+    const visual = args?.visual_evidence;
+    if (visual !== undefined && (!visual || typeof visual !== 'object' || Array.isArray(visual) ||
+        Object.keys(visual).some(key => !['representation_id', 'unit_key'].includes(key)) ||
+        typeof (visual as ReviewVisualReference).representation_id !== 'string' ||
+        !(visual as ReviewVisualReference).representation_id || (visual as ReviewVisualReference).representation_id.length > 191 ||
+        (visual as ReviewVisualReference).representation_id !== (visual as ReviewVisualReference).representation_id.trim() ||
+        typeof (visual as ReviewVisualReference).unit_key !== 'string' ||
+        !/^visual-page:\d+:element:\d+$/.test((visual as ReviewVisualReference).unit_key) || (visual as ReviewVisualReference).unit_key.length > 191))
+      throw new ToolFailure('invalid_argument', 'Provide only the exact visual representation_id and unit_key; client roles or geometry cannot supply proof');
     const result = await wrapApi(client.recordDocumentReviewNonclaim(reviewId, {
       asset_id: assetId, start, end, source_quote: sourceQuote, rationale,
+      ...(visual !== undefined ? { visual_evidence: visual as ReviewVisualReference } : {}),
     }));
     if (result.asset_id !== assetId || result.start !== start || result.end !== end ||
         result.source_quote !== sourceQuote || result.rationale !== rationale ||
-        typeof result.reviewer_id !== 'string' || typeof result.reviewed_at !== 'string')
+        typeof result.reviewer_id !== 'string' || typeof result.reviewed_at !== 'string' ||
+        (visual !== undefined && (!result.visual_evidence || typeof result.visual_evidence !== 'object' ||
+          (result.visual_evidence as ReviewVisualReference).representation_id !== (visual as ReviewVisualReference).representation_id ||
+          (result.visual_evidence as ReviewVisualReference).unit_key !== (visual as ReviewVisualReference).unit_key ||
+          (result.visual_evidence as Record<string, unknown>).origin !== 'model_generated_layout')))
       throw new ToolFailure('invalid_api_output', 'Nonclaim disposition response is incomplete');
     return ok(`Recorded explicit nonclaim disposition for review ${reviewId}, asset ${assetId}, offsets ${start}-${end}. Re-read get_document_review for updated coverage.`, result);
   },
@@ -2155,10 +2172,38 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   extract_document: async (args, client) => {
-    const result = await wrapApi(client.extractDocument(assetRef(args)));
+    const ref = assetRef(args);
+    const visual = args?.visual_rendition;
+    const version = args?.source_version_id, key = args?.idempotency_key;
+    if ((visual !== undefined && typeof visual !== 'boolean') ||
+        (visual !== true && (version !== undefined || key !== undefined)) ||
+        (visual === true && (!ref.asset_id || ref.asset_url || typeof version !== 'string' ||
+          !version || version !== version.trim() || version.length > 191 || typeof key !== 'string' || !/^[\x21-\x7E]{1,128}$/.test(key))))
+      throw new ToolFailure('invalid_argument', 'Visual rendition requires owned asset_id, exact source_version_id and explicit idempotency_key; URLs are unsupported');
+    const result = await wrapApi(client.extractDocument({ ...ref,
+      ...(visual === true ? { visual_rendition: true, source_version_id: version as string, idempotency_key: key as string } : {}),
+    }));
+    if (visual === true) {
+      if (!result || typeof result !== 'object' || Array.isArray(result) || result.format !== 'image' || typeof result.markdown !== 'string' || result.state !== 'partial' || result.complete !== false ||
+          !('source_version_id' in result) || result.source_version_id !== version || typeof result.representation_id !== 'string' ||
+          !result.representation_id || result.representation_id !== result.representation_id.trim() || result.representation_id.length > 191 ||
+          result.source_read_status !== 'partial' || result.visual_provenance?.origin !== 'model_generated' ||
+          !/^[a-f0-9]{64}$/.test(result.visual_provenance.source_bytes_hash) || result.provider_usage_status !== 'inspect_operation_receipts' ||
+          !Array.isArray(result.source_units) || !result.source_units.length || result.source_units.length > 2000 ||
+          result.source_units.some(unit => !unit || typeof unit.sourceUnitId !== 'string' || !unit.sourceUnitId ||
+            unit.sourceUnitId !== unit.sourceUnitId.trim() || unit.sourceUnitId.length > 191 || !unit.locator ||
+            unit.locator.kind !== 'page' || !Number.isSafeInteger(unit.locator.page) || (unit.locator.page as number) < 1 ||
+            !['partial', 'unreadable', 'error'].includes(unit.state)) ||
+          new Set(result.source_units.map(unit => unit.sourceUnitId)).size !== result.source_units.length)
+        throw new ToolFailure('invalid_api_output', 'Visual rendition lacks exact partial source identity', {
+          details: { ...(creditUsage(result) ? { credit_usage: creditUsage(result) } : {}) },
+          actionable: 'Preserve the operation receipt and inspect the API response. Do not repeat this chargeable call with a new key.',
+        });
+      return extractionResult(`Partial model-generated visual rendition ${result.representation_id}. Original source selection is unchanged; layout is not certification.\n${result.markdown}`, { ...result });
+    }
     requireApiShape(typeof result?.format === 'string' && typeof result?.markdown === 'string' &&
-      Array.isArray(result?.units), 'extract_document');
-    return extractionResult(formatExtractedDoc(result), { ...result });
+      'units' in result && Array.isArray(result.units), 'extract_document');
+    return extractionResult(formatExtractedDoc(result as ExtractedDoc), { ...result });
   },
 
   ask_document: async (args, client) => {
