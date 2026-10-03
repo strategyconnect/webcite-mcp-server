@@ -7,7 +7,7 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
-## 1.9.41 release notes
+## Stream cancellation
 
 Cancelling a `verify_claim_stream` MCP request now forwards its cancellation signal to the backend HTTP request. Stopping a stream early or encountering a terminal error cancels its unfinished response body. Partial events and original failures remain failures; a completed stream consumes its result, done marker and EOF without extra cancellation. Cancellation does not certify a refund or rollback of paid work. Direct SDK callers can pass an `AbortSignal` as the second argument to `verifyClaimStream` to interrupt a pending read.
 
