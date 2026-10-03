@@ -158,3 +158,19 @@ test('numeric guide preserves exact-config durable context reads without API exe
   assert.match(result.text, /Contradictory or unmarked scope stays unknown/);
   assert.match(result.text, /fiscal quarters retain fiscal identity without inventing an interval/);
 });
+
+test('numeric guide pins the composed evidence request and response wording without API execution', async () => {
+  const api = new Proxy({}, { get() { throw new Error('Guide must not execute an API request'); } });
+  const result = await handlers.webcite_guide({ workflow: 'numeric' }, api);
+  assert.match(result.text, /add evidence \{include, maxItems\?, maxChars\?\} with an explicit contextPath/);
+  assert.match(result.text, /passages, readings, findings, notes and source_diagnostics/);
+  assert.match(result.text, /The evidence policy is part of the signed query body/);
+  assert.match(result.text, /composedEvidence \(version product-query-evidence\/1\)/);
+  assert.match(result.text, /no provider, model or extraction call/);
+  assert.match(result.text, /Notes stay unverified user assertions and never corroborate a source/);
+  assert.match(result.text, /Unavailable values appear only as diagnostics/);
+  assert.match(result.text, /omitted as incomplete_witness_group/);
+  assert.match(result.text, /one id with two different payloads is a 409 integrity error/);
+  assert.match(result.text, /Defaults are 100 items and 12000 characters.*maxima 2000 and 200000.*200000 UTF-8 bytes/);
+  assert.match(result.text, /Without evidence the response is unchanged/);
+});
