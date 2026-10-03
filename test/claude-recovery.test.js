@@ -144,7 +144,7 @@ test('saved review pages expose completed and pending work without a total claim
     status: 'credits_exhausted',
     total_claims: 101, completed_claims: 51, pending_claims: 50, credits_remaining: 0,
     credits_required_next: 4, extraction_cursor: 2, chunk_count: 3,
-    next_offset: 50, claims: [{ id: 'claim-1', claim: 'Revenue was 10', page_number: 1,
+    next_offset: 2, claims: [{ id: 'claim-1', claim: 'Revenue was 10', page_number: 1,
       result: 'supported', summary: 'Source agrees.', citation_id: 'citation-1',
       cited_source_urls: ['https://example.test/printed-in-report'],
       top_citations: [{ url: 'https://example.test/report.pdf' }],
@@ -165,7 +165,8 @@ test('saved review pages expose completed and pending work without a total claim
   });
   assert.match(result.text, /Completed: 51\/101 physical rows; pending \(includes failed\): 50/);
   assert.match(result.text, /Add credits or enable overage/);
-  assert.match(result.text, /Next offset: 50/);
+  assert.match(result.text, /Next offset: 2/);
+  assert.equal(result.structuredContent.next_page_input.offset, result.structuredContent.claims.length);
   assert.match(result.text, /Extraction chunks: 2\/3/);
   assert.match(result.text, /https:\/\/example.test\/report.pdf/);
   assert.match(result.text, /https:\/\/example.test\/second.pdf/);
@@ -224,7 +225,7 @@ test('saved review fails closed when counted rejected candidates or dispositions
     getDocumentReview: async () => ({ ...snapshot, nonclaim_disposition_count: 2,
       nonclaim_dispositions: [{ asset_id: 'asset-1', start: 0, end: 8,
         source_quote: 'Contents', rationale: 'Navigation label', reviewer_id: 'user-1' }] }),
-  }), /omitted nonclaim disposition cursor/);
+  }), /invalid next_disposition_offset page boundary/);
   const positive = await handlers.get_document_review({ review_id: 'review-1' }, {
     getDocumentReview: async () => ({ ...snapshot, rejected_claim_count: 1,
       rejected_claims: [{ claim: 'Skipped claim', reason: 'Source quote missing' }],
@@ -339,7 +340,7 @@ test('non-factual counts reject invalid values instead of silently omitting them
     await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
       getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
         asset_ids: ['asset-1'], status: 'failed', total_claims: 1, completed_claims: 0,
-        pending_claims: 0, non_factual_claims, claims: [] }),
+        pending_claims: 0, non_factual_claims, claims: [{ id: 'claim-1', claim: 'A retained claim' }] }),
     }), /invalid non-factual count/);
   }
 });
@@ -420,7 +421,8 @@ test('automatic structural coverage preserves linked proofs across full and comp
       getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
         asset_ids: ['asset-1'], status: 'running', total_claims: 2, completed_claims: 0,
         pending_claims: 2, nonclaim_disposition_count: 2, nonclaim_dispositions: items,
-        claims: [{ id: 'claim-1', claim: 'Obtain approval', context }] }),
+        claims: [{ id: 'claim-1', claim: 'Obtain approval', context },
+          { id: 'claim-2', claim: 'Complete review' }] }),
     });
     assert.deepEqual(result.structuredContent.nonclaim_dispositions, items);
     assert.match(result.text, /automatic classification \(structure\/coordination\)/);
@@ -439,7 +441,8 @@ test('structural coverage rejects unlinked, factual, analyst and model declarati
     await assert.rejects(() => handlers.get_document_review({ review_id: 'review-1' }, {
       getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
         asset_ids: ['asset-1'], status: 'running', total_claims: 2, completed_claims: 0,
-        pending_claims: 2, nonclaim_disposition_count: 1, nonclaim_dispositions: [{ ...item, ...mutation }], claims: [] }),
+        pending_claims: 2, nonclaim_disposition_count: 1, nonclaim_dispositions: [{ ...item, ...mutation }],
+        claims: [{ id: 'claim-1', claim: 'Obtain approval' }, { id: 'claim-2', claim: 'Complete review' }] }),
     }), /invalid nonclaim disposition/);
   }
 });
@@ -573,9 +576,9 @@ test('saved review pages uncovered passages independently of checked claims', as
     return Response.json({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
       asset_ids: ['asset-1'], status: 'complete', total_claims: 1, completed_claims: 1,
       pending_claims: 0, extraction_complete: true, coverage_complete: false,
-      uncovered_source_span_count: 2, ungrounded_claims: 0, next_gap_offset: 2,
+      uncovered_source_span_count: 3, ungrounded_claims: 0, next_gap_offset: 2,
       uncovered_source_spans: [{ asset_id: 'asset-1', start: 12, end: 20, preview: 'Gap two' }],
-      rejected_claim_count: 2, next_rejected_offset: 2,
+      rejected_claim_count: 3, next_rejected_offset: 2,
       rejected_claims: [{ claim: 'Rejected two', reason: 'Unbound source quote' }],
       claims: [{ id: 'c1', claim: 'Present claim', result: 'verified' }] });
   };
@@ -605,12 +608,12 @@ test('compact review output keeps an exact cursor for hidden gaps', async () => 
     getDocumentReview: async () => ({ review_id: 'review-1', thread_id: 'thread-1', prompt: 'Check',
       asset_ids: ['asset-1'], status: 'complete', total_claims: 4, completed_claims: 4,
       pending_claims: 0, extraction_complete: true, coverage_complete: false,
-      uncovered_source_span_count: 5, ungrounded_claims: 0, next_gap_offset: 5,
+      uncovered_source_span_count: 6, ungrounded_claims: 0, next_gap_offset: 5,
       uncovered_source_spans: gaps,
-      rejected_claim_count: 5, next_rejected_offset: 5,
+      rejected_claim_count: 6, next_rejected_offset: 5,
       rejected_claims: Array.from({ length: 5 }, (_, index) => ({
         claim: `Rejected ${index + 1}`, reason: 'Not grounded' })),
-      nonclaim_disposition_count: 5, next_disposition_offset: 5,
+      nonclaim_disposition_count: 6, next_disposition_offset: 5,
       nonclaim_dispositions: Array.from({ length: 5 }, (_, index) => ({
         asset_id: 'asset-1', start: index, end: index + 1, source_quote: 'x',
         ...(index % 2 === 0 ? { origin: 'model_extraction', reason: 'heading' }
