@@ -169,7 +169,13 @@ test('numeric guide pins the composed evidence request and response wording with
   assert.match(result.text, /no provider, model or extraction call/);
   assert.match(result.text, /Notes stay unverified user assertions and never corroborate a source/);
   assert.match(result.text, /Unavailable values appear only as diagnostics/);
-  assert.match(result.text, /omitted as incomplete_witness_group/);
+  assert.match(result.text, /offered with all its witnesses or omitted whole \(max_items or incomplete_witness_group\)/);
+  assert.match(result.text, /diagnostic reason, lexeme and display/);
+  assert.match(result.text, /stops at the first item over maxChars/);
+  assert.match(result.text, /413 product_evidence_metadata_limit/);
+  assert.match(result.text, /composedEvidence\.receipt is null in this version/);
+  assert.match(result.text, /gapCount is exact, gaps is a sample of at most 100/);
+  assert.match(result.text, /only sources this request checked; a memory-only pinned read is not_checked/);
   assert.match(result.text, /one id with two different payloads is a 409 integrity error/);
   assert.match(result.text, /Defaults are 100 items and 12000 characters.*maxima 2000 and 200000.*200000 UTF-8 bytes/);
   assert.match(result.text, /Without evidence the response is unchanged/);
