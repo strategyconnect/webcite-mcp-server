@@ -4,6 +4,89 @@ const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { InMemoryTransport } = require('@modelcontextprotocol/sdk/inMemory.js');
 const { createMcpServer } = require('../dist/index.js');
 
+test('public MCP validates account caps before dispatch and retains execution identity', async () => {
+  const calls = [];
+  const backend = { startDocumentReviewJob: async (input, key) => {
+    calls.push({ input, key });
+    return { job_id: 'a'.repeat(64), status: 'queued',
+      ...(input.max_account_credits !== undefined ? { max_account_credits: input.max_account_credits } : {}) };
+  } };
+  const server = createMcpServer(backend, 'public', true);
+  const client = new Client({ name: 'review-budget-contract', version: '1' });
+  const [left, right] = InMemoryTransport.createLinkedPair();
+  await server.connect(right); await client.connect(left);
+  const input = { prompt: 'Check every claim', thread_id: 'budget-thread', asset_ids: ['asset-1'] };
+  try {
+    const schema = (await client.listTools()).tools.find(t => t.name === 'review_document').inputSchema.properties.max_account_credits;
+    assert.equal(schema.type, 'integer'); assert.equal(schema.minimum, 1); assert.equal(schema.maximum, 2147483647);
+    for (const cap of [0, -1, 1.5, '12', null, true, 2147483648, Number.MAX_SAFE_INTEGER]) {
+      const out = await client.callTool({ name: 'review_document', arguments: { ...input, max_account_credits: cap } });
+      assert.equal(out.isError, true, String(cap)); assert.equal(calls.length, 0);
+    }
+    for (const extra of [{}, { max_account_credits: 1 }, { max_account_credits: 12, retry_failed: true },
+      { max_account_credits: 2147483647 }, { max_account_credits: 12, retry_failed: true, idempotency_key: 'explicit-retry' }]) {
+      const out = await client.callTool({ name: 'review_document', arguments: { ...input, ...extra } });
+      assert.ok(!out.isError); assert.equal(out.structuredContent.max_account_credits, extra.max_account_credits);
+      assert.equal(calls.at(-1).input.max_account_credits, extra.max_account_credits);
+    }
+    assert.ok(calls.slice(0, 4).every(call => call.key === calls[0].key));
+    assert.equal(Object.hasOwn(calls[0].input, 'max_account_credits'), false);
+    assert.equal(calls[2].input.retry_failed, true); assert.equal(calls[4].key, 'explicit-retry');
+  } finally { await client.close(); await server.close(); }
+});
+
+test('actual HTTP client transports account cap once and rejects missing or mismatched confirmation', async () => {
+  const { WebCiteApiClient } = require('../dist/api-client.js');
+  const { handlers } = require('../dist/handlers.js');
+  const originalFetch = global.fetch;
+  const calls = [];
+  let echoed = 12;
+  global.fetch = async (url, options) => {
+    calls.push({ url, method: options.method, body: JSON.parse(options.body) });
+    return new Response(JSON.stringify({ job_id: 'a'.repeat(64), status: 'queued',
+      ...(echoed !== undefined ? { max_account_credits: echoed } : {}) }), { status: 200 });
+  };
+  try {
+    const api = new WebCiteApiClient('fake-local-key', 'https://example.invalid');
+    const input = { prompt: 'Check', thread_id: 'same', asset_ids: ['asset-1'], max_account_credits: 12 };
+    for (const cap of [0, -1, 1.5, '12', null, true, NaN, Infinity, 2147483648]) {
+      await assert.rejects(() => handlers.review_document({ ...input, max_account_credits: cap }, api),
+        error => error.code === 'invalid_argument');
+      assert.equal(calls.length, 0);
+    }
+    assert.equal((await handlers.review_document(input, api)).structuredContent.max_account_credits, 12);
+    assert.equal(calls[0].method, 'POST');
+    assert.equal(new URL(calls[0].url).pathname, '/api/v1/playground/chat/document-review-jobs');
+    assert.equal(calls[0].body.max_account_credits, 12); assert.equal(Object.hasOwn(calls[0].body, 'review_scope'), false);
+    for (echoed of [undefined, 13]) {
+      const before = calls.length;
+      await assert.rejects(() => handlers.review_document(input, api), error => {
+        assert.equal(error.code, 'invalid_api_output'); assert.equal(error.details.job_id, 'a'.repeat(64));
+        assert.match(error.message, /do not resubmit/); return true;
+      });
+      assert.equal(calls.length, before + 1);
+    }
+    assert.ok(calls.every(call => call.body.idempotency_key === calls[0].body.idempotency_key));
+  } finally { global.fetch = originalFetch; }
+});
+
+test('job polling preserves an account cap and rejects malformed budget metadata', async () => {
+  const { handlers } = require('../dist/handlers.js');
+  const job_id = 'a'.repeat(64);
+  for (const cap of [1, 12, 2147483647]) {
+    const out = await handlers.get_document_review_job({ job_id }, {
+      getDocumentReviewJob: async () => ({ job_id, status: 'running', max_account_credits: cap }),
+    });
+    assert.equal(out.structuredContent.max_account_credits, cap);
+    assert.match(out.text, new RegExp(`Account-credit cap for this execution: ${cap}`));
+  }
+  for (const cap of [0, -1, 1.5, '12', null, true, 2147483648]) {
+    await assert.rejects(() => handlers.get_document_review_job({ job_id }, {
+      getDocumentReviewJob: async () => ({ job_id, status: 'running', max_account_credits: cap }),
+    }), /invalid max_account_credits/);
+  }
+});
+
 test('public MCP explicitly retries a failed review without changing its input identity', async () => {
   const original = 'a'.repeat(64), child = 'b'.repeat(64), review = 'c'.repeat(64);
   const retryKey = `review-retry:${original}`;
