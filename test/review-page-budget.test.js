@@ -224,3 +224,65 @@ test('legacy unknown counts stay separate from known zero processing counts and 
    assert.match(guide.content[0].text,/completed job means processing finished; it does not prove complete source coverage/);
  } finally {await client.close();await server.close();}
 });
+
+test('compact source assessment summaries retain assessed identity without changing full saved metadata', async () => {
+  const assessment = { version: 1, basis: 'source_table', claim: 'Output was 4.3% in 2023.',
+    judgment_claim: 'Output was 4.3% in 2023. [separate literal source context]',
+    source_asset_id: 'asset', source_quote_hash: 'a'.repeat(64) };
+  const row = { id: 'assessed', claim: 'The report table describes output.', result: 'partially_supported',
+    source_assessment: assessment, citations: [{ url: 'https://example.org/literal', snippet: 'retained' }] };
+  const page = claims => ({ review_id: 'review', status: 'complete', prompt: 'Review', thread_id: 'stable',
+    asset_ids: ['asset'], total_claims: claims.length, completed_claims: claims.length, pending_claims: 0,
+    claims, next_offset: null });
+  const read = claims => handlers.get_document_review({ review_id: 'review', limit: 100 },
+    { getDocumentReview: async () => page(claims) });
+  const full = await read([row]);
+  assert.deepEqual(full.structuredContent.claims[0].source_assessment, assessment);
+  assert.equal(full.structuredContent.claims[0].source_assessment_summary, undefined);
+  const large = { ...row, citations: [{ ...row.citations[0], snippet: 'evidence '.repeat(8000) }] };
+  const compact = await read([large]);
+  assert.equal(compact.structuredContent.evidence_details_omitted, true);
+  assert.equal(compact.structuredContent.claims[0].claim, row.claim);
+  assert.deepEqual(compact.structuredContent.claims[0].source_assessment_summary, assessment);
+  assert.equal(compact.structuredContent.claims[0].source_assessment, undefined);
+  const original = await read([{ ...large, source_assessment: { ...assessment, basis: 'original_claim' } }]);
+  assert.equal(original.structuredContent.claims[0].source_assessment_summary.basis, 'original_claim');
+  assert.match(compact.text, /Assessed assertion: Output was 4.3% in 2023/);
+  const long = { ...assessment, claim: '界'.repeat(1200), judgment_claim: 'context '.repeat(300) };
+  const truncated = await read([{ ...large, source_assessment: long }]);
+  const summary = truncated.structuredContent.claims[0].source_assessment_summary;
+  assert.equal(summary.claim, long.claim.slice(0, 1000));
+  assert.equal(summary.judgment_claim, long.judgment_claim.slice(0, 1000));
+  assert.equal(summary.claim_truncated, true); assert.equal(summary.judgment_claim_truncated, true);
+  assert.match(truncated.text, /summary.*not.*exact.*judgment identity/i);
+  for (const missing of [undefined, null]) {
+    const absent = await read([{ ...large, source_assessment: missing }]);
+    assert.equal(absent.structuredContent.claims[0].source_assessment_summary, undefined);
+  }
+  for (const malformed of [{}, { ...assessment, version: 2 }, { ...assessment, basis: 'guessed' }, { ...assessment, basis: ['source_table'] },
+    { ...assessment, claim: 4 }, { ...assessment, judgment_claim: null },
+    { ...assessment, source_quote_hash: 'changed' }, { ...assessment, source_asset_id: {} }]) {
+    await assert.rejects(() => read([{ ...large, source_assessment: malformed }]),
+      error => error.code === 'invalid_api_output');
+  }
+  const many = await read(Array.from({ length: 50 }, (_, i) => ({ ...large, id: `assessed-${i}`, source_assessment: long })));
+  assert.ok(Buffer.byteLength(JSON.stringify(many)) <= 20000);
+  assert.ok(many.structuredContent.claims.length > 0 && many.structuredContent.claims.length < 50);
+  assert.equal(many.structuredContent.next_page_input.offset, many.structuredContent.claims.length);
+  assert.deepEqual(many.structuredContent.claims.map(c => c.id),
+    Array.from({ length: many.structuredContent.claims.length }, (_, i) => `assessed-${i}`));
+  const retained = Array.from({ length: 50 }, (_, i) => ({ ...large, id: `assessed-${i}`, source_assessment: long }));
+  const seen = []; let input = { review_id: 'review', limit: 100 };
+  while (input) {
+    const output = await handlers.get_document_review(input, { getDocumentReview: async (id, offset, limit) => ({
+      ...page(retained.slice(offset, offset + limit)), total_claims: retained.length,
+      next_offset: offset + limit < retained.length ? offset + limit : null,
+    }) });
+    assert.ok(Buffer.byteLength(JSON.stringify(output)) <= 20000);
+    seen.push(...output.structuredContent.claims.map(c => c.id));
+    assert.ok(seen.length <= retained.length);
+    input = output.structuredContent.next_page_input;
+  }
+  assert.deepEqual(seen, retained.map(c => c.id));
+  assert.deepEqual(assessment, row.source_assessment);
+});

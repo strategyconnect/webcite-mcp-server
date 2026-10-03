@@ -41,6 +41,7 @@ export interface ReviewDocumentOptions {
   include_stance?: boolean;
   include_verdict?: boolean;
   retry_failed?: boolean;
+  max_account_credits?: number;
 }
 
 export interface ListCitationsOptions {
@@ -158,6 +159,7 @@ export interface ListCitationsResponse {
 export interface SSEEvent {
   event: string;
   data: unknown;
+  credit_usage?: CreditUsage;
 }
 
 export interface UploadResponse {
@@ -346,6 +348,33 @@ export interface AssetRefOptions {
   asset_id?: string;
   /** A direct URL to the file, e.g. your own signed storage URL. */
   asset_url?: string;
+}
+
+export interface ExtractDocumentOptions extends AssetRefOptions {
+  /** Opt in to JPEG/PNG model layout evidence; does not select the rendition. */
+  visual_rendition?: boolean;
+  source_version_id?: string;
+  /** Required explicit operation key for visual rendition. */
+  idempotency_key?: string;
+}
+
+export interface VisualRendition {
+  format: 'image';
+  markdown: string;
+  state: 'partial';
+  complete: false;
+  source_version_id: string;
+  representation_id: string;
+  source_read_status: 'partial';
+  visual_provenance: { origin: 'model_generated'; source_bytes_hash: string; [key: string]: unknown };
+  provider_usage_status: 'inspect_operation_receipts';
+  /** Existing owned representation locator entries for read_source_unit. */
+  source_units: Array<{ sourceUnitId: string; locator: Record<string, unknown>; state: string }>;
+}
+
+export interface ReviewVisualReference {
+  representation_id: string;
+  unit_key: string;
 }
 
 export interface ClassifyOptions extends AssetRefOptions {
