@@ -58,7 +58,7 @@ test('actual HTTP client transports account cap once and rejects missing or mism
     assert.equal(calls[0].method, 'POST');
     assert.equal(new URL(calls[0].url).pathname, '/api/v1/playground/chat/document-review-jobs');
     assert.equal(calls[0].body.max_account_credits, 12); assert.equal(Object.hasOwn(calls[0].body, 'review_scope'), false);
-    for (echoed of [undefined, 13]) {
+    for (echoed of [undefined, 13, '12', 0, null, 1.5]) {
       const before = calls.length;
       await assert.rejects(() => handlers.review_document(input, api), error => {
         assert.equal(error.code, 'invalid_api_output'); assert.equal(error.details.job_id, 'a'.repeat(64));
@@ -82,8 +82,13 @@ test('job polling preserves an account cap and rejects malformed budget metadata
   }
   for (const cap of [0, -1, 1.5, '12', null, true, 2147483648]) {
     await assert.rejects(() => handlers.get_document_review_job({ job_id }, {
-      getDocumentReviewJob: async () => ({ job_id, status: 'running', max_account_credits: cap }),
-    }), /invalid max_account_credits/);
+      getDocumentReviewJob: async () => ({ job_id, status: 'running', max_account_credits: cap,
+        credit_usage: { credits_used: 0 } }),
+    }), error => {
+      assert.match(error.message, /invalid max_account_credits.*do not resubmit/);
+      assert.equal(error.details.job_id, job_id); assert.equal(error.details.status, 'running');
+      assert.deepEqual(error.toPayload().credit_usage, { credits_used: 0 }); return true;
+    });
   }
 });
 

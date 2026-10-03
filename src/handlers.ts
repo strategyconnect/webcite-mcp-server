@@ -240,14 +240,18 @@ function savedClaimLabel(claim: Record<string, unknown>): string {
 
 function documentReviewJobOutput(result: Record<string, unknown>): ToolSuccess {
   const cap = result.max_account_credits;
-  if (cap !== undefined && (!Number.isSafeInteger(cap) || (cap as number) < 1 || (cap as number) > 2147483647))
-    throw new ToolFailure('invalid_api_output', 'Document review job has an invalid max_account_credits');
   const statuses = ['queued', 'running', 'waiting_review', 'waiting_parse', 'complete', 'partial_coverage', 'credits_exhausted', 'failed', 'interrupted'];
   if (typeof result.job_id !== 'string' || !/^(?:[a-f0-9]{64}|[a-f0-9-]{36})$/.test(result.job_id) ||
       typeof result.status !== 'string' || !statuses.includes(result.status) ||
       (result.review_id !== undefined && typeof result.review_id !== 'string') ||
       (result.progress !== undefined && (!result.progress || typeof result.progress !== 'object' || Array.isArray(result.progress))))
     throw new ToolFailure('invalid_api_output', 'Document review job response is incomplete');
+  if (cap !== undefined && (!Number.isSafeInteger(cap) || (cap as number) < 1 || (cap as number) > 2147483647))
+    throw new ToolFailure('invalid_api_output', 'Document review job has an invalid max_account_credits. Enforcement is unknown; do not resubmit.', {
+      details: { job_id: result.job_id, status: result.status,
+        ...(result.credit_usage ? { credit_usage: result.credit_usage } : {}) },
+      actionable: 'Inspect the existing job before further paid work.',
+    });
   const progress = result.progress as Record<string, unknown> | undefined;
   for (const field of ['completed_claims', 'total_claims', 'material_claims', 'duplicate_claims',
     'pending_claims', 'failed_claims', 'rejected_claim_count', 'uncovered_source_span_count']) {
