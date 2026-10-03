@@ -173,4 +173,8 @@ test('numeric guide pins the composed evidence request and response wording with
   assert.match(result.text, /one id with two different payloads is a 409 integrity error/);
   assert.match(result.text, /Defaults are 100 items and 12000 characters.*maxima 2000 and 200000.*200000 UTF-8 bytes/);
   assert.match(result.text, /Without evidence the response is unchanged/);
+  assert.match(result.text, /maxChars counts only rendered text in UTF-16 units: passage snippet, note text/);
+  assert.match(result.text, /each passage carries the same contextScope \(meeting or company\) and order as the top-level refs, as payload outside its id/);
+  assert.match(result.text, /coverage\.notes\.included counts offered notes/);
+  assert.match(result.text, /outsideQueriedSourceVersionIds counts finding witnesses from sources outside the queried selection/);
 });
