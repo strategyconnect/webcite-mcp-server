@@ -619,6 +619,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
       filters: sourceFiltersInput,
       include_stance: { type: 'boolean', default: true, description: 'Analyze source stance; adds 1 credit per claim.' },
       include_verdict: { type: 'boolean', default: true, description: 'Generate a verdict; adds 1 credit per claim.' },
+      max_account_credits: { type: 'integer', minimum: 1, maximum: 2147483647, description: 'Optional cap on new account-credit charges and outstanding holds for this execution, including a retry execution. Completed results replay without charge. Immutable for the same job/idempotency key; changing or omitting an existing cap conflicts. Does not cap provider cost or calls. Omission requests no execution cap.' },
       retry_failed: { type: 'boolean', default: false, description: 'Explicitly resume a diagnosed failed review on the same thread and inputs. Preserve the original idempotency key, or use the returned retry_idempotency_key. Completed claims and extraction responses are reused; the failed job receipt is retained.' },
       idempotency_key: { type: 'string', minLength: 1, maxLength: 128, description: 'Omit on first start. For retry_failed: true, reuse the original key or the returned retry_idempotency_key with exactly the same inputs.' },
     }, required: ['prompt', 'asset_ids', 'thread_id'] },
