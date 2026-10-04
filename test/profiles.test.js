@@ -78,6 +78,17 @@ test('source tracing uses extraction, source search and preview instead of numer
     /does not search for external source URLs/);
 });
 
+test('document quote guide describes PDF text target boxes and their absence', async () => {
+  const result = await handlers.webcite_guide(
+    { workflow: 'document_quote' },
+    /** @type {any} */ ({}),
+  );
+  assert.match(result.text, /frame \(PDF points, top-left of the displayed page, with its rotation\) only when the page was read and has a text layer/);
+  assert.match(result.text, /busy means retry later/);
+  assert.match(result.text, /one or more \[x0, y0, x1, y1\] per text line/);
+  assert.match(result.text, /boxes_unavailable gives the reason when no match has boxes \(encrypted, unreadable_pdf, too_large, timeout, busy,/);
+});
+
 test('document review guide covers every claim without treating metric extraction as complete', async () => {
   const result = await handlers.webcite_guide(
     { workflow: 'document_review' },
@@ -145,10 +156,52 @@ test('full slide audits and image numerics route to supported tools', () => {
   assert.match(numericGuide, /count contextual decisions separately from reviewed numeric assertions/);
   assert.match(numericGuide, /candidate\.raw can be printed display text.*sourceRawLexeme is the sealed stored cell value/);
   assert.match(numericGuide, /expectedRawLexeme must use that stored value, never the rounded display/);
+  assert.match(numericGuide, /includeInactive: true in the signed source-context list body.*inactiveBindings.*Pass that revisionId as expectedRevisionId/);
 });
 
 test('runSmoke reports core defaults', () => {
   const smoke = runSmoke('core');
   assert.equal(smoke.ok, true);
   assert.equal(smoke.toolCount, filterToolsByProfile(ALL_TOOLS, 'core').length);
+});
+
+
+test('numeric guide preserves exact-config durable context reads without API execution', async () => {
+  const api = new Proxy({}, { get() { throw new Error('Guide must not execute an API request'); } });
+  const result = await handlers.webcite_guide({ workflow: 'numeric' }, api);
+  assert.match(result.text, /automaticExtractionContext/);
+  assert.match(result.text, /automaticSourceLedger/);
+  assert.match(result.text, /never invokes a provider/);
+  assert.match(result.text, /not_requested/);
+  assert.match(result.text, /Graph-operator refusal is independent of ledger availability/);
+  assert.match(result.text, /never relabelled as resolved graph assertions/);
+  assert.match(result.text, /Contradictory or unmarked scope stays unknown/);
+  assert.match(result.text, /fiscal quarters retain fiscal identity without inventing an interval/);
+});
+
+test('numeric guide pins the composed evidence request and response wording without API execution', async () => {
+  const api = new Proxy({}, { get() { throw new Error('Guide must not execute an API request'); } });
+  const result = await handlers.webcite_guide({ workflow: 'numeric' }, api);
+  assert.match(result.text, /add evidence \{include, maxItems\?, maxChars\?\} with an explicit contextPath/);
+  assert.match(result.text, /passages, readings, findings, notes and source_diagnostics/);
+  assert.match(result.text, /The evidence policy is part of the signed query body/);
+  assert.match(result.text, /composedEvidence \(version product-query-evidence\/1\)/);
+  assert.match(result.text, /no provider, model or extraction call/);
+  assert.match(result.text, /Notes stay unverified user assertions and never corroborate a source/);
+  assert.match(result.text, /Unavailable values appear only as diagnostics/);
+  assert.match(result.text, /offered with all its witnesses or omitted whole \(max_items or incomplete_witness_group\)/);
+  assert.match(result.text, /diagnostic reason, lexeme and display/);
+  assert.match(result.text, /stops at the first item over maxChars/);
+  assert.match(result.text, /413 product_evidence_metadata_limit/);
+  assert.match(result.text, /Where receipt retention is supported, composedEvidence\.receipt identifies the retained offered inputs; legacy responses may still return null/);
+  assert.match(result.text, /Use the signed context\/receipt route described below to read retained inputs/);
+  assert.match(result.text, /gapCount is exact, gaps is a sample of at most 100/);
+  assert.match(result.text, /only sources this request checked; a memory-only pinned read is not_checked/);
+  assert.match(result.text, /one id with two different payloads is a 409 integrity error/);
+  assert.match(result.text, /Defaults are 100 items and 12000 characters.*maxima 2000 and 200000.*200000 UTF-8 bytes/);
+  assert.match(result.text, /Without evidence the response is unchanged/);
+  assert.match(result.text, /maxChars counts only rendered text in UTF-16 units: passage snippet or retained semantic quote, note text/);
+  assert.match(result.text, /each passage carries the same contextScope \(meeting or company\) and order as the top-level refs, as payload outside its id/);
+  assert.match(result.text, /coverage\.notes\.included counts offered notes/);
+  assert.match(result.text, /outsideQueriedSourceVersionIds counts finding witnesses from sources outside the queried selection/);
 });

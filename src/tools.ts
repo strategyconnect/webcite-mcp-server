@@ -1236,7 +1236,7 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
   },
   {
     name: 'find_contradictions',
-    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank/padded bounds never invent a contradiction. Blank/whitespace/surrounding-padded interval endpoints and missing/blank/padded decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value; backend #289) — never trim-launder pads into certified known bounds or magnitudes, and never treat an empty pair list as a certified all-clear. Coverage complete means a certified scan. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified contradiction-scan replay pin; same honesty as settle/compare/assess #92/#99/#101/#102).
+    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank/padded bounds never invent a contradiction. Blank/whitespace/surrounding-padded interval endpoints and missing/blank/padded decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value; backend #289) — never trim-launder pads into certified known bounds or magnitudes, and never treat an empty pair list as a certified all-clear. Period kind: pass claims[].period_kind 'flow' (total over the interval), 'stock' (level at a date) or 'unknown' (default). Differing values over the same exact period contradict unless one is a stated flow and the other a stated stock. Nested or overlapping periods contradict as two stocks, are distinct periods as two flows (YTD vs annual), and fail closed as contradiction_scan_incomplete: insufficient_comparison_context when either kind is unknown. A stated flow and a stated stock are always distinct, never compared. A contradiction_scan_incomplete refusal still lists the pairs it found and the unresolved codes. Fiscal-year labels are not mapped to the calendar year without a stated fiscal calendar. Coverage complete means a certified scan. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified contradiction-scan replay pin; same honesty as settle/compare/assess #92/#99/#101/#102).
 
 Credits: 1. HTTP: POST /api/v2/context/contradictions`,
     inputSchema: {
@@ -1270,6 +1270,12 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
                 type: ['string', 'null'],
                 description:
                   'Exact decimal text. Null/blank/surrounding-padded on conflicting or unknown-bound pairs → contradiction_scan_incomplete: missing_decimal_value (#289; never trim-launder " 10 " into 10).',
+              },
+              period_kind: {
+                type: ['string', 'null'],
+                enum: ['flow', 'stock', 'unknown', null],
+                description:
+                  "Optional. 'flow' = total over the interval (revenue for H1, YTD); 'stock' = level at a date (balance, headcount as of). Omitted/null = 'unknown': nested or overlapping periods then return insufficient_comparison_context instead of a contradiction. Other values are refused (HTTP 400).",
               },
             },
             required: ['interval', 'decimal_value'],

@@ -701,7 +701,7 @@ function startStub(options = {}) {
           const parsed = JSON.parse(body);
           const claims = Array.isArray(parsed?.claims) ? parsed.claims : [];
           if (claims.length >= 2) {
-            const CONFLICTING = new Set(['overlaps', 'equal', 'starts', 'during', 'finishes']);
+            const NESTED = new Set(['overlaps', 'starts', 'during', 'finishes']);
             // Backend #289: non-blank AND unpadded (value === trim) to certify known bounds.
             const endpointComplete = (v) =>
               typeof v === 'string' && v.trim().length > 0 && v === v.trim();
@@ -722,40 +722,41 @@ function startStub(options = {}) {
               if (b.from > a.from && b.to < a.to) return 'during';
               return 'overlaps';
             };
+            // Backend B18 period semantics: flow | stock | unknown (default).
+            const kindOf = (c) =>
+              c?.period_kind === 'flow' || c?.period_kind === 'stock' ? c.period_kind : 'unknown';
+            const compare = (l, r) => {
+              const kl = kindOf(l);
+              const kr = kindOf(r);
+              if (kl !== 'unknown' && kr !== 'unknown' && kl !== kr) return 'distinct';
+              const rel = relation(l?.interval, r?.interval);
+              if (rel === 'before') return 'distinct';
+              if (rel === 'unknown') return 'unknown_interval_bounds';
+              if (rel === 'equal') return 'comparable';
+              if (NESTED.has(rel) && kl === 'stock' && kr === 'stock') return 'comparable';
+              if (NESTED.has(rel) && kl === 'flow' && kr === 'flow') return 'distinct';
+              return 'insufficient_comparison_context';
+            };
+            const wire = (c) => ({
+              interval: c.interval,
+              decimal_value: c.decimal_value,
+              ...(kindOf(c) === 'unknown' ? {} : { period_kind: c.period_kind }),
+            });
             const pairs = [];
             const unresolved = new Set();
             for (let i = 0; i < claims.length; i++) {
               for (let j = i + 1; j < claims.length; j++) {
                 const left = claims[i];
                 const right = claims[j];
-                const rel = relation(left?.interval, right?.interval);
-                const leftDec = decimalPresent(left?.decimal_value);
-                const rightDec = decimalPresent(right?.decimal_value);
-                if (
-                  CONFLICTING.has(rel) &&
-                  leftDec &&
-                  rightDec &&
-                  left.decimal_value !== right.decimal_value
-                ) {
-                  pairs.push({
-                    left: {
-                      interval: left.interval,
-                      decimal_value: left.decimal_value,
-                    },
-                    right: {
-                      interval: right.interval,
-                      decimal_value: right.decimal_value,
-                    },
-                  });
-                  continue;
-                }
-                if (leftDec && rightDec && left.decimal_value !== right.decimal_value && rel === 'unknown') {
-                  unresolved.add('unknown_interval_bounds');
-                  continue;
-                }
-                if ((!leftDec || !rightDec) && (rel === 'unknown' || CONFLICTING.has(rel))) {
+                const comparison = compare(left, right);
+                if (comparison === 'distinct') continue;
+                if (!decimalPresent(left?.decimal_value) || !decimalPresent(right?.decimal_value)) {
                   unresolved.add('missing_decimal_value');
+                  continue;
                 }
+                if (left.decimal_value === right.decimal_value) continue;
+                if (comparison === 'comparable') pairs.push({ left: wire(left), right: wire(right) });
+                else unresolved.add(comparison);
               }
             }
             const unresolvedList = [...unresolved].sort();
@@ -765,6 +766,12 @@ function startStub(options = {}) {
                 JSON.stringify({
                   message: `contradiction_scan_incomplete: ${unresolvedList.join(',')}`,
                   statusCode: 400,
+                  error: 'Bad Request',
+                  count: pairs.length,
+                  pairs,
+                  coverage: 'unknown',
+                  unresolved: unresolvedList,
+                  engine: 'context_graph',
                 }),
               );
               return;
@@ -3263,13 +3270,43 @@ test('every tool round-trips through the real server against the API', async (t)
   await t.test('find_contradictions posts claims and returns count', async () => {
     const text = await call('find_contradictions', {
       claims: [
-        { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' },
-        { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12' },
+        { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10', period_kind: 'stock' },
+        { interval: { from: '2024-04-01', to: '2024-10-01' }, decimal_value: '12', period_kind: 'stock' },
       ],
     });
     assert.equal(seen.at(-1).path, '/api/v2/context/contradictions');
+    assert.deepEqual(
+      seen.at(-1).body.claims.map((c) => c.period_kind),
+      ['stock', 'stock'],
+    );
     assert.match(text, /Coverage:\*\* complete/);
     assert.match(text, /Count:\*\* 1/);
+  });
+
+  await t.test('find_contradictions nested periods without kind → insufficient_comparison_context', async () => {
+    const res = await rpc('tools/call', {
+      name: 'find_contradictions',
+      arguments: {
+        claims: [
+          { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10' },
+          { interval: { from: '2024-01-01', to: '2025-01-01' }, decimal_value: '12' },
+        ],
+      },
+    });
+    assert.equal(seen.at(-1).path, '/api/v2/context/contradictions');
+    assert.equal(res.result.isError, true);
+    assert.match(res.result.content[0].text, /contradiction_scan_incomplete: insufficient_comparison_context/);
+  });
+
+  await t.test('find_contradictions nested flows (YTD vs annual) are distinct', async () => {
+    const text = await call('find_contradictions', {
+      claims: [
+        { interval: { from: '2024-01-01', to: '2024-07-01' }, decimal_value: '10', period_kind: 'flow' },
+        { interval: { from: '2024-01-01', to: '2025-01-01' }, decimal_value: '12', period_kind: 'flow' },
+      ],
+    });
+    assert.match(text, /Coverage:\*\* complete/);
+    assert.match(text, /Count:\*\* 0/);
   });
 
   await t.test('find_contradictions disjoint missing decimal stays complete all-clear', async () => {
