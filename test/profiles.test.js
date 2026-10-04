@@ -193,13 +193,14 @@ test('numeric guide pins the composed evidence request and response wording with
   assert.match(result.text, /diagnostic reason, lexeme and display/);
   assert.match(result.text, /stops at the first item over maxChars/);
   assert.match(result.text, /413 product_evidence_metadata_limit/);
-  assert.match(result.text, /composedEvidence\.receipt is null in this version/);
+  assert.match(result.text, /Where receipt retention is supported, composedEvidence\.receipt identifies the retained offered inputs; legacy responses may still return null/);
+  assert.match(result.text, /Use the signed context\/receipt route described below to read retained inputs/);
   assert.match(result.text, /gapCount is exact, gaps is a sample of at most 100/);
   assert.match(result.text, /only sources this request checked; a memory-only pinned read is not_checked/);
   assert.match(result.text, /one id with two different payloads is a 409 integrity error/);
   assert.match(result.text, /Defaults are 100 items and 12000 characters.*maxima 2000 and 200000.*200000 UTF-8 bytes/);
   assert.match(result.text, /Without evidence the response is unchanged/);
-  assert.match(result.text, /maxChars counts only rendered text in UTF-16 units: passage snippet, note text/);
+  assert.match(result.text, /maxChars counts only rendered text in UTF-16 units: passage snippet or retained semantic quote, note text/);
   assert.match(result.text, /each passage carries the same contextScope \(meeting or company\) and order as the top-level refs, as payload outside its id/);
   assert.match(result.text, /coverage\.notes\.included counts offered notes/);
   assert.match(result.text, /outsideQueriedSourceVersionIds counts finding witnesses from sources outside the queried selection/);
