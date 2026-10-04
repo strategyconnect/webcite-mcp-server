@@ -12,13 +12,17 @@ test('guide merge gate rejects stale public contracts and accepts updated guide 
  write('README.md','More notes');head=commit();const ordinary=cp.spawnSync(process.execPath,[script,'--base',git('rev-parse','HEAD~1'),'--head',head],{cwd:dir,encoding:'utf8'});assert.equal(ordinary.status,0);assert.equal(JSON.parse(ordinary.stdout).guide_update_required,false);
 });
 
-test('head-pinned merge wrapper runs guide gate and refuses stale head or failed guide',()=>{
+test('head-pinned merge wrapper requires exact approval and guide gate, refusing stale head or failed guide',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'webcite-merge-gate-'));const log=path.join(dir,'calls');
  const fake=(name,body)=>{const file=path.join(dir,name);fs.writeFileSync(file,'#!/usr/bin/env bash\n'+body);fs.chmodSync(file,0o755)};
- fake('gh',`if [[ "$1 $2" == "pr view" ]]; then echo "$BASE $HEAD OPEN false"; else echo "gh $*" >> "$CALLS"; fi`);
+ fake('gh',`case "$1 $2" in "pr view") echo "$BASE $HEAD OPEN false" ;; "repo view") echo "strategyconnect/webcite-mcp-server" ;; *) echo "gh $*" >> "$CALLS" ;; esac`);
+ fake('review-gate',`echo "review-gate $*" >> "$CALLS"; [[ "$1" == "strategyconnect/webcite-mcp-server" && "$2" == "123" && "$3" == "$APPROVED_HEAD" ]]`);
  fake('git','echo "git $*" >> "$CALLS"');fake('npm','echo "npm $*" >> "$CALLS"; exit "${GUIDE_EXIT:-0}"');
- const base='a'.repeat(40),head='b'.repeat(40);const run=(overrides={})=>{fs.writeFileSync(log,'');const result=cp.spawnSync('bash',[path.resolve(__dirname,'../scripts/merge-reviewed-pr.sh'),'123',head],{env:{...process.env,PATH:dir+path.delimiter+process.env.PATH,BASE:base,HEAD:head,CALLS:log,...overrides},encoding:'utf8'});return {result,calls:fs.readFileSync(log,'utf8')}};
+ const base='a'.repeat(40),head='b'.repeat(40);const run=(overrides={})=>{fs.writeFileSync(log,'');const env={...process.env,PATH:dir+path.delimiter+process.env.PATH,BASE:base,HEAD:head,CALLS:log,REVIEW_GATE:path.join(dir,'review-gate'),APPROVED_HEAD:head,...overrides};delete env.REVIEW_GATE_BYPASS;const result=cp.spawnSync('bash',[path.resolve(__dirname,'../scripts/merge-reviewed-pr.sh'),'123',head],{env,encoding:'utf8'});return {result,calls:fs.readFileSync(log,'utf8')}};
  const good=run();assert.equal(good.result.status,0);assert.match(good.calls,/npm run check:guide -- --base/);assert.match(good.calls,/context=webcite-guide-current/);assert.ok(good.calls.indexOf('npm run check:guide')<good.calls.indexOf('gh api'));assert.ok(good.calls.indexOf('gh api')<good.calls.indexOf('gh pr merge'));assert.match(good.calls,new RegExp(`gh pr merge 123 --merge --match-head-commit ${head}`));
  const stale=run({HEAD:'c'.repeat(40)});assert.notEqual(stale.result.status,0);assert.doesNotMatch(stale.calls,/pr merge/);
+ assert.match(good.calls,new RegExp(`review-gate strategyconnect/webcite-mcp-server 123 ${head}`));assert.ok(good.calls.indexOf('review-gate')<good.calls.indexOf('npm run check:guide'));
+ const noApproval=run({APPROVED_HEAD:''});assert.notEqual(noApproval.result.status,0);assert.doesNotMatch(noApproval.calls,/git fetch|npm run|gh api|pr merge/);
+ const wrongApproval=run({APPROVED_HEAD:'c'.repeat(40)});assert.notEqual(wrongApproval.result.status,0);assert.doesNotMatch(wrongApproval.calls,/git fetch|npm run|gh api|pr merge/);
  const badGuide=run({GUIDE_EXIT:'1'});assert.notEqual(badGuide.result.status,0);assert.doesNotMatch(badGuide.calls,/pr merge|gh api/);
 });
