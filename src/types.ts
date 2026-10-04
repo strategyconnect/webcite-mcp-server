@@ -1676,3 +1676,5 @@ export interface ToolFailurePayload {
   details?: Record<string, unknown>;
   actionable?: string;
 }
+
+export * from './product-types.js';

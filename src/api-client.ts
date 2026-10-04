@@ -1141,3 +1141,5 @@ export class WebCiteApiClient {
     );
   }
 }
+
+export { WebCiteProductClient } from './product-client.js';
