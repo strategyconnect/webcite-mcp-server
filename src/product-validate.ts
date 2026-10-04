@@ -103,7 +103,7 @@ function checkEvidenceRequest(evidence: unknown): void {
 
 const QUERY_KEYS = ['caseKind', 'caseId', 'contextPath', 'sourceVersionIds', 'text', 'memoryOnly',
   'automaticExtractionContext', 'automaticExtractionSelections', 'sourceFindingsContext', 'evidence',
-  'maxHops', 'limit'] as const;
+  'maxHops', 'limit', 'semantics'] as const;
 
 function checkCase(caseKind: unknown, caseId: unknown): void {
   if (typeof caseKind !== 'string' || !PRODUCT_KIND.test(caseKind) || !isProductId(caseId))
@@ -142,6 +142,13 @@ export function productContextQueryBody(options: ProductContextQueryOptions): Re
   if (memoryOnly !== true && !text) productArgument('text is required unless memoryOnly is true');
   if (evidence !== undefined) checkEvidenceRequest(evidence);
   if (evidence !== undefined && !contextPath) productArgument('evidence requires contextPath');
+  if (options.semantics !== undefined) {
+    const s = options.semantics;
+    if (!isObject(s) || memoryOnly || !text || Object.keys(s).some(k => !['topK', 'referenceHops', 'rerank'].includes(k)) ||
+      (s.topK !== undefined && (!Number.isInteger(s.topK) || s.topK < 1 || s.topK > 50)) ||
+      (s.referenceHops !== undefined && ![0, 1, 2].includes(s.referenceHops)) ||
+      (s.rerank !== undefined && typeof s.rerank !== 'boolean')) productArgument('semantics needs a text query and valid bounded options');
+  }
   checkQuerySelections(options);
   const maxHops = options.maxHops ?? 1;
   const limit = options.limit ?? 10;
@@ -265,7 +272,8 @@ function checkComposedItem(item: unknown, origins: Set<string>, sources: Set<str
     isHash(item.ledgerManifestHash);
   const ref = item.ref;
   const valid = item.origin === 'source_statement'
-    ? isGraphRef(ref, sources) && isHash(ref.analysisReceiptId) && receipts[ref.sourceVersionId as string] === ref.analysisReceiptId &&
+    ? item.retrieval === 'semantic' ? isSemanticStatement(item, sources, receipts)
+      : item.retrieval === undefined && isGraphRef(ref, sources) && isHash(ref.analysisReceiptId) && receipts[ref.sourceVersionId as string] === ref.analysisReceiptId &&
       ref.quoteBinding === 'physical_source_only' && typeof item.snippet === 'string'
     : item.origin === 'automatic_interpretation'
       ? witnessed && oneOf(item.readingKind, ['figure', 'observation']) && isHash(item.readingId) && isObject(item.reading)
@@ -346,7 +354,78 @@ export function validateProductContextQuery(raw: unknown, workspace: ProductWork
   if (body.evidence === undefined && root.composedEvidence !== undefined) productOutput('composedEvidence was not requested');
   if (body.evidence !== undefined)
     checkComposedEvidence(root.composedEvidence, body.evidence as Record<string, unknown>, sources, receipts);
+  if (body.semantics !== undefined || root.semanticRetrieval !== undefined)
+    checkSemanticRetrieval(root.semanticRetrieval, sources, receipts);
   return root as ProductContextQueryResponse;
+}
+
+function isGeneratedMatch(raw: unknown): boolean {
+  return raw === null || isObject(raw) && raw.trust === 'untrusted_generated' && Array.isArray(raw.items) &&
+    raw.items.length <= 3 && raw.items.every(row => isObject(row) &&
+      oneOf(row.field, ['contextLine', 'likelyQuestions', 'synonymTerms']) && typeof row.text === 'string' && row.text.length <= 120);
+}
+
+function isRetrievedBy(raw: unknown): boolean {
+  return Array.isArray(raw) && raw.length > 0 && raw.length <= 5 && new Set(raw).size === raw.length &&
+    raw.every(value => oneOf(value, ['lexical', 'enrichment', 'graph', 'reference', 'semantic']));
+}
+
+function isSemanticSpan(raw: unknown): raw is Record<string, number> {
+  return isObject(raw) && isCount(raw.start) && isCount(raw.end) && raw.end >= raw.start &&
+    isCount(raw.utf16Start) && isCount(raw.utf16End) && raw.utf16End >= raw.utf16Start;
+}
+
+function isMissingSupport(raw: unknown, withSpan = false): boolean {
+  return Array.isArray(raw) && raw.length <= 50 && raw.every(row => isObject(row) &&
+    isHash(row.citingItemId) && isHash(row.refId) && typeof row.referenceText === 'string' &&
+    row.referenceText.length > 0 && row.referenceText.length <= 400 && isCount(row.candidateCount) &&
+    oneOf(row.status, ['unresolved_in_room', 'ambiguous_in_room', 'target_not_readable']) &&
+    isTargetDescriptor(row.targetDescriptor) &&
+    (!withSpan || isSemanticSpan(row.span)));
+}
+
+function isTargetDescriptor(raw: unknown): boolean {
+  return isObject(raw) && Object.entries({ label: 40, title: 300, date: 10 }).every(([key, limit]) =>
+    raw[key] === null || typeof raw[key] === 'string' && raw[key].length <= limit);
+}
+
+function isSemanticIdentity(ref: Record<string, unknown>, sources: Set<string>, receipts: Record<string, unknown>): boolean {
+  return typeof ref.sourceVersionId === 'string' && sources.has(ref.sourceVersionId) && isHash(ref.analysisReceiptId) &&
+    (ref.contextScope === undefined || ref.contextScope === null || oneOf(ref.contextScope, ['meeting', 'company'])) &&
+    receipts[ref.sourceVersionId] === ref.analysisReceiptId && isProductId(ref.representationId) && isProductId(ref.sourceUnitId) &&
+    typeof ref.unitKey === 'string' && ref.unitKey.length > 0 && ref.unitKey.length <= 200 && isHash(ref.sourceUnitHash) &&
+    typeof ref.quote === 'string' && ref.quote.length > 0 && typeof ref.quoteTruncated === 'boolean';
+}
+
+function isSemanticStatement(item: Record<string, unknown>, sources: Set<string>, receipts: Record<string, unknown>): boolean {
+  const ref = item.ref;
+  return isObject(ref) && isSemanticIdentity(ref, sources, receipts) && ref.kind === 'passage' &&
+    ref.quoteBinding === 'exact_unit_text' && (ref.quote as string).length <= 100_000 &&
+    isCount(ref.startCodePoint) && isCount(ref.endCodePoint) &&
+    ref.endCodePoint - ref.startCodePoint === [...ref.quote as string].length &&
+    isRetrievedBy(item.retrievedBy) && isGeneratedMatch(item.matchedGenerated) && isMissingSupport(item.missingSupport);
+}
+
+function checkSemanticRetrieval(raw: unknown, sources: Set<string>, receipts: Record<string, unknown>): void {
+  if (!isObject(raw) || raw.version !== 'product-semantic-retrieval/1' || !isIdList(raw.readSourceVersionIds, 200) ||
+    new Set(raw.readSourceVersionIds).size !== raw.readSourceVersionIds.length ||
+    raw.readSourceVersionIds.some(id => !sources.has(id) || !isHash(receipts[id])) ||
+    !Array.isArray(raw.items) || raw.items.length > 60 || !isMissingSupport(raw.missingSupport, true) ||
+    !isObject(raw.coverage) || !oneOf(raw.coverage.status, ['not_prepared', 'partial', 'complete']))
+    return productOutput('semanticRetrieval has an invalid version, source scope or coverage');
+  const read = new Set(raw.readSourceVersionIds);
+  if (new Set(raw.items.map(item => isObject(item) ? item.itemId : null)).size !== raw.items.length ||
+    !raw.items.every(item => isObject(item) && isHash(item.itemId) && isSemanticIdentity(item, read, receipts) &&
+      (item.quote as string).length <= 8_000 && isSemanticSpan(item.span) &&
+      item.span.end - item.span.start === [...item.quote as string].length &&
+      item.span.utf16End - item.span.utf16Start === (item.quote as string).length &&
+      isRetrievedBy(item.retrievedBy) && isGeneratedMatch(item.matchedGenerated) && isMissingSupport(item.missingSupport, true) &&
+      Array.isArray(item.matchedTerms) && item.matchedTerms.length <= 1000 && item.matchedTerms.every(t => typeof t === 'string') &&
+      Array.isArray(item.entityMatches) && item.entityMatches.length <= 20_000 && item.entityMatches.every(e =>
+        isObject(e) && isProductId(e.registerEntityId) && oneOf(e.method, ['exact_phrase', 'model_coreference'])) &&
+      Array.isArray(item.referencedFrom) && item.referencedFrom.length <= 10 && item.referencedFrom.every(r =>
+        isObject(r) && isHash(r.citingItemId) && isHash(r.refId) && (r.hop === 1 || r.hop === 2))))
+    productOutput('semanticRetrieval contains an invalid retained quote or retrieval diagnostic');
 }
 
 const isSpan = (v: unknown): boolean => isObject(v) && isCount(v.startUtf16) && isCount(v.endUtf16) &&

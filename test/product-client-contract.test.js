@@ -456,3 +456,70 @@ test('memory-only queries require receipts only for sources actually read', asyn
     await assert.rejects(() => client().queryContext(pinned), outputError);
   });
 });
+
+function semanticFixture() {
+  const quote = 'Acme supplies 🚀 rockets.';
+  const semanticSpan = { start: 0, end: [...quote].length, utf16Start: 0, utf16End: quote.length };
+  const missing = { citingItemId: H('c'), refId: H('d'), referenceText: 'See supply agreement',
+    status: 'unresolved_in_room', candidateCount: 0, targetDescriptor: { label: null, title: 'Supply agreement', date: null } };
+  const identity = { sourceVersionId: SV, analysisReceiptId: RECEIPT, representationId: 'rep-1', contextScope: null,
+    sourceUnitId: 'unit-1', unitKey: 'unit:1', quote, quoteTruncated: false, sourceUnitHash: H('b') };
+  const diagnostics = { retrievedBy: ['enrichment'], matchedGenerated: { trust: 'untrusted_generated',
+    items: [{ field: 'likelyQuestions', text: 'Untrusted index content' }] } };
+  const item = { id: H('1'), origin: 'source_statement', retrieval: 'semantic', ...diagnostics,
+    ref: { ...identity, kind: 'passage', quoteBinding: 'exact_unit_text', startCodePoint: 0, endCodePoint: semanticSpan.end },
+    missingSupport: [missing] };
+  const retrieval = { version: 'product-semantic-retrieval/1', readSourceVersionIds: [SV],
+    items: [{ ...identity, ...diagnostics, itemId: H('c'), span: semanticSpan, matchedTerms: ['supplies'],
+      entityMatches: [], referencedFrom: [], missingSupport: [{ ...missing, span: semanticSpan }] }],
+    missingSupport: [{ ...missing, span: semanticSpan }], coverage: { status: 'partial' } };
+  return { item, retrieval };
+}
+
+test('semantic query quotes and historical receipts preserve custody and bounded untrusted diagnostics', async () => {
+  const f = semanticFixture();
+  const request = { ...QUERY, semantics: { topK: 5, referenceHops: 1, rerank: false } };
+  const answer = body => {
+    const response = queryResponse(body);
+    return { ...response, semanticRetrieval: f.retrieval,
+      composedEvidence: { ...response.composedEvidence, items: [f.item, response.composedEvidence.items[1]] } };
+  };
+  await withServer((_route, body) => answer(body), async calls => {
+    const result = await client().queryContext(request);
+    assert.equal(result.composedEvidence.items[0].ref.quote, f.item.ref.quote);
+    assert.equal(result.composedEvidence.items[0].ref.contextScope, null);
+    assert.equal(result.semanticRetrieval.items[0].matchedGenerated.trust, 'untrusted_generated');
+    assert.deepEqual(JSON.parse(calls[0].init.body).semantics, request.semantics);
+    assert.equal(verify(calls[0].url, calls[0].init), null);
+    for (const semantics of [{ topK: 51 }, { referenceHops: 3 }, { rerank: 'yes' }, { unknown: true }])
+      await assert.rejects(() => client().queryContext({ ...QUERY, semantics }), argumentError);
+    assert.equal(calls.length, 1);
+  });
+  for (const alter of [
+    r => ({ ...r, semanticRetrieval: undefined }),
+    r => ({ ...r, semanticRetrieval: { ...r.semanticRetrieval, version: 'future' } }),
+    r => ({ ...r, semanticRetrieval: { ...r.semanticRetrieval, readSourceVersionIds: ['foreign'] } }),
+    r => ({ ...r, composedEvidence: { ...r.composedEvidence, items: [{ ...f.item,
+      ref: { ...f.item.ref, contextScope: 'sibling' } }, r.composedEvidence.items[1]] } }),
+    r => ({ ...r, composedEvidence: { ...r.composedEvidence, items: [{ ...f.item,
+      ref: { ...f.item.ref, endCodePoint: f.item.ref.quote.length } }, r.composedEvidence.items[1]] } }),
+    r => ({ ...r, composedEvidence: { ...r.composedEvidence, items: [{ ...f.item,
+      matchedGenerated: { ...f.item.matchedGenerated, trust: 'verified' } }, r.composedEvidence.items[1]] } }),
+  ]) await withServer((_route, body) => alter(answer(body)), async () => {
+    await assert.rejects(() => client().queryContext(request), outputError);
+  });
+  const { receipt: _receipt, ...evidence } = composed();
+  await withServer((_route, body) => ({
+    receipt: { hash: H('9'), contentHash: H('8'), certification: 'input_evidence_only' },
+    inputs: { certification: 'input_evidence_only', identity: { ...W, caseKind: body.caseKind, caseId: body.caseId, contextPath: PATH },
+      sources: [{ sourceVersionId: SV, analysisReceiptId: RECEIPT, analysisGraphHash: H('a') }] },
+    offeredItemIds: [H('1'), H('2')], usedItemIds: [H('1')],
+    evidence: { ...evidence, items: [f.item] }, freshness: { status: 'historical', reasons: ['analysis_superseded'] },
+    configurationStatus: 'pinned', applicationPolicyStatus: 'not_assessed',
+  }), async calls => {
+    const result = await client().readContextReceipt({ caseKind: 'deal', caseId: 'deal-1', contextPath: PATH,
+      receiptHash: H('9'), usedItemIds: [H('1')], requireCurrent: false });
+    assert.equal(result.evidence.items[0].ref.quoteBinding, 'exact_unit_text');
+    assert.equal(calls.length, 1);
+  });
+});
