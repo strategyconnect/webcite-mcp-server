@@ -265,7 +265,7 @@ function checkComposedItem(item: unknown, origins: Set<string>, sources: Set<str
     isHash(item.ledgerManifestHash);
   const ref = item.ref;
   const valid = item.origin === 'source_statement'
-    ? isGraphRef(ref, sources) && receipts[ref.sourceVersionId as string] === ref.analysisReceiptId &&
+    ? isGraphRef(ref, sources) && isHash(ref.analysisReceiptId) && receipts[ref.sourceVersionId as string] === ref.analysisReceiptId &&
       ref.quoteBinding === 'physical_source_only' && typeof item.snippet === 'string'
     : item.origin === 'automatic_interpretation'
       ? witnessed && oneOf(item.readingKind, ['figure', 'observation']) && isHash(item.readingId) && isObject(item.reading)
@@ -331,8 +331,11 @@ export function validateProductContextQuery(raw: unknown, workspace: ProductWork
   const receipts = root.analysisReceipts;
   if (!isObject(receipts) || !Object.entries(receipts).every(([id, receipt]) => sources.has(id) && isHash(receipt)))
     productOutput('analysisReceipts must map queried sources to receipt hashes');
-  if (Object.keys(receipts).length !== sources.size || sources.size !== ids.length)
-    productOutput('analysisReceipts must cover every distinct queried source');
+  const pinned = body.automaticExtractionSelections as { sourceVersionId: string }[] | undefined;
+  const requiredReceipts = body.memoryOnly === true && !body.automaticExtractionContext
+    ? (pinned ?? []).map(selection => selection.sourceVersionId) : ids;
+  if (requiredReceipts.some(id => !isHash(receipts[id])) || sources.size !== ids.length)
+    productOutput('analysisReceipts must cover every source actually read');
   const refs = root.refs;
   if (!Array.isArray(refs) || !refs.every((ref) => isGraphRef(ref, sources)))
     return productOutput('refs must anchor queried sources');
@@ -449,8 +452,18 @@ export function validateProductContextReceipt(raw: unknown, workspace: ProductWo
   if (!Array.isArray(items) || items.length !== expected.size || items.some(item => !isObject(item) || !expected.has(item.id as string)))
     productOutput('receipt evidence differs from the offered or used items');
   if (!Array.isArray(inputs.sources) || inputs.sources.length > 200 || !inputs.sources.every(row => isObject(row) &&
-    isProductId(row.sourceVersionId) && isHash(row.analysisReceiptId))) productOutput('receipt sources are invalid');
-  const rows = inputs.sources as Record<string, string>[];
+    isProductId(row.sourceVersionId) && ((isHash(row.analysisReceiptId) && isHash(row.analysisGraphHash)) ||
+      (row.analysisReceiptId === null && row.analysisGraphHash === null)))) productOutput('receipt sources are invalid');
+  const rows = inputs.sources as { sourceVersionId: string; analysisReceiptId: string | null }[];
+  const receiptBySource = new Map(rows.map(row => [row.sourceVersionId, row.analysisReceiptId]));
+  for (const item of items) {
+    if (item.origin !== 'source_reconciliation') continue;
+    const occurrences = isObject(item.finding) ? item.finding.occurrences : undefined;
+    if (!Array.isArray(occurrences) || occurrences.length < 2 || occurrences.some(occurrence =>
+      !isObject(occurrence) || !isObject(occurrence.anchor) || !isHash(occurrence.anchor.analysisReceiptId) ||
+      receiptBySource.get(String(occurrence.anchor.sourceVersionId)) !== occurrence.anchor.analysisReceiptId))
+      productOutput('receipt finding has no analyzed source custody');
+  }
   const budgets = requireObject(evidence.budgets, 'budgets');
   if (budgets.usedItems !== offered.length || !isCount(budgets.maxItems) || budgets.maxItems < 1 || budgets.maxItems > 2000 ||
     !Array.isArray(evidence.include) || !evidence.include.length || evidence.include.length > 5 ||
@@ -460,7 +473,8 @@ export function validateProductContextReceipt(raw: unknown, workspace: ProductWo
   // The producer retains offered budgets when the caller selects a subset of its items.
   checkComposedEvidence({ ...evidence, receipt: null, budgets: { ...budgets, usedItems: items.length } },
     { include: evidence.include, maxItems: budgets.maxItems, maxChars: budgets.maxChars },
-    new Set(rows.map(row => row.sourceVersionId)), Object.fromEntries(rows.map(row => [row.sourceVersionId, row.analysisReceiptId])));
+    new Set(rows.map(row => row.sourceVersionId)), Object.fromEntries(rows.filter(row => row.analysisReceiptId !== null)
+      .map(row => [row.sourceVersionId, row.analysisReceiptId])));
   const freshness = requireObject(root.freshness, 'freshness');
   if (!oneOf(freshness.status, ['current', 'historical']) || !Array.isArray(freshness.reasons) ||
     !freshness.reasons.every(reason => typeof reason === 'string') ||

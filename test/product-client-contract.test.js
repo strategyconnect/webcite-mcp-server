@@ -112,7 +112,11 @@ function withServer(respond, run) {
     const status = verify(url, init);
     if (status) return new Response(JSON.stringify({ message: 'denied' }), { status });
     const route = new URL(url).pathname.split('/').slice(-2).join('/');
-    return new Response(JSON.stringify(respond(route, JSON.parse(init.body))), { status: 200 });
+    // Production CreditsHeaderInterceptor adds this property alongside the source payload.
+    return new Response(JSON.stringify({ ...respond(route, JSON.parse(init.body)), credit_usage: {
+      credits_used: 0, credits_remaining: null, monthly_allocation: null,
+      overage_enabled: null, operation_id: null,
+    } }), { status: 200 });
   };
   return Promise.resolve().then(() => run(calls)).finally(() => { global.fetch = original; });
 }
@@ -130,6 +134,7 @@ const argumentError = (e) => e.code === 'invalid_argument';
 test('context query signs the exact route, audience, body and workspace and decodes composed evidence', async () => {
   await withServer(respondDefault, async (calls) => {
     const result = await client().queryContext(QUERY);
+    assert.equal(result.credit_usage.credits_used, 0);
     assert.equal(calls.length, 1);
     assert.equal(new URL(calls[0].url).pathname, '/api/v2/integrations/product/sources/context/query');
     const sent = JSON.parse(calls[0].init.body);
@@ -252,6 +257,7 @@ test('source preview signs the unit route and decodes text, cells, region and un
   for (const kind of Object.keys(targets)) {
     await withServer((route, body) => previewResponse(SV, body, { target: targets[kind] }), async (calls) => {
       const result = await client().previewSource(requests[kind]);
+      assert.equal(result.credit_usage.credits_used, 0);
       assert.equal(result.target.kind, kind);
       assert.equal(new URL(calls[0].url).pathname, `/api/v2/integrations/product/sources/${SV}/preview`);
       const sent = JSON.parse(calls[0].init.body);
@@ -341,13 +347,14 @@ test('retained receipt reads preserve input-only certification, used items and e
     const { receipt: _receipt, ...evidence } = composed();
     return { receipt: { hash: H('9'), contentHash: H('8'), certification: 'input_evidence_only' },
       inputs: { identity: { ...W, caseKind: body.caseKind, caseId: body.caseId, contextPath: PATH },
-        certification: 'input_evidence_only', sources: [{ sourceVersionId: SV, analysisReceiptId: RECEIPT }] },
+        certification: 'input_evidence_only', sources: [{ sourceVersionId: SV, analysisReceiptId: RECEIPT, analysisGraphHash: H('a') }] },
       offeredItemIds: evidence.items.map(item => item.id), usedItemIds: body.usedItemIds ?? null,
       evidence: { ...evidence, items: body.usedItemIds ? evidence.items.filter(item => body.usedItemIds.includes(item.id)) : evidence.items },
       freshness: { status: 'current', reasons: [] }, configurationStatus: 'pinned', applicationPolicyStatus: 'not_assessed' };
   };
   await withServer((_route, body) => answer(body), async calls => {
     const result = await client().readContextReceipt({ ...request, usedItemIds: [H('1')] });
+    assert.equal(result.credit_usage.credits_used, 0);
     assert.equal(result.evidence.items.length, 1);
     assert.equal(result.receipt.certification, 'input_evidence_only');
     const { url, init } = calls[0];
@@ -367,5 +374,65 @@ test('retained receipt reads preserve input-only certification, used items and e
   });
   await withServer((_route, body) => ({ ...answer(body), freshness: { status: 'historical', reasons: ['source_changed'] } }), async () => {
     assert.equal((await client().readContextReceipt({ ...request, requireCurrent: false })).freshness.status, 'historical');
+  });
+  const notesOnly = body => {
+    const result = answer(body);
+    return { ...result, inputs: { ...result.inputs, sources: [{ sourceVersionId: SV,
+      analysisReceiptId: null, analysisGraphHash: null }] }, offeredItemIds: [H('2')],
+    evidence: { ...result.evidence, include: ['notes'], items: result.evidence.items.filter(item => item.origin === 'user_assertion'),
+      omitted: [], budgets: { ...result.evidence.budgets, usedItems: 1 } } };
+  };
+  await withServer((_route, body) => notesOnly(body), async () => {
+    assert.equal((await client().readContextReceipt(request)).inputs.sources[0].analysisReceiptId, null);
+  });
+  await withServer((_route, body) => ({ ...answer(body), inputs: notesOnly(body).inputs }), async () => {
+    await assert.rejects(() => client().readContextReceipt(request), outputError);
+  });
+  const findingAnswer = body => {
+    const result = answer(body);
+    const scope = { subject: 'Target', predicate: null, metric: null, period: null,
+      basis: null, unit: null, currency: null, dimensions: [] };
+    const finding = { id: H('4'), state: 'needs_evidence', description: 'Compare wording',
+      reconciliationQuestion: 'Does the scope match?', essentialScope: ['subject', 'period'],
+      essentialDimensions: [], limitations: ['Period unknown'],
+      occurrences: [0, 1].map(index => ({ claim: 'Revenue grew', scope, anchor: {
+        sourceVersionId: index ? SV2 : SV, analysisReceiptId: index ? RECEIPT2 : RECEIPT, originalBytesHash: H('a'),
+        representationId: 'rep-1', sourceUnitId: `unit-${index}`, sourceUnitHash: H('b'),
+        locator, quote: 'Revenue grew', startCodePoint: 0, endCodePoint: 12,
+      } })) };
+    return { ...result, inputs: { ...result.inputs, query: { sourceVersionIds: [SV] },
+      sources: [...result.inputs.sources, { sourceVersionId: SV2, analysisReceiptId: RECEIPT2, analysisGraphHash: H('b') }] },
+    offeredItemIds: [H('4')], evidence: { ...result.evidence,
+      include: ['findings'], omitted: [], budgets: { ...result.evidence.budgets, usedItems: 1 },
+      items: [{ id: H('4'), origin: 'source_reconciliation', findingId: finding.id,
+        findingsManifestHash: H('5'), corpusHash: H('6'), finding }] } };
+  };
+  await withServer((_route, body) => findingAnswer(body), async () => {
+    assert.equal((await client().readContextReceipt(request)).evidence.items[0].origin, 'source_reconciliation');
+  });
+  await withServer((_route, body) => ({ ...findingAnswer(body), inputs: notesOnly(body).inputs }), async () => {
+    await assert.rejects(() => client().readContextReceipt(request), outputError);
+  });
+});
+
+test('memory-only queries require receipts only for sources actually read', async () => {
+  const { evidence: _evidence, text: _text, ...base } = QUERY;
+  const request = { ...base, memoryOnly: true };
+  const response = (body, analysisReceipts) => queryResponse(body, {
+    status: 'memory_only', refs: [], analysisReceipts,
+  });
+  await withServer((_route, body) => response(body, {}), async () => {
+    assert.deepEqual((await client().queryContext(request)).analysisReceipts, {});
+    assert.deepEqual((await client().queryContext({ ...request, automaticExtractionSelections: [] })).analysisReceipts, {});
+  });
+  const metrics = [{ key: 'arr', label: 'ARR', unit: 'currency' }];
+  const pinned = { ...request, automaticExtractionSelections: [{ sourceVersionId: SV,
+    request: { analysisReceiptId: RECEIPT, metrics, metricConfigHash: contentHash(metrics) }, read: { manifestHash: H('c') } }] };
+  await withServer((_route, body) => response(body, { [SV]: RECEIPT }), async () => {
+    assert.deepEqual((await client().queryContext(pinned)).analysisReceipts, { [SV]: RECEIPT });
+    await assert.rejects(() => client().queryContext(QUERY), outputError);
+  });
+  await withServer((_route, body) => response(body, {}), async () => {
+    await assert.rejects(() => client().queryContext(pinned), outputError);
   });
 });
