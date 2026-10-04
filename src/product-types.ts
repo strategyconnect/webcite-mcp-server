@@ -45,6 +45,8 @@ export interface ProductEvidenceRequest {
 }
 
 export interface ProductContextQueryOptions {
+  /** Opt-in only when the backend supports product-semantic-retrieval/1. */
+  semantics?: { topK?: number; referenceHops?: 0 | 1 | 2; rerank?: boolean };
   caseKind: string;
   caseId: string;
   contextPath?: ProductContextPathNode[];
@@ -88,11 +90,45 @@ export type ProductComposedOrigin =
   | 'source_statement' | 'automatic_interpretation' | 'source_reconciliation'
   | 'user_assertion' | 'source_diagnostic';
 
+export type ProductRetrievedBy = 'lexical' | 'enrichment' | 'graph' | 'reference' | 'semantic';
+export interface ProductSemanticMissingSupport {
+  citingItemId: string; refId: string; referenceText: string;
+  status: 'unresolved_in_room' | 'ambiguous_in_room' | 'target_not_readable'; candidateCount: number;
+  targetDescriptor: { label: string | null; title: string | null; date: string | null };
+}
+export interface ProductSemanticRef {
+  sourceVersionId: string; analysisReceiptId: string; representationId: string;
+  sourceUnitId: string; unitKey: string; kind: 'passage'; quote: string;
+  quoteBinding: 'exact_unit_text'; quoteTruncated: boolean; sourceUnitHash: string;
+  startCodePoint: number; endCodePoint: number;
+}
+export interface ProductGeneratedMatch {
+  trust: 'untrusted_generated';
+  items: { field: 'contextLine' | 'likelyQuestions' | 'synonymTerms'; text: string }[];
+}
+export interface ProductSemanticSpan { start: number; end: number; utf16Start: number; utf16End: number }
+export interface ProductSemanticRetrieval {
+  version: 'product-semantic-retrieval/1'; readSourceVersionIds: string[];
+  items: (Omit<ProductSemanticRef, 'kind' | 'quoteBinding' | 'startCodePoint' | 'endCodePoint'> & {
+    itemId: string; span: ProductSemanticSpan; retrievedBy: ProductRetrievedBy[]; matchedTerms: string[];
+    matchedGenerated: ProductGeneratedMatch | null;
+    entityMatches: { registerEntityId: string; method: 'exact_phrase' | 'model_coreference' }[];
+    referencedFrom: { citingItemId: string; refId: string; hop: number }[];
+    missingSupport: (ProductSemanticMissingSupport & { span: ProductSemanticSpan })[];
+  })[];
+  missingSupport: (ProductSemanticMissingSupport & { span: ProductSemanticSpan })[];
+  coverage: Record<string, unknown> & { status: 'not_prepared' | 'partial' | 'complete' };
+}
+
 /** One composed evidence item. Payloads (reading, finding, note, value) are producer-owned. */
 export interface ProductComposedItem {
   id: string;
   origin: ProductComposedOrigin;
-  ref?: ProductGraphRef & { analysisReceiptId: string; quoteBinding: 'physical_source_only' };
+  ref?: (ProductGraphRef & { analysisReceiptId: string; quoteBinding: 'physical_source_only' }) | ProductSemanticRef;
+  retrieval?: 'semantic';
+  retrievedBy?: ProductRetrievedBy[];
+  matchedGenerated?: ProductGeneratedMatch | null;
+  missingSupport?: ProductSemanticMissingSupport[];
   snippet?: string;
   sourceVersionId?: string;
   analysisReceiptId?: string;
@@ -145,6 +181,7 @@ export interface ProductContextQueryResponse {
   gaps: string[];
   contextScopes?: ProductContextScope[];
   composedEvidence?: ProductComposedEvidence;
+  semanticRetrieval?: ProductSemanticRetrieval;
   memory: { notes: Record<string, unknown>[]; excludedStale: number; evidenceStatus: 'unverified' };
   operationId: string;
   usage: ProductUsage;
