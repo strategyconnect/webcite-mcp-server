@@ -7,6 +7,17 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.55 release notes
+
+Updates the bundled `webcite_guide` with the reviewed credit overage contract:
+
+- Held reservations are excluded from settled overage. Returning unused credits does not erase billing for the portion that was actually settled.
+- Calendar renewal resets the period's overage watermark. Delayed activation preserves an existing period's allocation and spending.
+- Durable overage events retain their identity across retries. Delivery retries use a fresh timestamp, including after a long outage.
+- Reporting requires a meter and an explicit UTC activation time. Earlier billing periods are excluded, and a new meter does not change existing subscription price snapshots.
+
+The MCP tools and client API are unchanged from 1.9.54. Server billing still depends on its serving release, migrations and meter configuration; publishing the guide does not enable billing.
+
 ## 1.9.54 release notes
 
 Clarifies the bundled `webcite_guide` for servers implementing the reviewed recovery fixes:
