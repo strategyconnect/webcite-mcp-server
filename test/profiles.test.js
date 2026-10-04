@@ -156,6 +156,7 @@ test('full slide audits and image numerics route to supported tools', () => {
   assert.match(numericGuide, /count contextual decisions separately from reviewed numeric assertions/);
   assert.match(numericGuide, /candidate\.raw can be printed display text.*sourceRawLexeme is the sealed stored cell value/);
   assert.match(numericGuide, /expectedRawLexeme must use that stored value, never the rounded display/);
+  assert.match(numericGuide, /includeInactive: true in the signed source-context list body.*inactiveBindings.*Pass that revisionId as expectedRevisionId/);
 });
 
 test('runSmoke reports core defaults', () => {
