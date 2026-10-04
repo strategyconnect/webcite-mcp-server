@@ -131,6 +131,26 @@ const PREVIEW = { caseKind: 'deal', caseId: 'deal-1', sourceVersionId: SV, analy
 const outputError = (e) => e.code === 'invalid_api_output';
 const argumentError = (e) => e.code === 'invalid_argument';
 
+test('malformed successful JSON preserves known credit headers and leaves missing usage unknown', async () => {
+  const original = global.fetch;
+  try {
+    for (const headers of [{ 'X-Credits-Used': '2', 'X-Credits-Remaining': '18',
+      'X-Credits-Operation-Id': 'receipt-operation' }, {}]) {
+      global.fetch = async () => new Response('{', { status: 200, headers });
+      await assert.rejects(() => client().queryContext(QUERY), error => {
+        assert.equal(error.name, 'ApiClientError');
+        assert.match(error.message, /valid JSON/);
+        if (headers['X-Credits-Used']) assert.deepEqual(error.credit_usage, {
+          credits_used: 2, credits_remaining: 18, monthly_allocation: null,
+          overage_enabled: null, operation_id: 'receipt-operation',
+        });
+        else assert.equal(error.credit_usage, undefined);
+        return true;
+      });
+    }
+  } finally { global.fetch = original; }
+});
+
 test('context query signs the exact route, audience, body and workspace and decodes composed evidence', async () => {
   await withServer(respondDefault, async (calls) => {
     const result = await client().queryContext(QUERY);

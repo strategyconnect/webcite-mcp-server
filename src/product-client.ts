@@ -49,7 +49,8 @@ export class WebCiteProductClient {
     if (!response.ok) throw new ApiClientError(response.status, await response.text(),
       creditUsage(withCreditHeaders({}, response.headers)));
     try { return await response.json(); } catch {
-      throw new ApiClientError(response.status, 'API response did not contain valid JSON');
+      throw new ApiClientError(response.status, 'API response did not contain valid JSON',
+        creditUsage(withCreditHeaders({}, response.headers)));
     }
   }
 
