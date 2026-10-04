@@ -7,6 +7,16 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.54 release notes
+
+Clarifies the bundled `webcite_guide` for servers implementing the reviewed recovery fixes:
+
+- Activation keeps valid provider billing dates; first calendar renewal can recover an older processing-time fallback without accepting stale or overlapping periods.
+- No-carry renewal grants the full new allocation even when unresolved earlier reservations exceed it.
+- A failed operation lock prevents provider admission. Fresh older extraction saves unknown usage before its cursor advances when receipt persistence fails.
+
+The MCP tools and client API are unchanged from 1.9.53. Publishing this guide does not activate server features or apply migrations; confirm the serving release.
+
 ## 1.9.53 release notes
 
 Updates the bundled `webcite_guide` with reviewed backend contracts:
