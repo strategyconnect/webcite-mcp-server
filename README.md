@@ -7,7 +7,8 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
-## Stream cancellation
+## 1.9.41 release notes
+
 
 Cancelling a `verify_claim_stream` MCP request now forwards its cancellation signal to the backend HTTP request. Stopping a stream early or encountering a terminal error cancels its unfinished response body. Partial events and original failures remain failures; a completed stream consumes its result, done marker and EOF without extra cancellation. Cancellation does not certify a refund or rollback of paid work. Direct SDK callers can pass an `AbortSignal` as the second argument to `verifyClaimStream` to interrupt a pending read.
 
@@ -627,6 +628,17 @@ The numeric engine's measured accuracy against its gold-set corpus: conflict det
 |----------|-------------|---------|
 | `WEBCITE_API_KEY` | Your WebCite API key (required) | - |
 | `WEBCITE_API_URL` | API base URL | `https://api.webcite.co` |
+
+For new agent conversations using MongoDB checkpoints, configure your local SDK or self-hosted MCP server with the durable API base:
+
+```bash
+# WEBCITE_API_KEY must already be configured.
+WEBCITE_API_URL=https://api.webcite.co/durable npx webcite-mcp-server
+```
+
+For development, use `https://devapi.webcite.co/durable`. Keep the same API base, authenticated owner and `thread_id` for every continuation. Existing conversations keep their original base; changing the base does not move their in-memory checkpoints. Saved review and job records are already durable, separately from agent checkpoints.
+
+The public hosted MCP at `https://api.webcite.co/mcp` keeps its existing API base. `/durable` is an API base, not a hosted MCP connection URL. Self-hosted HTTP servers can also set the existing `apiBaseUrl` option when creating `createRemoteMcpApp`.
 
 ## Response Format
 

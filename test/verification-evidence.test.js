@@ -17,6 +17,7 @@ const result = {
     evidence_status: 'context_only', key_findings: [{ finding: 'Background only.', confidence: 90,
       confidence_basis: 'unknown', evidence_role: 'context' }] },
   citation_id: 'citation-real', request_id: 'request-real', operation_id: 'operation-real',
+  usages: { input_tokens: 4, output_tokens: 1, total_tokens: 5, usage_unknown: true },
   metadata: { policy_version: 5 }, custom_backend_field: { preserved: true },
 };
 
@@ -127,6 +128,7 @@ test('verification evidence survives HTTP API and MCP transport', async (t) => {
     assert.equal(response.isError, undefined);
     assert.deepEqual(response.structuredContent.citations, result.citations);
     assert.equal(response.structuredContent.stream_usage.usage.credits, 2);
+    assert.deepEqual(response.structuredContent.usages, result.usages);
     const batch = await call('verify_batch', { items: [{ quote: 'claim', source_text: 'text' }] });
     assert.equal(batch.structuredContent.results[0].binding.score, 0);
     assert.equal(batch.structuredContent.results[0].id, 'batch-real');
@@ -178,4 +180,10 @@ test('verification evidence survives HTTP API and MCP transport', async (t) => {
   assert.match(text, /confidence unknown/);
   assert.doesNotMatch(text, /0% model-reported stance confidence/);
   assert.match(formatCitation({...source, stance_confidence_basis:'measured'}, 0), /0% model-reported stance confidence/);
+});
+
+test('legacy verification usage stays absent, while measured unknown usage survives validation', () => {
+  const { validateVerification } = require('../dist/verification-response.js');
+  assert.equal(Object.hasOwn(validateVerification({ citations: [] }), 'usages'), false);
+  assert.deepEqual(validateVerification(result).usages, result.usages);
 });
