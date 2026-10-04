@@ -122,7 +122,16 @@ export interface ClaimGroup {
   verdict?: Verdict;
 }
 
+export interface VerificationUsages {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  usage_unknown: boolean;
+  cached?: boolean;
+}
+
 export interface VerifyClaimResponse {
+  usages?: VerificationUsages;
   metadata?: Record<string, unknown>;
   claim_groups: ClaimGroup[];
   totalResults: number;
