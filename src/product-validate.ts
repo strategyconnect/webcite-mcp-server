@@ -391,6 +391,7 @@ function isTargetDescriptor(raw: unknown): boolean {
 
 function isSemanticIdentity(ref: Record<string, unknown>, sources: Set<string>, receipts: Record<string, unknown>): boolean {
   return typeof ref.sourceVersionId === 'string' && sources.has(ref.sourceVersionId) && isHash(ref.analysisReceiptId) &&
+    (ref.contextScope === undefined || ref.contextScope === null || oneOf(ref.contextScope, ['meeting', 'company'])) &&
     receipts[ref.sourceVersionId] === ref.analysisReceiptId && isProductId(ref.representationId) && isProductId(ref.sourceUnitId) &&
     typeof ref.unitKey === 'string' && ref.unitKey.length > 0 && ref.unitKey.length <= 200 && isHash(ref.sourceUnitHash) &&
     typeof ref.quote === 'string' && ref.quote.length > 0 && typeof ref.quoteTruncated === 'boolean';

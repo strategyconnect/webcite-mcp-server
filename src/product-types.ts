@@ -98,6 +98,7 @@ export interface ProductSemanticMissingSupport {
 }
 export interface ProductSemanticRef {
   sourceVersionId: string; analysisReceiptId: string; representationId: string;
+  contextScope?: 'meeting' | 'company' | null;
   sourceUnitId: string; unitKey: string; kind: 'passage'; quote: string;
   quoteBinding: 'exact_unit_text'; quoteTruncated: boolean; sourceUnitHash: string;
   startCodePoint: number; endCodePoint: number;

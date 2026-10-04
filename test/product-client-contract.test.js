@@ -462,7 +462,7 @@ function semanticFixture() {
   const semanticSpan = { start: 0, end: [...quote].length, utf16Start: 0, utf16End: quote.length };
   const missing = { citingItemId: H('c'), refId: H('d'), referenceText: 'See supply agreement',
     status: 'unresolved_in_room', candidateCount: 0, targetDescriptor: { label: null, title: 'Supply agreement', date: null } };
-  const identity = { sourceVersionId: SV, analysisReceiptId: RECEIPT, representationId: 'rep-1',
+  const identity = { sourceVersionId: SV, analysisReceiptId: RECEIPT, representationId: 'rep-1', contextScope: null,
     sourceUnitId: 'unit-1', unitKey: 'unit:1', quote, quoteTruncated: false, sourceUnitHash: H('b') };
   const diagnostics = { retrievedBy: ['enrichment'], matchedGenerated: { trust: 'untrusted_generated',
     items: [{ field: 'likelyQuestions', text: 'Untrusted index content' }] } };
@@ -487,6 +487,7 @@ test('semantic query quotes and historical receipts preserve custody and bounded
   await withServer((_route, body) => answer(body), async calls => {
     const result = await client().queryContext(request);
     assert.equal(result.composedEvidence.items[0].ref.quote, f.item.ref.quote);
+    assert.equal(result.composedEvidence.items[0].ref.contextScope, null);
     assert.equal(result.semanticRetrieval.items[0].matchedGenerated.trust, 'untrusted_generated');
     assert.deepEqual(JSON.parse(calls[0].init.body).semantics, request.semantics);
     assert.equal(verify(calls[0].url, calls[0].init), null);
@@ -498,6 +499,8 @@ test('semantic query quotes and historical receipts preserve custody and bounded
     r => ({ ...r, semanticRetrieval: undefined }),
     r => ({ ...r, semanticRetrieval: { ...r.semanticRetrieval, version: 'future' } }),
     r => ({ ...r, semanticRetrieval: { ...r.semanticRetrieval, readSourceVersionIds: ['foreign'] } }),
+    r => ({ ...r, composedEvidence: { ...r.composedEvidence, items: [{ ...f.item,
+      ref: { ...f.item.ref, contextScope: 'sibling' } }, r.composedEvidence.items[1]] } }),
     r => ({ ...r, composedEvidence: { ...r.composedEvidence, items: [{ ...f.item,
       ref: { ...f.item.ref, endCodePoint: f.item.ref.quote.length } }, r.composedEvidence.items[1]] } }),
     r => ({ ...r, composedEvidence: { ...r.composedEvidence, items: [{ ...f.item,
