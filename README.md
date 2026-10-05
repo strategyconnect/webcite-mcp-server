@@ -673,6 +673,7 @@ The numeric engine's measured accuracy against its gold-set corpus: conflict det
 |----------|-------------|---------|
 | `WEBCITE_API_KEY` | Your WebCite API key (required) | - |
 | `WEBCITE_API_URL` | API base URL | `https://api.webcite.co` |
+| `WEBCITE_API_TIMEOUT_MS` | Headers and body timeout for each API request, in milliseconds (positive integer; invalid values fall back to the default with a warning) | `900000` (15 minutes) |
 
 For new agent conversations using MongoDB checkpoints, configure your local SDK or self-hosted MCP server with the durable API base:
 

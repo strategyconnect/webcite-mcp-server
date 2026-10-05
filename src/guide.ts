@@ -49,6 +49,8 @@ const LITERAL_SOURCE_CONTEXT =
   'Retain literal source context without treating proximity or relevance as proof of a metric, observation period or unit. HTML table units can retain standard ISO currency codes, literal currency symbols and explicit nonfinancial Unit: or Units: declarations. Unknown or ambiguous headers, units and periods stay unknown; do not infer a currency from an ambiguous symbol.';
 const MCP_PROFILES =
   'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.';
+const API_TIMEOUT =
+  'Local SDK and self-hosted MCP API requests allow up to 15 minutes (900000 ms) for response headers and body by default. Set `WEBCITE_API_TIMEOUT_MS` to a positive integer of milliseconds to change it; invalid values fall back to the default with a warning.';
 const AGENT_CHECKPOINTS =
   'Keep the public thread_id stable when continuing work with the same authenticated owner. Internal agent checkpoints bind the owner and thread together; sharing a thread_id across accounts does not share agent history. Older unscoped agent checkpoints are not resumed because their owner cannot be established. This does not change saved review IDs, claims or completed receipts. In-memory agent checkpoints do not survive a process restart; use saved job and review receipts to recover completed work. Without MongoDB checkpoint configuration, agents use memory storage. Configured MongoDB connection or checkpoint setup failure prevents new agent startup instead of switching to memory; restoring MongoDB does not move existing in-memory checkpoints into durable storage. If a resumed agent task reports a token-usage storage or identity error, preserve the original thread and inspect saved operation receipts before retrying paid work.';
 const DURABLE_API_BASE =
@@ -85,6 +87,7 @@ const BILLING_REFERENCE = [
   RETRIEVAL_ATTEMPTS,
   LITERAL_SOURCE_CONTEXT,
   MCP_PROFILES,
+  API_TIMEOUT,
   AGENT_CHECKPOINTS,
   DURABLE_API_BASE,
   ASSET_OWNERSHIP,
