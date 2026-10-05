@@ -133,9 +133,11 @@ import type {
   WorkflowExecutionResponse,
 } from './types.js';
 import { ApiClientError } from './errors.js';
+import { apiDispatcher } from './api-dispatcher.js';
 
 export * from './types.js';
 export { ApiClientError, ToolFailure } from './errors.js';
+export { DEFAULT_API_TIMEOUT_MS, resolveApiTimeoutMs } from './api-dispatcher.js';
 
 export class WebCiteApiClient {
   private baseUrl: string;
@@ -164,7 +166,8 @@ export class WebCiteApiClient {
     const response = await fetch(url, {
       ...options,
       headers,
-    });
+      dispatcher: apiDispatcher(),
+    } as RequestInit);
 
     if (!response.ok) {
       throw await this.responseError(response);
@@ -285,7 +288,8 @@ export class WebCiteApiClient {
       },
       body,
       signal,
-    });
+      dispatcher: apiDispatcher(),
+    } as RequestInit);
 
     if (!response.ok) {
       throw await this.responseError(response);
@@ -514,7 +518,8 @@ export class WebCiteApiClient {
         'x-api-key': this.apiKey,
       },
       body: formData,
-    });
+      dispatcher: apiDispatcher(),
+    } as RequestInit);
 
     if (!response.ok) {
       throw await this.responseError(response);
