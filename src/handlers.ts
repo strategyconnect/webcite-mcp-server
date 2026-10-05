@@ -2054,6 +2054,19 @@ export const handlers: Record<string, ToolHandler> = {
     return ok(parts.join('\n\n'), { ...result, ...normalized });
   },
 
+  upload_url: async (args, client) => {
+    const url = requireString(args, 'url');
+    const filename = args?.filename;
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { throw new ToolFailure('invalid_argument', 'A public HTTPS URL is required'); }
+    if (Object.keys(args ?? {}).some(key => !['url', 'filename'].includes(key)) || url.length > 8192 || parsed.protocol !== 'https:' || parsed.username || parsed.password ||
+        (parsed.port && parsed.port !== '443') ||
+        (filename !== undefined && (typeof filename !== 'string' || !filename.trim() || filename.length > 255)))
+      throw new ToolFailure('invalid_argument', 'Use a public HTTPS URL without credentials and an optional display filename');
+    const result = await wrapApi(client.uploadUrl({ url, ...(filename !== undefined ? { filename: filename as string } : {}) }));
+    return ok(`# File Uploaded Successfully\n**Asset ID:** ${result.asset_id}\n**Source version ID:** ${result.source_version_id}\n**Filename:** ${result.filename}\n**Size:** ${result.size} bytes\n${creditUsage(result) ? '' : 'Request credit usage: unknown; preserve the upload receipt.'}`, { ...result });
+  },
+
   upload_file: async (args, client) => {
     let result;
     if (args?.file_base64 !== undefined) {
