@@ -128,6 +128,7 @@ import type {
   SSEEvent,
   ReviewDocumentOptions,
   UploadResponse,
+  UploadUrlOptions,
   VerifyClaimOptions,
   VerifyClaimResponse,
   WorkflowExecutionResponse,
@@ -499,6 +500,19 @@ export class WebCiteApiClient {
 
   async accuracyReport(): Promise<AccuracyReport> {
     return this.request('/api/v1/accuracy', { method: 'GET' });
+  }
+
+  async uploadUrl(options: UploadUrlOptions): Promise<UploadResponse> {
+    const result = await this.request('/api/v1/upload/url', {
+      method: 'POST', body: JSON.stringify(options),
+    }) as { successCode?: number; data?: Partial<UploadResponse> };
+    const data = result?.data;
+    if (result?.successCode !== 200 || typeof data?.asset_id !== 'string' || !data.asset_id.trim() || data.asset_id !== data.asset_id.trim() || data.asset_id.length > 191 ||
+        typeof data.source_version_id !== 'string' || !data.source_version_id.trim() || data.source_version_id !== data.source_version_id.trim() || data.source_version_id.length > 191 ||
+        typeof data.asset_url !== 'string' || !data.asset_url.trim() || typeof data.filename !== 'string' || !data.filename.trim() || data.filename.length > 255 ||
+        !Number.isSafeInteger(data.size) || (data.size as number) <= 0 || (data.size as number) > 100 * 1024 * 1024)
+      throw new ApiClientError(502, 'URL upload response did not contain usable stored asset references', creditUsage(result));
+    return { ...data, ...(creditUsage(result) ? { credit_usage: creditUsage(result) } : {}) } as UploadResponse;
   }
 
   async uploadFile(filePath: string): Promise<UploadResponse> {

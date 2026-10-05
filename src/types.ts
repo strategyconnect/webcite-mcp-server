@@ -171,6 +171,11 @@ export interface SSEEvent {
   credit_usage?: CreditUsage;
 }
 
+export interface UploadUrlOptions {
+  url: string;
+  filename?: string;
+}
+
 export interface UploadResponse {
   asset_id: string;
   asset_url?: string;
