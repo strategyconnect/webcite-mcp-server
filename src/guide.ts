@@ -51,6 +51,9 @@ const MCP_PROFILES =
   'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.';
 const API_TIMEOUT =
   'Local SDK and self-hosted MCP API requests allow up to 15 minutes (900000 ms) for response headers and body by default. Set `WEBCITE_API_TIMEOUT_MS` to a positive integer of milliseconds to change it; invalid values fall back to the default with a warning.';
+const STATED_FX_EVIDENCE =
+  'On serving verification releases implementing claim-stated FX comparison, one unambiguous claim-stated equality or unit ratio between ISO currencies can retain auditable conversion arithmetic. The rate is never fetched or assumed; an ambiguous pair quote or conflicting stated rates remains unresolved. Conflicting or missing printed currency/scale declarations cannot supply bare source figures. Existing evidence comparability guards run before stance adjustment. Conversions use only explicitly printed source currency and scale. The arithmetic does not certify the claim or independently promote a citation stance; a rate that cannot establish the proposed support or contradiction leaves that conclusion unresolved.';
+
 const SEARCH_NARRATIVE =
   '`search_sources` search_result text is a model-written summary, not evidence. On serving releases implementing narrative_status, no_sources means no citation was retained and narrative fields are empty except for the legacy NOT_SEARCHABLE sentinel. With model_text, [n] identifies the nth returned citation (or the flattened claim_groups citations when citations is absent). A marker is retained only for a fetched publisher passage containing the figures and literal metric/unit context of its sentence or row, or most words of a figureless sentence. Grounding, fallback and unknown passage provenance cannot bind a marker. This conservative passage binding does not certify the statement; treat unmarked figures as unsourced model text and check the original passage with get_source_preview.';
 
@@ -150,7 +153,7 @@ export function renderWebciteGuide(input: {
         'Credits: typically 2–4 for verify_claim.',
         'Cancelling a verify_claim_stream MCP request forwards cancellation to its backend HTTP request. A stopped or failed stream requests cancellation of its unfinished response body. Partial events do not confirm a result without a done marker. Cancellation does not establish completion, rollback or a credit refund; inspect saved operation receipts before retrying uncertain paid work.',
       ],
-      [RETRIEVAL_ATTEMPTS, PROVIDER_RECORDING, VERIFY_CANCELLATION, VERIFICATION_TIMEOUT],
+      [RETRIEVAL_ATTEMPTS, PROVIDER_RECORDING, VERIFY_CANCELLATION, VERIFICATION_TIMEOUT, STATED_FX_EVIDENCE],
     );
   }
 
