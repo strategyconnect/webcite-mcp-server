@@ -46,11 +46,13 @@ const OVERAGE =
 const RETRIEVAL_ATTEMPTS =
   'When metadata.retrieval_attempts is returned, preserve its search scope and evidence limitation. An unresolved supplied source or a bounded search with insufficient evidence does not prove that the data does not exist. Official-only restrictions apply to the final publisher after redirects. For numerical claims, match metric, observation period, currency and scale; publication year alone is not the observation period. Keep conflicting official publications distinct until their scope and precision are reconciled.';
 const LITERAL_SOURCE_CONTEXT =
-  'Retain literal source context without treating proximity or relevance as proof of a metric, observation period or unit. HTML table units can retain standard ISO currency codes, literal currency symbols and explicit nonfinancial Unit: or Units: declarations. Unknown or ambiguous headers, units and periods stay unknown; do not infer a currency from an ambiguous symbol.';
+  'Retain literal source context without treating proximity or relevance as proof of a metric, observation period or unit. HTML table units can retain standard ISO currency codes, literal currency symbols and explicit nonfinancial Unit: or Units: declarations. Unknown or ambiguous headers, units and periods stay unknown; do not infer a currency from an ambiguous symbol. Native PDF year-table quotations retain a uniquely bound printed heading, caption, unit line and column header as source context, when present. Printed TOTAL rows and their component values remain unchanged. Context does not certify the metric or observation period, and a heading is not borrowed across earlier table rows or ambiguous overlapping text.';
 const MCP_PROFILES =
   'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.';
 const API_TIMEOUT =
   'Local SDK and self-hosted MCP API requests allow up to 15 minutes (900000 ms) for response headers and body by default. Set `WEBCITE_API_TIMEOUT_MS` to a positive integer of milliseconds to change it; invalid values fall back to the default with a warning.';
+const VERIFICATION_TIMEOUT =
+  'On serving releases implementing the 600-second verification default, CITATION_AGENT_TIMEOUT_MS accepts integer milliseconds from 1 to 2147483647. Missing or blank values use 600000 ms; invalid nonblank values warn and use that default. Reaching the backend ceiling remains a 503 VERIFICATION_TIMEOUT failure. Aborting does not establish a zero charge or a refund. The Redis paid-request lock must last at least the configured agent budget plus 60 seconds.';
 const AGENT_CHECKPOINTS =
   'Keep the public thread_id stable when continuing work with the same authenticated owner. Internal agent checkpoints bind the owner and thread together; sharing a thread_id across accounts does not share agent history. Older unscoped agent checkpoints are not resumed because their owner cannot be established. This does not change saved review IDs, claims or completed receipts. In-memory agent checkpoints do not survive a process restart; use saved job and review receipts to recover completed work. Without MongoDB checkpoint configuration, agents use memory storage. Configured MongoDB connection or checkpoint setup failure prevents new agent startup instead of switching to memory; restoring MongoDB does not move existing in-memory checkpoints into durable storage. If a resumed agent task reports a token-usage storage or identity error, preserve the original thread and inspect saved operation receipts before retrying paid work.';
 const DURABLE_API_BASE =
@@ -88,6 +90,7 @@ const BILLING_REFERENCE = [
   LITERAL_SOURCE_CONTEXT,
   MCP_PROFILES,
   API_TIMEOUT,
+  VERIFICATION_TIMEOUT,
   AGENT_CHECKPOINTS,
   DURABLE_API_BASE,
   ASSET_OWNERSHIP,
@@ -144,7 +147,7 @@ export function renderWebciteGuide(input: {
         'Credits: typically 2–4 for verify_claim.',
         'Cancelling a verify_claim_stream MCP request forwards cancellation to its backend HTTP request. A stopped or failed stream requests cancellation of its unfinished response body. Partial events do not confirm a result without a done marker. Cancellation does not establish completion, rollback or a credit refund; inspect saved operation receipts before retrying uncertain paid work.',
       ],
-      [RETRIEVAL_ATTEMPTS, PROVIDER_RECORDING, VERIFY_CANCELLATION],
+      [RETRIEVAL_ATTEMPTS, PROVIDER_RECORDING, VERIFY_CANCELLATION, VERIFICATION_TIMEOUT],
     );
   }
 
