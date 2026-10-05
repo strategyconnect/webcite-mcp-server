@@ -133,7 +133,7 @@ The table below describes common tools across profiles. It is not the remote ser
 
 | Tool | Description | Credits |
 |------|-------------|---------|
-| `webcite_guide` | Pick verification, full-document, source-tracing or numeric workflow | 0 |
+| `webcite_guide` | Pick verification, full-document, source-tracing or numeric workflow, or read the billing reference | 0 |
 | `verify_claim` | Full fact verification with stance analysis and verdict | 2-4 |
 | `get_credit_balance` | Read remaining, used and total credits | 0 |
 | `get_document_review` | Page saved claims and uncovered source passages independently | 0 |
