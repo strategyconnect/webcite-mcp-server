@@ -123,7 +123,7 @@ These changes do not repair or regenerate historical evidence. Backend policy an
 
 Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change a local server's tool discovery. This does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
 
-On the hosted connector, `upload_file` is a small-file compatibility path accepting `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`.
+On the hosted connector, `upload_file` is a small-file compatibility path accepting `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`. Public, docs and research profiles also expose `upload_url`: the authenticated server fetches original bytes from a public HTTPS URL with a 100 MB cap, a 30-second budget and checked DNS/redirects. It forwards no caller credentials and returns owned `asset_id`, `asset_url` and `source_version_id`. This does not access a private chat attachment or local file. Preserve the receipt on an uncertain failure before retrying.
 
 A file attached to a Claude chat is not automatically passed to a remote MCP tool. Upload the original binary through Webcite Playground or the authenticated multipart/resumable HTTP API within the parser's format and size limits, then use its asset ID with the same Webcite account in Claude. If upload completion returns `parse_job_id`, wait for parsing; if it returns `parse_required`, call its `parse_endpoint`. Do not base64-encode extracted text as a substitute for the original file. A client that directly supplies original bytes may still use `upload_file` for small files.
 
@@ -145,6 +145,7 @@ The table below describes common tools across profiles. It is not the remote ser
 | `list_citations` | List your past verifications | 1 |
 | `get_citation` | Get details of a specific verification | 1 |
 | `upload_file` | Upload a document for use as verification context | 1 |
+| `upload_url` | Store original file bytes from a public HTTPS URL, with public-address, redirect and size guards | 1 on successful storage |
 | `get_source_preview` | Resolve a citation to its source, with a bindBack check | 1 |
 | `verify_batch` | Check up to 200 quotes against their sources in one call | 1 per item |
 | `verify_feedback` | Accept, reject or flag a batch result | 1 |

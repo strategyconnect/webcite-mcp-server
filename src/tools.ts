@@ -561,6 +561,18 @@ const claimScopeProperties = {
 /** Stable public API workflows missing from the original v1 tool catalog. */
 export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   {
+    name: 'upload_url',
+    description: `Upload original file bytes from a public HTTPS URL, including through hosted MCP. No caller credentials or headers are forwarded. Private addresses, unsafe redirects, unsupported formats, empty files and files over 100 MB are refused. This does not access a local file or a private chat attachment. Save asset_id, asset_url and source_version_id; use the owned asset_id for review and extraction. An uncertain failure does not prove that no upload charge occurred; preserve the receipt rather than automatically repeating it. Credits: 1 for a stored upload.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        url: { type: 'string', maxLength: 8192, description: 'Public HTTPS URL of the original file.' },
+        filename: { type: 'string', minLength: 1, maxLength: 255, description: 'Optional display filename matching the fetched format.' },
+      },
+      required: ['url'],
+    },
+  },
+  {
     name: 'get_credit_balance',
     description: 'Read the authenticated account credit balance for an explicit balance question or an unresolved credit refusal. A routine document review does not require this call; use inline credit_usage from normal responses. Costs 0 credits. Returns remaining, used and total credits; no billing change is made.',
     inputSchema: { type: 'object', properties: {} },
@@ -711,6 +723,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
 ];
 
 export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
+  'POST /api/v1/upload/url': 'upload_url',
   'GET /api/v1/payment/credits/balance': 'get_credit_balance',
   'GET /api/v1/playground/chat/document-reviews/:reviewId': 'get_document_review',
   'POST /api/v1/playground/chat/document-reviews/:reviewId/claims/:claimId/analysis-revisions': 'revise_document_claim_analysis',
