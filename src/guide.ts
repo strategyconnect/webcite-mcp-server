@@ -51,6 +51,9 @@ const MCP_PROFILES =
   'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.';
 const API_TIMEOUT =
   'Local SDK and self-hosted MCP API requests allow up to 15 minutes (900000 ms) for response headers and body by default. Set `WEBCITE_API_TIMEOUT_MS` to a positive integer of milliseconds to change it; invalid values fall back to the default with a warning.';
+const SEARCH_NARRATIVE =
+  '`search_sources` search_result text is a model-written summary, not evidence. On serving releases implementing narrative_status, no_sources means no citation was retained and narrative fields are empty except for the legacy NOT_SEARCHABLE sentinel. With model_text, [n] identifies the nth returned citation (or the flattened claim_groups citations when citations is absent). A marker is retained only for a fetched publisher passage containing the figures and literal metric/unit context of its sentence or row, or most words of a figureless sentence. Grounding, fallback and unknown passage provenance cannot bind a marker. This conservative passage binding does not certify the statement; treat unmarked figures as unsourced model text and check the original passage with get_source_preview.';
+
 const VERIFICATION_TIMEOUT =
   'On serving releases implementing the 600-second verification default, CITATION_AGENT_TIMEOUT_MS accepts integer milliseconds from 1 to 2147483647. Missing or blank values use 600000 ms; invalid nonblank values warn and use that default. Reaching the backend ceiling remains a 503 VERIFICATION_TIMEOUT failure. Aborting does not establish a zero charge or a refund. The Redis paid-request lock must last at least the configured agent budget plus 60 seconds. Short verification overrides retain the 300000 ms paid-work lock floor for visual extraction.';
 const AGENT_CHECKPOINTS =
@@ -222,7 +225,7 @@ export function renderWebciteGuide(input: {
         '4. If the original source or country is not established by the document and checked URLs, report it as unresolved. Do not infer a country from currency alone or cite a news summary as the original publication.',
         '`ask_document` checks numerical answers inside supplied text; it does not discover external source URLs.',
       ],
-      [RETRIEVAL_ATTEMPTS, LITERAL_SOURCE_CONTEXT, ASSET_OWNERSHIP, SEARCH_CANCELLATION],
+      [RETRIEVAL_ATTEMPTS, LITERAL_SOURCE_CONTEXT, ASSET_OWNERSHIP, SEARCH_CANCELLATION, SEARCH_NARRATIVE],
     );
   }
 
