@@ -7,6 +7,18 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## 1.9.56 release notes
+
+Adds hosted MCP `upload_url` and publishes the reviewed timeout and evidence workflows:
+
+- `upload_url` stores bounded original bytes from public HTTPS URLs through public-address and redirect checks, returning owned asset references and usage. Upload success does not certify parsing or a full review.
+- Local SDK and self-hosted MCP requests default to a 15-minute headers/body budget, with a validated `WEBCITE_API_TIMEOUT_MS` override. Supporting verification servers use a 600-second default, preserve `VERIFICATION_TIMEOUT` failures and keep the paid-work lock floor. Cancellation does not establish a refund.
+- `source_trace` distinguishes extraction, source discovery and checked publication evidence. Search narrative fields separate model prose from literal fetched-snippet bindings; the bindings do not certify a claim.
+- Supporting servers retain uniquely bound printed PDF table headings, captions, units and headers without changing TOTAL rows or borrowing ambiguous context.
+- Claim-stated FX arithmetic uses one unambiguous explicit currency equality or unit ratio and printed source currency/scale. Rates are never fetched or assumed, and arithmetic does not independently promote a citation stance.
+
+The bundled guide qualifies server capabilities by their serving release. Publishing this package does not deploy a server, enable billing or change existing subscription price snapshots. Other MCP tool and client contracts are preserved.
+
 ## 1.9.55 release notes
 
 Updates the bundled `webcite_guide` with the reviewed credit overage contract:
