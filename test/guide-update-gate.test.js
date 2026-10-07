@@ -17,8 +17,10 @@ test('head-pinned merge wrapper runs guide gate and refuses stale head or failed
  const fake=(name,body)=>{const file=path.join(dir,name);fs.writeFileSync(file,'#!/usr/bin/env bash\n'+body);fs.chmodSync(file,0o755)};
  fake('gh',`if [[ "$1 $2" == "pr view" ]]; then echo "$BASE $HEAD OPEN false"; else echo "gh $*" >> "$CALLS"; fi`);
  fake('git','echo "git $*" >> "$CALLS"');fake('npm','echo "npm $*" >> "$CALLS"; exit "${GUIDE_EXIT:-0}"');
- const base='a'.repeat(40),head='b'.repeat(40);const run=(overrides={})=>{fs.writeFileSync(log,'');const result=cp.spawnSync('bash',[path.resolve(__dirname,'../scripts/merge-reviewed-pr.sh'),'123',head],{env:{...process.env,PATH:dir+path.delimiter+process.env.PATH,BASE:base,HEAD:head,CALLS:log,...overrides},encoding:'utf8'});return {result,calls:fs.readFileSync(log,'utf8')}};
+ const base='a'.repeat(40),head='b'.repeat(40);const run=(overrides={},...args)=>{fs.writeFileSync(log,'');const result=cp.spawnSync('bash',[path.resolve(__dirname,'../scripts/merge-reviewed-pr.sh'),'123',head,...args],{env:{...process.env,PATH:dir+path.delimiter+process.env.PATH,BASE:base,HEAD:head,CALLS:log,...overrides},encoding:'utf8'});return {result,calls:fs.readFileSync(log,'utf8')}};
  const good=run();assert.equal(good.result.status,0);assert.match(good.calls,/npm run check:guide -- --base/);assert.match(good.calls,/context=webcite-guide-current/);assert.ok(good.calls.indexOf('npm run check:guide')<good.calls.indexOf('gh api'));assert.ok(good.calls.indexOf('gh api')<good.calls.indexOf('gh pr merge'));assert.match(good.calls,new RegExp(`gh pr merge 123 --merge --match-head-commit ${head}`));
+ const dry=run({},'--dry-run');assert.equal(dry.result.status,0);assert.match(dry.calls,/npm run check:guide -- --base/);assert.doesNotMatch(dry.calls,/pr merge|gh api/);assert.equal(dry.result.stdout.trim(),`dry-run: would merge PR #123 --merge --match-head-commit ${head}`);
+ for(const bad of [['--bogus'],['--dry-run','extra']]){const r=run({},...bad);assert.equal(r.result.status,1);assert.match(r.result.stderr,/^Unknown argument: /);assert.equal(r.calls,'')}
  const stale=run({HEAD:'c'.repeat(40)});assert.notEqual(stale.result.status,0);assert.doesNotMatch(stale.calls,/pr merge/);
  const badGuide=run({GUIDE_EXIT:'1'});assert.notEqual(badGuide.result.status,0);assert.doesNotMatch(badGuide.calls,/pr merge|gh api/);
 });
