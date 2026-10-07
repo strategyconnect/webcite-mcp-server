@@ -167,6 +167,7 @@ export function renderWebciteGuide(input: {
         '1. Use the existing Webcite asset_id when available. For a Claude chat attachment or a file above the hosted tool limit, upload the original binary in Webcite Playground or through authenticated HTTP multipart/resumable upload within the parser\'s format and size limits. Use the returned asset_id. If the upload returns parse_job_id, wait for parsing; if it returns parse_required, call parse_endpoint. The remote MCP server cannot read a local path or automatically access a chat attachment. If the original file has a public HTTPS URL, use upload_url instead: the server fetches bounded original bytes through public-address and redirect checks and returns owned asset_id, asset_url and source_version_id. Save those references; upload costs 1 credit, and successful storage does not prove completed parsing or a full review. Use `upload_file` only for small files when the client directly supplies original bytes as base64; never reconstruct bytes from extracted text.',
         '2. `extract_document` on the uploaded asset',
         '3. `get_source_preview` with the quote and asset_id / versioned ids',
+        'When `get_source_preview` locates a normalized quote in the source text, an en dash, em dash or minus sign in the source counts as a hyphen (2023–24 matches 2023-24); this does not change whether `verify_batch` reports the quote as bound.',
         '4. Optional: `verify_batch` for many quotes',
         '',
         'Do **not** invent URLs.',
