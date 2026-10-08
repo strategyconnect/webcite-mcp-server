@@ -229,6 +229,7 @@ export function renderWebciteGuide(input: {
         '2. Call `search_sources` with those exact details. If results are secondary or empty, refine the search using a likely regulator or report title suggested by the table. Do not treat a domain filter returning zero as proof that the official source does not exist.',
         '3. Open candidate URLs with `get_source_preview`. Identify the original publisher and page only when the same metric, period, unit, geography and table values are present. For a claim check, pass confirmed official PDFs to `verify_claim` in `source_urls`.',
         'Authenticated DD/evaluation source_url_reads receipts include fetched_at from the retained source capture time, or null when unknown. This is the fetch time, not the publisher date or verification time. These receipts are omitted from public MCP responses.',
+        'The authenticated product /api/v1/verify capability requests these receipts with include_source_reads: true and supplied source_urls. It requires x-webcite-delegation for source-verify, bound to the exact request and an active workspace grant; ordinary public API and MCP verification omit the receipts.',
         '4. If the original source or country is not established by the document and checked URLs, report it as unresolved. Do not infer a country from currency alone or cite a news summary as the original publication.',
         '`ask_document` checks numerical answers inside supplied text; it does not discover external source URLs.',
       ],
