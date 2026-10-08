@@ -48,3 +48,13 @@ test('document review keeps its credit cost line directly after the numbered ste
   assert.ok(credits < guide.indexOf('### Extraction and evidence notes'));
   assert.match(guide, /never zero\. credit_usage describes this HTTP request; review_usage describes accumulated operation-ledger charges, not polling costs\. Balance and saved-review readback cost 0\./);
 });
+
+test('engine18 guidance preserves retained17 and scopes forward execution', () => {
+  const guide = renderWebciteGuide({ workflow: 'numeric' });
+  const note = guide.split('\n').find(line => line.includes('implementing selected-source-automatic/18'));
+  assert.ok(note);
+  assert.match(note, /read-only requests may reuse an intact engine17 result without rewriting its payload or usage/);
+  assert.match(note, /exact engine17 manifest pin remains authoritative even when engine18 exists/);
+  assert.match(note, /hosts should read retained results first and execute only missing or specifically affected work/);
+  assert.match(note, /does not assert a production rollout/);
+});
