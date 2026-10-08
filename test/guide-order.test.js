@@ -58,3 +58,18 @@ test('engine18 guidance preserves retained17 and scopes forward execution', () =
   assert.match(note, /hosts should read retained results first and execute only missing or specifically affected work/);
   assert.match(note, /does not assert a production rollout/);
 });
+
+test('engine19 guidance preserves source uncertainty and historical results', () => {
+  const guide = renderWebciteGuide({ workflow: 'numeric' });
+  const note = guide.split('\n').find(line => line.includes('implementing selected-source-automatic/19'));
+  assert.ok(note);
+  assert.match(note, /including when a model proposes a label/);
+  assert.match(note, /Unsupported readings remain retained observations or unavailable values/);
+  assert.match(note, /New execution uses engine19/);
+  assert.match(note, /reuse intact engine18 and engine17 results without rewriting payloads or usage/);
+  assert.match(note, /exact historical manifest pins remain authoritative/);
+  assert.match(note, /prefer engine19, then engine18, then engine17/);
+  assert.match(note, /changed candidate input requires its own cache identity/);
+  assert.match(note, /Clients must admit engine19 before deployment/);
+  assert.match(note, /development rollout only/);
+});
