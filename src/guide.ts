@@ -152,6 +152,7 @@ export function renderWebciteGuide(input: {
         ),
         '```',
         '2. Optional: `get_source_preview` on a citation URL/quote to show bind-back.',
+        'A missing citation stance remains unknown; never interpret it as neutral. On serving releases implementing the absent-stance fix, failed or malformed enrichment preserves an absent stance and marks an unconfirmed verified status unverified. A valid explicit neutral assessment remains neutral.',
         'Credits: typically 2–4 for verify_claim.',
         'Cancelling a verify_claim_stream MCP request forwards cancellation to its backend HTTP request. A stopped or failed stream requests cancellation of its unfinished response body. Partial events do not confirm a result without a done marker. Cancellation does not establish completion, rollback or a credit refund; inspect saved operation receipts before retrying uncertain paid work.',
       ],
