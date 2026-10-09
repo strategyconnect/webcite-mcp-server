@@ -77,17 +77,20 @@ test('engine19 guidance preserves source uncertainty and historical results', ()
 
 test('folder guide separates hinted core and ordinary budgets without promising complete coverage', () => {
   const guide = renderWebciteGuide({ workflow: 'folders' });
-  assert.match(guide, /hinted units and their mandatory core context have a separate 32,000-character allowance/);
-  assert.match(guide, /ordinary retrieval has an incremental 32,000-character allowance after that core/);
-  assert.match(guide, /at most 64,000 retained-text characters in total/);
-  assert.match(guide, /Without evidence references, retained text remains bounded by 32,000 characters/);
-  assert.match(guide, /16 anchors per retained navigation query, or 16 anchors when no navigation queries are present/);
-  assert.match(guide, /physical-unit budget remains bounded by 48 plus three times the reference count/);
-  assert.match(guide, /each passage contributes at most 2,000 UTF-16 characters/);
+  assert.match(guide, /hinted units and their mandatory core context retain their separate 32,000-character allowance/);
+  assert.match(guide, /Ordinary retrieval has an incremental 32,000 × N character allowance after the retained mandatory core/);
+  assert.match(guide, /at most 32,000 \+ 32,000 × N retained-text characters in total/);
+  assert.match(guide, /Without evidence references, retained text is bounded by 32,000 × N characters/);
+  assert.match(guide, /Ordinary retrieval admits up to 16 × N anchors/);
+  assert.match(guide, /at most 16 validated navigation queries are accepted/);
+  assert.match(guide, /mandatory hint stage retains its original 48 plus three times the reference count physical-unit allowance/);
+  assert.doesNotMatch(guide, /at most 64,000 retained-text characters in total/);
+  assert.match(guide, /physical-unit budget is 48 × N plus three times the reference count/);
+  assert.match(guide, /Each passage contributes at most 2,000 UTF-16 characters/);
   assert.match(guide, /do not guarantee exhaustive source or topic coverage/);
   assert.match(guide, /100 MiB \(104,857,600 bytes\) aggregate stored-inventory allowance/);
   assert.doesNotMatch(guide, /The retained-text budget is 32,000 characters and the physical-unit budget/);
   assert.doesNotMatch(guide, /ordinary retrieval, which retains its separate 16-anchor limit/);
-  assert.match(guide, /Without evidence references, the 32,000-character text limit and 48-unit physical limit remain; the per-navigation-query anchor allowance still applies/);
+  assert.match(guide, /Without navigation queries, N is 1, preserving the original text, anchor and physical-unit allowances/);
   assert.doesNotMatch(guide, /Without this field, ordinary retrieval retains its existing limits/);
 });
