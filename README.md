@@ -17,6 +17,10 @@ Upload original image, PDF or PowerPoint bytes and wait for parsing before revie
 
 Preserve saved review, citation, job and operation IDs on a timeout or uncertain outcome. Read retained progress before retrying and reuse an explicit idempotency key only with the same request. Package publication does not deploy the hosted API, frontend or MCP binary. Check their actual serving identities before asserting that reported cases are fixed in production.
 
+## 1.9.57 release notes
+
+Updates the guide for original-document acceptance and scoped application access. App-bound keys cannot use legacy account administration or share personal UUID citations. Folder traces respect retained source and linked-memory visibility. Confirm the serving release before relying on these controls. Tool names and client interfaces are unchanged.
+
 ## 1.9.56 release notes
 
 Adds hosted MCP `upload_url` and publishes the reviewed timeout and evidence workflows:
