@@ -88,4 +88,6 @@ test('folder guide separates hinted core and ordinary budgets without promising 
   assert.match(guide, /100 MiB \(104,857,600 bytes\) aggregate stored-inventory allowance/);
   assert.doesNotMatch(guide, /The retained-text budget is 32,000 characters and the physical-unit budget/);
   assert.doesNotMatch(guide, /ordinary retrieval, which retains its separate 16-anchor limit/);
+  assert.match(guide, /Without evidence references, the 32,000-character text limit and 48-unit physical limit remain; the per-navigation-query anchor allowance still applies/);
+  assert.doesNotMatch(guide, /Without this field, ordinary retrieval retains its existing limits/);
 });
