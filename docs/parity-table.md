@@ -13,9 +13,9 @@ tenant or permission scope.
 
 | MCP tool | HTTP | Request fields | Output | Failure / partial | Credits | Source identity |
 |---|---|---|---|---|---|---|
-| `verify_claim` | `POST /api/v1/verify` | `claim`, optional `thread_id`, stance/verdict/decompose flags | Verdict + citations (text) | API error → `isError` | 2–4 | Citation IDs from API |
+| `verify_claim` | `POST /api/v1/verify` | `claim`, optional `thread_id`, `source_urls` (up to five), `filters`, `idempotency_key`, stance/verdict/decompose flags | Verdict + retained citations and reader qualifiers | API error → `isError`; bounded no-evidence is not proof of absence | 2–4 | Citation IDs from API; supplied URLs and redirected publisher remain scoped |
 | `verify_claim_stream` | `POST /api/v1/verify/stream` | same as verify | Assembled verify result or raw events | Stream/API error → `isError` | same | same |
-| `search_sources` | `POST /api/v1/sources/search` | `query`, `limit` | Citation list; empty = no sources | API error → `isError` | 2 | Citation IDs |
+| `search_sources` | `POST /api/v1/sources/search` | `query`, `limit`, optional `filters` | Citation list and bounded retrieval scope; empty does not prove absence | API error → `isError` | 2 | Citation IDs; model summaries are not publisher quotations |
 | `list_citations` | `GET /api/v1/citations` | `page`, `limit`, `thread_id` | Paginated history | API error → `isError` | 1 | Citation record IDs |
 | `get_citation` | `GET /api/v1/citations/:id` | `citation_id` | Prompt + sources | 404 → `isError` | 1 | Citation ID |
 | `get_source_preview` | `POST /api/v1/citations/source-preview` | `url` or `asset_id`, `page`, `quote` | Preview + bindBack | Missing arg / API error | 1 | URL or asset ID + binding method |

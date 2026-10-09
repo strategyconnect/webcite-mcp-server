@@ -7,6 +7,16 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
+## Verification and document acceptance
+
+On servers implementing retained generation navigation, a folder generation can include one navigation-query provider stage within the existing five-credit generation operation. Its route is selected before calling the provider, and a refusal, invalid reply, failure or unknown outcome remains an error without provider switching, automatic retry or silent original-query fallback. Public memo model and token usage keep their existing meaning; separate query-provider measurements are internal. Internal staged continuation is identity-bound and requires complete accounting with no draft dispatch. It does not expose a new public preparation feature. Confirm the serving release before relying on this behavior.
+
+For an official-source requirement, supply `filters` on `verify_claim` or `verify_claim_stream`, for example `{"official_country":"ae","is_primary_source":true,"domain":["centralbank.ae"]}`. Pass a known public HTTPS report in `source_urls`; writing a URL or `site:` expression in the claim is not a substitute for these fields. Match the quoted metric, observation period, geography, currency and scale. Different official publications can remain unresolved rather than yielding one universal corrected figure.
+
+Upload original image, PDF or PowerPoint bytes and wait for parsing before review. Inspect input coverage, unreadable regions, claim limits and per-claim source/page locators. A successful upload, a completed review, or many citations does not certify that every figure was read or verified. Citation links are not a guarantee of pixel-level highlighting on an uploaded slide. An extraction failure stays a failure; a bounded search with no evidence does not prove the data is unavailable. Open the original publisher passage before treating a stance badge as proof.
+
+Preserve saved review, citation, job and operation IDs on a timeout or uncertain outcome. Read retained progress before retrying and reuse an explicit idempotency key only with the same request. Package publication does not deploy the hosted API, frontend or MCP binary. Check their actual serving identities before asserting that reported cases are fixed in production.
+
 ## 1.9.56 release notes
 
 Adds hosted MCP `upload_url` and publishes the reviewed timeout and evidence workflows:

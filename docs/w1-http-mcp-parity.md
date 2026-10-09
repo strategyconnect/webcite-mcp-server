@@ -4,9 +4,9 @@ Q1/R9 transport parity for Webcite context and legacy v1 capabilities. Presentat
 
 | MCP tool | HTTP route | Request (key fields) | Output | Failure / partial | Cost | Source identity |
 |---|---|---|---|---|---|---|
-| `verify_claim` | `POST /api/v1/verify` | claim, stance/verdict flags | sources + verdict | API error → `isError` | 2–4 credits | citation URLs / asset ids |
+| `verify_claim` | `POST /api/v1/verify` | claim, optional source_urls (up to five), filters, idempotency_key, stance/verdict flags | retained sources + verdict + reader qualifiers | API error → `isError`; no qualifying evidence does not prove absence | 2–4 credits | citation URLs / asset ids; redirected publisher constraints retained |
 | `verify_claim_stream` | `POST /api/v1/verify/stream` | same | assembled stream result | transport/API error | same | same |
-| `search_sources` | `POST /api/v1/sources/search` | query, limit | raw citations | empty ≠ error | 2 | external discovery |
+| `search_sources` | `POST /api/v1/sources/search` | query, limit, optional filters | retained citations and bounded retrieval scope | empty ≠ error and does not prove absence | 2 | external discovery; model summaries are not publisher quotations |
 | `list_citations` | `GET /api/v1/citations` | pagination | citation list | auth | 1 | stored citation ids |
 | `get_citation` | `GET /api/v1/citations/:id` | id | citation | 404 | 1 | citation id |
 | `get_source_preview` | `POST /api/v1/citations/source-preview` | url/asset/versioned ids | preview + binding | unread → no confidence | billed | `source_version_id` / unit |
