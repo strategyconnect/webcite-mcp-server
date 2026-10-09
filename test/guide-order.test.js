@@ -73,3 +73,19 @@ test('engine19 guidance preserves source uncertainty and historical results', ()
   assert.match(note, /Clients must admit engine19 before deployment/);
   assert.match(note, /development rollout only/);
 });
+
+
+test('folder guide separates hinted core and ordinary budgets without promising complete coverage', () => {
+  const guide = renderWebciteGuide({ workflow: 'folders' });
+  assert.match(guide, /hinted units and their mandatory core context have a separate 32,000-character allowance/);
+  assert.match(guide, /ordinary retrieval has an incremental 32,000-character allowance after that core/);
+  assert.match(guide, /at most 64,000 retained-text characters in total/);
+  assert.match(guide, /Without evidence references, retained text remains bounded by 32,000 characters/);
+  assert.match(guide, /16 anchors per retained navigation query, or 16 anchors when no navigation queries are present/);
+  assert.match(guide, /physical-unit budget remains bounded by 48 plus three times the reference count/);
+  assert.match(guide, /each passage contributes at most 2,000 UTF-16 characters/);
+  assert.match(guide, /do not guarantee exhaustive source or topic coverage/);
+  assert.match(guide, /100 MiB \(104,857,600 bytes\) aggregate stored-inventory allowance/);
+  assert.doesNotMatch(guide, /The retained-text budget is 32,000 characters and the physical-unit budget/);
+  assert.doesNotMatch(guide, /ordinary retrieval, which retains its separate 16-anchor limit/);
+});
