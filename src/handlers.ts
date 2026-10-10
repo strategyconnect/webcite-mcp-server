@@ -1527,8 +1527,8 @@ export const handlers: Record<string, ToolHandler> = {
       throw new ToolFailure('invalid_argument', 'Retained repair requires exact folder/generation/parent identities and bounded settings');
     if (orders !== undefined && (!Array.isArray(orders) || orders.length < 1 || orders.length > 100 ||
       orders.some(order => typeof order !== 'number' || !Number.isInteger(order) || order < 0 || order > 99) ||
-      new Set(orders).size !== orders.length || parent !== undefined || args?.reuse_proof !== undefined))
-      throw new ToolFailure('invalid_argument', 'Explicit repair requires unique bounded claim orders without retained reply or proof reuse');
+      new Set(orders).size !== orders.length || args?.reuse_proof !== undefined))
+      throw new ToolFailure('invalid_argument', 'Explicit repair requires unique bounded claim orders without proof reuse');
     if (reuse !== undefined && (!reuse || typeof reuse !== 'object' || Array.isArray(reuse) || parent !== undefined
       || Object.keys(reuse).sort().join(',') !== 'claim_orders,generation_id'
       || typeof reuse.generation_id !== 'string' || !uuid.test(reuse.generation_id)

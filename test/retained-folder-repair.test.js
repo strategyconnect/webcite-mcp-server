@@ -20,7 +20,7 @@ test('explicit repair orders are validated, forwarded and checked in the returne
     assert.deepEqual(JSON.parse(calls[0].input.body), { claim_orders: [0] });
     for (const patch of [{ claim_orders: [] }, { claim_orders: [0, 0] }, { claim_orders: [-1] },
       { claim_orders: [100] }, { claim_orders: [0.5] }, { claim_orders: ['0'] }, { claim_orders: null },
-      { retained_reply_id: next }, { reuse_proof: { generation_id: next, claim_orders: [0] } }])
+      { reuse_proof: { generation_id: next, claim_orders: [0] } }])
       await assert.rejects(handlers.repair_folder_generation({ ...args, ...patch }, client));
     assert.equal(calls.length, 1);
     for (const orders of [undefined, [], [1], [0, 0]]) {
@@ -32,6 +32,28 @@ test('explicit repair orders are validated, forwarded and checked in the returne
 const generation = '11111111-1111-4111-8111-111111111111';
 const parent = '22222222-2222-4222-8222-222222222222';
 const child = '33333333-3333-4333-8333-333333333333';
+test('selected paid-parent completion forwards both selectors and rejects either response mismatch', async () => {
+  const previous = global.fetch, calls = [];
+  const valid = { folder_id: 'owned-folder', generation_id: child, answer_id: child, revision_id: child,
+    status: 'grounded', text: 'Source-backed correction.',
+    claims: [{ order: 0, support: 'supported', text: 'Source-backed correction.', citation_ids: ['cit_1'] }],
+    citations: [{ citation_id: 'cit_1', source_version_id: 'source-owned', quote: 'Source-backed correction.' }],
+    repair: { original_generation_id: generation, retained_reply_id: parent, claim_orders: [0] } };
+  let result = valid;
+  global.fetch = async (url, input) => { calls.push({ url, input }); return Response.json(result); };
+  try {
+    const client = new WebCiteApiClient('fixture', 'http://localhost');
+    const args = { folder_id: 'owned-folder', generation_id: generation, retained_reply_id: parent,
+      claim_orders: [0], max_tokens: 8192, idempotency_key: 'selected-completion' };
+    await handlers.repair_folder_generation(args, client);
+    assert.deepEqual(JSON.parse(calls[0].input.body), { max_tokens: 8192, retained_reply_id: parent, claim_orders: [0] });
+    for (const patch of [{ retained_reply_id: undefined }, { claim_orders: [1] }]) {
+      result = { ...valid, repair: { ...valid.repair, ...patch } };
+      await assert.rejects(handlers.repair_folder_generation(args, client), /incomplete/);
+    }
+    assert.equal(calls.length, 3);
+  } finally { global.fetch = previous; }
+});
 test('retained repair forwards exact intent once and refuses parent mismatch or invalid arguments', async () => {
   const previous = global.fetch, calls = [];
   let result = { folder_id: 'owned-folder', generation_id: child, answer_id: parent, revision_id: child,
