@@ -1519,11 +1519,16 @@ export const handlers: Record<string, ToolHandler> = {
     const key = requireString(args, 'idempotency_key'), parent = args?.retained_reply_id;
     const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
     const maxTokens = args?.max_tokens;
+    const orders = args?.claim_orders;
     const reuse = args?.reuse_proof as { generation_id?: unknown; claim_orders?: unknown } | undefined;
     if (folder !== folder.trim() || folder.length > 200 || !uuid.test(generation) ||
       !/^[\x21-\x7E]{1,128}$/.test(key) || (parent !== undefined && (typeof parent !== 'string' || !uuid.test(parent))) ||
       (maxTokens !== undefined && (typeof maxTokens !== 'number' || !Number.isInteger(maxTokens) || maxTokens < 256 || maxTokens > 8192)))
       throw new ToolFailure('invalid_argument', 'Retained repair requires exact folder/generation/parent identities and bounded settings');
+    if (orders !== undefined && (!Array.isArray(orders) || orders.length < 1 || orders.length > 100 ||
+      orders.some(order => typeof order !== 'number' || !Number.isInteger(order) || order < 0 || order > 99) ||
+      new Set(orders).size !== orders.length || parent !== undefined || args?.reuse_proof !== undefined))
+      throw new ToolFailure('invalid_argument', 'Explicit repair requires unique bounded claim orders without retained reply or proof reuse');
     if (reuse !== undefined && (!reuse || typeof reuse !== 'object' || Array.isArray(reuse) || parent !== undefined
       || Object.keys(reuse).sort().join(',') !== 'claim_orders,generation_id'
       || typeof reuse.generation_id !== 'string' || !uuid.test(reuse.generation_id)
@@ -1534,6 +1539,7 @@ export const handlers: Record<string, ToolHandler> = {
     const result = await wrapApi(client.repairFolderGeneration(folder, generation, {
       ...(maxTokens === undefined ? {} : { max_tokens: maxTokens as number }),
       ...(parent === undefined ? {} : { retained_reply_id: parent as string }),
+      ...(orders === undefined ? {} : { claim_orders: orders as number[] }),
       ...(reuse === undefined ? {} : { reuse_proof: reuse as { generation_id: string; claim_orders: number[] } }),
     }, key));
     const repair = result.repair as Record<string, unknown> | undefined;
@@ -1554,6 +1560,7 @@ export const handlers: Record<string, ToolHandler> = {
         typeof claim.text === 'string' && claim.text.length > 0 &&
         Array.isArray(claim.citation_ids) && claim.citation_ids.every((id: unknown) => typeof id === 'string' && citationIds.has(id))) &&
       repair?.original_generation_id === generation && repair?.retained_reply_id === parent &&
+      JSON.stringify(repair?.claim_orders) === JSON.stringify(orders) &&
       reused?.generation_id === reuse?.generation_id && JSON.stringify(reused?.claim_orders) === JSON.stringify(reuse?.claim_orders) &&
       (reuse === undefined || (usage?.credits === 0 && usage?.model_attempts === 0
         && usage?.method === 'retained_published_proof' && usage?.model === null

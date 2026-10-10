@@ -2,6 +2,33 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { WebCiteApiClient } = require('../dist/api-client.js');
 const { handlers } = require('../dist/handlers.js');
+test('explicit repair orders are validated, forwarded and checked in the returned scope', async () => {
+  const previous = global.fetch, calls = [];
+  const old = '11111111-1111-4111-8111-111111111111';
+  const next = '22222222-2222-4222-8222-222222222222';
+  const valid = { folder_id: 'owned-folder', generation_id: next, answer_id: next, revision_id: next,
+    status: 'grounded', text: 'Source-backed correction.',
+    claims: [{ order: 0, support: 'supported', text: 'Source-backed correction.', citation_ids: ['cit_1'] }],
+    citations: [{ citation_id: 'cit_1', source_version_id: 'source-owned', quote: 'Source-backed correction.' }],
+    repair: { original_generation_id: old, claim_orders: [0] } };
+  let result = valid;
+  global.fetch = async (url, input) => { calls.push({ url, input }); return Response.json(result); };
+  try {
+    const client = new WebCiteApiClient('fixture', 'http://localhost');
+    const args = { folder_id: 'owned-folder', generation_id: old, idempotency_key: 'selected', claim_orders: [0] };
+    await handlers.repair_folder_generation(args, client);
+    assert.deepEqual(JSON.parse(calls[0].input.body), { claim_orders: [0] });
+    for (const patch of [{ claim_orders: [] }, { claim_orders: [0, 0] }, { claim_orders: [-1] },
+      { claim_orders: [100] }, { claim_orders: [0.5] }, { claim_orders: ['0'] }, { claim_orders: null },
+      { retained_reply_id: next }, { reuse_proof: { generation_id: next, claim_orders: [0] } }])
+      await assert.rejects(handlers.repair_folder_generation({ ...args, ...patch }, client));
+    assert.equal(calls.length, 1);
+    for (const orders of [undefined, [], [1], [0, 0]]) {
+      result = { ...valid, repair: { original_generation_id: old, ...(orders === undefined ? {} : { claim_orders: orders }) } };
+      await assert.rejects(handlers.repair_folder_generation(args, client), /incomplete/);
+    }
+  } finally { global.fetch = previous; }
+});
 const generation = '11111111-1111-4111-8111-111111111111';
 const parent = '22222222-2222-4222-8222-222222222222';
 const child = '33333333-3333-4333-8333-333333333333';
