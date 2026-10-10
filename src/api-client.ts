@@ -574,6 +574,7 @@ export class WebCiteApiClient {
   async repairFolderGeneration(folderId: string, generationId: string, body: {
     max_tokens?: number; retained_reply_id?: string;
     claim_orders?: number[];
+    claim_constraints?: { order: number; source_literal: boolean }[];
     reuse_proof?: { generation_id: string; claim_orders: number[] } }, idempotencyKey: string): Promise<Record<string, unknown>> {
     return this.request(`/api/v2/folders/${encodeURIComponent(folderId)}/generations/${encodeURIComponent(generationId)}/repair`,
       { method: 'POST', body: JSON.stringify(body) }, { idempotencyKey });

@@ -2,6 +2,42 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { WebCiteApiClient } = require('../dist/api-client.js');
 const { handlers } = require('../dist/handlers.js');
+test('typed constraints preserve absence, validate selected scope and require an exact response echo', async () => {
+  const old = '11111111-1111-4111-8111-111111111111';
+  const next = '22222222-2222-4222-8222-222222222222';
+  const parent = '33333333-3333-4333-8333-333333333333';
+  const constraints = [{ order: 0, source_literal: true }];
+  const base = { folder_id: 'owned-folder', generation_id: next, answer_id: next, revision_id: next,
+    status: 'grounded', text: 'Source-backed correction.',
+    claims: [{ order: 0, support: 'supported', text: 'Source-backed correction.', citation_ids: ['cit_1'] }],
+    citations: [{ citation_id: 'cit_1', source_version_id: 'source-owned', quote: 'Source-backed correction.' }] };
+  let reply, calls = [];
+  const client = { repairFolderGeneration: async (...args) => { calls.push(args); return reply; } };
+  const args = { folder_id: 'owned-folder', generation_id: old, retained_reply_id: parent,
+    claim_orders: [0], idempotency_key: 'typed-completion' };
+  for (const value of [undefined, [], constraints]) {
+    reply = { ...base, repair: { original_generation_id: old, retained_reply_id: parent, claim_orders: [0],
+      ...(value === undefined ? {} : { claim_constraints: value }) } };
+    await handlers.repair_folder_generation({ ...args, ...(value === undefined ? {} : { claim_constraints: value }) }, client);
+    assert.equal(Object.hasOwn(calls.at(-1)[2], 'claim_constraints'), value !== undefined);
+    if (value !== undefined) assert.deepEqual(calls.at(-1)[2].claim_constraints, value);
+  }
+  const before = calls.length;
+  for (const value of [null, {}, [{ order: 1, source_literal: true }], [...constraints, ...constraints],
+    [{ order: 0, source_literal: 'true' }], [{ order: 0, source_literal: true, extra: 1 }],
+    [{ order: 0.5, source_literal: true }]])
+    await assert.rejects(handlers.repair_folder_generation({ ...args, claim_constraints: value }, client));
+  for (const patch of [{ retained_reply_id: undefined }, { claim_orders: undefined },
+    { reuse_proof: { generation_id: next, claim_orders: [0] } }])
+    await assert.rejects(handlers.repair_folder_generation({ ...args, ...patch, claim_constraints: constraints }, client));
+  assert.equal(calls.length, before);
+  for (const value of [undefined, [], [{ order: 0, source_literal: false }], [{ order: 1, source_literal: true }]]) {
+    reply = { ...base, repair: { original_generation_id: old, retained_reply_id: parent, claim_orders: [0],
+      ...(value === undefined ? {} : { claim_constraints: value }) } };
+    await assert.rejects(handlers.repair_folder_generation({ ...args, claim_constraints: constraints }, client), /incomplete/);
+  }
+});
+
 test('explicit repair orders are validated, forwarded and checked in the returned scope', async () => {
   const previous = global.fetch, calls = [];
   const old = '11111111-1111-4111-8111-111111111111';

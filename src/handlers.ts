@@ -1513,6 +1513,14 @@ function wrapApi<T>(promise: Promise<T>): Promise<T> {
   });
 }
 
+function validClaimConstraints(value: unknown, orders: unknown): value is { order: number; source_literal: boolean }[] {
+  return Array.isArray(value) && value.length <= 100 && Array.isArray(orders)
+    && value.every(row => row && typeof row === 'object' && !Array.isArray(row)
+      && Object.keys(row).sort().join(',') === 'order,source_literal'
+      && Number.isInteger(row.order) && orders.includes(row.order) && typeof row.source_literal === 'boolean')
+    && new Set(value.map(row => row.order)).size === value.length;
+}
+
 export const handlers: Record<string, ToolHandler> = {
   repair_folder_generation: async (args, client) => {
     const folder = requireString(args, 'folder_id'), generation = requireString(args, 'generation_id');
@@ -1520,6 +1528,7 @@ export const handlers: Record<string, ToolHandler> = {
     const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
     const maxTokens = args?.max_tokens;
     const orders = args?.claim_orders;
+    const constraints = args?.claim_constraints;
     const reuse = args?.reuse_proof as { generation_id?: unknown; claim_orders?: unknown } | undefined;
     if (folder !== folder.trim() || folder.length > 200 || !uuid.test(generation) ||
       !/^[\x21-\x7E]{1,128}$/.test(key) || (parent !== undefined && (typeof parent !== 'string' || !uuid.test(parent))) ||
@@ -1529,6 +1538,8 @@ export const handlers: Record<string, ToolHandler> = {
       orders.some(order => typeof order !== 'number' || !Number.isInteger(order) || order < 0 || order > 99) ||
       new Set(orders).size !== orders.length || args?.reuse_proof !== undefined))
       throw new ToolFailure('invalid_argument', 'Explicit repair requires unique bounded claim orders without proof reuse');
+    if (constraints !== undefined && (parent === undefined || reuse !== undefined || !validClaimConstraints(constraints, orders)))
+      throw new ToolFailure('invalid_argument', 'Typed completion requires unique constraints in explicitly selected retained claims, without proof reuse');
     if (reuse !== undefined && (!reuse || typeof reuse !== 'object' || Array.isArray(reuse) || parent !== undefined
       || Object.keys(reuse).sort().join(',') !== 'claim_orders,generation_id'
       || typeof reuse.generation_id !== 'string' || !uuid.test(reuse.generation_id)
@@ -1540,6 +1551,7 @@ export const handlers: Record<string, ToolHandler> = {
       ...(maxTokens === undefined ? {} : { max_tokens: maxTokens as number }),
       ...(parent === undefined ? {} : { retained_reply_id: parent as string }),
       ...(orders === undefined ? {} : { claim_orders: orders as number[] }),
+      ...(constraints === undefined ? {} : { claim_constraints: constraints as { order: number; source_literal: boolean }[] }),
       ...(reuse === undefined ? {} : { reuse_proof: reuse as { generation_id: string; claim_orders: number[] } }),
     }, key));
     const repair = result.repair as Record<string, unknown> | undefined;
@@ -1561,6 +1573,11 @@ export const handlers: Record<string, ToolHandler> = {
         Array.isArray(claim.citation_ids) && claim.citation_ids.every((id: unknown) => typeof id === 'string' && citationIds.has(id))) &&
       repair?.original_generation_id === generation && repair?.retained_reply_id === parent &&
       JSON.stringify(repair?.claim_orders) === JSON.stringify(orders) &&
+      (constraints === undefined ? repair?.claim_constraints === undefined
+        : validClaimConstraints(repair?.claim_constraints, orders)
+          && repair.claim_constraints.length === (constraints as unknown[]).length
+          && repair.claim_constraints.every((row, index) => row.order === (constraints as { order: number }[])[index].order
+            && row.source_literal === (constraints as { source_literal: boolean }[])[index].source_literal)) &&
       reused?.generation_id === reuse?.generation_id && JSON.stringify(reused?.claim_orders) === JSON.stringify(reuse?.claim_orders) &&
       (reuse === undefined || (usage?.credits === 0 && usage?.model_attempts === 0
         && usage?.method === 'retained_published_proof' && usage?.model === null
