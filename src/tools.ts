@@ -757,6 +757,10 @@ export const CONTEXT_TOOLS: ToolDefinition[] = [
       max_tokens: { type: 'integer', minimum: 256, maximum: 8192, default: 4096 },
       claim_orders: { type: 'array', minItems: 1, maxItems: 100, uniqueItems: true,
         items: { type: 'integer', minimum: 0, maximum: 99 } },
+      claim_constraints: { type: 'array', maxItems: 100, items: { type: 'object',
+        additionalProperties: false, required: ['order', 'source_literal'], properties: {
+          order: { type: 'integer', minimum: 0, maximum: 99 }, source_literal: { type: 'boolean' },
+        } }, description: 'Only with retained_reply_id and explicit claim_orders. Unique selected orders; true requires an exact whole-source quotation, false permits prose. Absent preserves legacy mode; [] selects typed completion. Cannot be combined with reuse_proof.' },
       retained_reply_id: { type: 'string', format: 'uuid' },
       reuse_proof: { type: 'object', additionalProperties: false, properties: {
         generation_id: { type: 'string', format: 'uuid' },
