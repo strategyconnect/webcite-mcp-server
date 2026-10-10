@@ -1528,9 +1528,20 @@ export const handlers: Record<string, ToolHandler> = {
       ...(parent === undefined ? {} : { retained_reply_id: parent as string }),
     }, key));
     const repair = result.repair as Record<string, unknown> | undefined;
+    const citations = Array.isArray(result.citations) ? result.citations : [];
+    const claims = Array.isArray(result.claims) ? result.claims : [];
+    const citationIds = new Set(citations.map(citation => citation?.citation_id));
     requireApiShape(result.folder_id === folder && typeof result.generation_id === 'string' &&
-      uuid.test(result.generation_id) && result.generation_id !== generation && typeof result.text === 'string' &&
-      Array.isArray(result.claims) && Array.isArray(result.citations) &&
+      uuid.test(result.generation_id) && result.generation_id !== generation && typeof result.text === 'string' && result.text.trim().length > 0 &&
+      typeof result.answer_id === 'string' && uuid.test(result.answer_id) &&
+      typeof result.revision_id === 'string' && uuid.test(result.revision_id) &&
+      ['grounded', 'partially_grounded'].includes(result.status as string) &&
+      claims.length > 0 && citations.length > 0 && citationIds.size === citations.length &&
+      citations.every(citation => typeof citation?.citation_id === 'string' && citation.citation_id.length > 0 &&
+        typeof citation.quote === 'string' && citation.quote.length > 0 && typeof citation.source_version_id === 'string' && citation.source_version_id.length > 0) &&
+      claims.every((claim, order) => claim?.order === order && ['supported', 'partial', 'unsupported'].includes(claim.support) &&
+        typeof claim.text === 'string' && claim.text.length > 0 &&
+        Array.isArray(claim.citation_ids) && claim.citation_ids.every((id: unknown) => typeof id === 'string' && citationIds.has(id))) &&
       repair?.original_generation_id === generation && repair?.retained_reply_id === parent,
     'repair_folder_generation');
     return ok(`Retained repair generation ${result.generation_id}. Semantic entailment remains not_checked.\n${result.text}`, result);
