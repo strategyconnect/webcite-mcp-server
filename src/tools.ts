@@ -749,13 +749,18 @@ export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
 export const CONTEXT_TOOLS: ToolDefinition[] = [
   {
     name: 'repair_folder_generation',
-    description: 'Repair failed quoted claims in a complete retained native folder generation. Scope comes from the authenticated API key, never MCP annotations. Requires current write permission, unchanged original offered source bytes and an explicit idempotency key. Optional retained_reply_id completes only failed proof from that exact completed paid reply with the same max_tokens, preserving its valid repairs. One separate five-credit operation, no new query, retrieval or first draft. Quote/number guards apply; semantic entailment remains not_checked. Preserve failed replies and inspect receipts before another intent. Available in the full profile.',
+    description: 'Repair failed quoted claims in a complete retained native folder generation. Scope comes from the authenticated API key, never MCP annotations. Requires current write permission, unchanged original offered source bytes and an explicit idempotency key. Optional retained_reply_id completes only failed proof from that exact completed paid reply with the same max_tokens, preserving its valid repairs. Model repair uses one separate five-credit operation, no new query, retrieval or first draft. Optional reuse_proof names a published donor generation and unique claim_orders, without retained_reply_id: exact matching claim text and current literal physical proof are unioned with existing quotes, preserving other claims/layout and paid lineage, at zero credits and zero model attempts. Quote/number guards apply; semantic entailment remains not_checked. Preserve failed replies and inspect receipts before another intent. Available in the full profile.',
     inputSchema: { type: 'object', properties: {
       folder_id: { type: 'string', minLength: 1, maxLength: 200 },
       generation_id: { type: 'string', format: 'uuid' },
       idempotency_key: { type: 'string', pattern: '^[!-~]{1,128}$' },
       max_tokens: { type: 'integer', minimum: 256, maximum: 8192, default: 4096 },
       retained_reply_id: { type: 'string', format: 'uuid' },
+      reuse_proof: { type: 'object', additionalProperties: false, properties: {
+        generation_id: { type: 'string', format: 'uuid' },
+        claim_orders: { type: 'array', minItems: 1, maxItems: 100, uniqueItems: true,
+          items: { type: 'integer', minimum: 0, maximum: 99 } },
+      }, required: ['generation_id', 'claim_orders'] },
     }, required: ['folder_id', 'generation_id', 'idempotency_key'] },
   },
   {

@@ -47,3 +47,38 @@ test('retained repair forwards exact intent once and refuses parent mismatch or 
     assert.equal(calls.length, invalidOutputs.length + 2);
   } finally { global.fetch = previous; }
 });
+
+
+test('published proof reuse forwards a bounded donor selector and refuses paid or mismatched responses', async () => {
+  const previous = global.fetch, calls = [];
+  const reuse = { generation_id: parent, claim_orders: [0] };
+  const valid = { folder_id: 'owned-folder', generation_id: child, answer_id: parent, revision_id: child,
+    status: 'grounded', text: 'Source-backed correction.',
+    claims: [{ order: 0, support: 'supported', text: 'Source-backed correction.', citation_ids: ['cit_1'] }],
+    citations: [{ citation_id: 'cit_1', source_version_id: 'source-owned', quote: 'Source-backed correction.' }],
+    repair: { original_generation_id: generation, reuse_proof: reuse },
+    usage: { credits: 0, model_attempts: 0, method: 'retained_published_proof', model: null, input_tokens: null, output_tokens: null } };
+  let result = valid;
+  global.fetch = async (url, input) => { calls.push({ url, input }); return Response.json(result); };
+  try {
+    const client = new WebCiteApiClient('fixture', 'http://localhost');
+    const args = { folder_id: 'owned-folder', generation_id: generation, idempotency_key: 'proof-reuse',
+      reuse_proof: { claim_orders: [0], generation_id: parent } };
+    await handlers.repair_folder_generation(args, client);
+    assert.deepEqual(JSON.parse(calls[0].input.body), { reuse_proof: args.reuse_proof });
+    assert.equal(calls.length, 1);
+    for (const patch of [{ reuse_proof: { generation_id: parent, claim_orders: [] } },
+      { reuse_proof: { generation_id: parent, claim_orders: [0, 0] } },
+      { reuse_proof: { generation_id: parent, claim_orders: [-1] } },
+      { reuse_proof: { generation_id: 'bad', claim_orders: [0] } }, { retained_reply_id: parent }])
+      await assert.rejects(handlers.repair_folder_generation({ ...args, ...patch }, client));
+    assert.equal(calls.length, 1);
+    for (const patch of [{ repair: { ...valid.repair, reuse_proof: { ...reuse, generation_id: child } } },
+      { repair: { ...valid.repair, reuse_proof: { ...reuse, claim_orders: [1] } } },
+      ...[{ credits: 5 }, { model_attempts: 1 }, { method: 'model' }, { model: 'fresh' },
+        { input_tokens: 1 }, { output_tokens: 1 }].map(usage => ({ usage: { ...valid.usage, ...usage } }))]) {
+      result = { ...valid, ...patch };
+      await assert.rejects(handlers.repair_folder_generation(args, client), /incomplete/);
+    }
+  } finally { global.fetch = previous; }
+});
