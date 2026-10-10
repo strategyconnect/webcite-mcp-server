@@ -1514,6 +1514,27 @@ function wrapApi<T>(promise: Promise<T>): Promise<T> {
 }
 
 export const handlers: Record<string, ToolHandler> = {
+  repair_folder_generation: async (args, client) => {
+    const folder = requireString(args, 'folder_id'), generation = requireString(args, 'generation_id');
+    const key = requireString(args, 'idempotency_key'), parent = args?.retained_reply_id;
+    const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+    const maxTokens = args?.max_tokens;
+    if (folder !== folder.trim() || folder.length > 200 || !uuid.test(generation) ||
+      !/^[\x21-\x7E]{1,128}$/.test(key) || (parent !== undefined && (typeof parent !== 'string' || !uuid.test(parent))) ||
+      (maxTokens !== undefined && (typeof maxTokens !== 'number' || !Number.isInteger(maxTokens) || maxTokens < 256 || maxTokens > 8192)))
+      throw new ToolFailure('invalid_argument', 'Retained repair requires exact folder/generation/parent identities and bounded settings');
+    const result = await wrapApi(client.repairFolderGeneration(folder, generation, {
+      ...(maxTokens === undefined ? {} : { max_tokens: maxTokens as number }),
+      ...(parent === undefined ? {} : { retained_reply_id: parent as string }),
+    }, key));
+    const repair = result.repair as Record<string, unknown> | undefined;
+    requireApiShape(result.folder_id === folder && typeof result.generation_id === 'string' &&
+      uuid.test(result.generation_id) && result.generation_id !== generation && typeof result.text === 'string' &&
+      Array.isArray(result.claims) && Array.isArray(result.citations) &&
+      repair?.original_generation_id === generation && repair?.retained_reply_id === parent,
+    'repair_folder_generation');
+    return ok(`Retained repair generation ${result.generation_id}. Semantic entailment remains not_checked.\n${result.text}`, result);
+  },
   webcite_guide: async (args, _client) => {
     return ok(
       renderWebciteGuide({

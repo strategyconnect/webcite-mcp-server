@@ -748,6 +748,17 @@ export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
  */
 export const CONTEXT_TOOLS: ToolDefinition[] = [
   {
+    name: 'repair_folder_generation',
+    description: 'Repair failed quoted claims in a complete retained native folder generation. Scope comes from the authenticated API key, never MCP annotations. Requires current write permission, unchanged original offered source bytes and an explicit idempotency key. Optional retained_reply_id completes only failed proof from that exact completed paid reply with the same max_tokens, preserving its valid repairs. One separate five-credit operation, no new query, retrieval or first draft. Quote/number guards apply; semantic entailment remains not_checked. Preserve failed replies and inspect receipts before another intent. Available in the full profile.',
+    inputSchema: { type: 'object', properties: {
+      folder_id: { type: 'string', minLength: 1, maxLength: 200 },
+      generation_id: { type: 'string', format: 'uuid' },
+      idempotency_key: { type: 'string', pattern: '^[!-~]{1,128}$' },
+      max_tokens: { type: 'integer', minimum: 256, maximum: 8192, default: 4096 },
+      retained_reply_id: { type: 'string', format: 'uuid' },
+    }, required: ['folder_id', 'generation_id', 'idempotency_key'] },
+  },
+  {
     name: 'get_answer',
     description: `Resolve an immutable answer revision by ID. Returns the sealed answer text, packet identities, justifications, spans and presentation numbers.
 
@@ -2377,6 +2388,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
 
 /** HTTP route each context tool maps to — used by tests and docs. */
 export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
+  'POST /api/v2/folders/:id/generations/:generationId/repair': 'repair_folder_generation',
   'GET /api/v2/answers/:revisionId': 'get_answer',
   'GET /api/v2/evidence-packets/:id': 'get_evidence_packet',
   'POST /api/v2/context/query': 'query_context',
