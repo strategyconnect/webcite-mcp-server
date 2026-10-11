@@ -761,6 +761,7 @@ export const CONTEXT_TOOLS: ToolDefinition[] = [
         additionalProperties: false, required: ['order', 'source_literal'], properties: {
           order: { type: 'integer', minimum: 0, maximum: 99 }, source_literal: { type: 'boolean' },
         } }, description: 'Only with retained_reply_id and explicit claim_orders. Unique selected orders; true requires an exact whole-source quotation, false permits prose. Absent preserves legacy mode; [] selects typed completion. Cannot be combined with reuse_proof.' },
+      original_instruction: { type: 'string', minLength: 1, maxLength: 8000, description: 'Exact retained original task. Server verifies its instructionHash before reservation; request intent, never source evidence.' },
       retained_reply_id: { type: 'string', format: 'uuid' },
       reuse_proof: { type: 'object', additionalProperties: false, properties: {
         generation_id: { type: 'string', format: 'uuid' },
