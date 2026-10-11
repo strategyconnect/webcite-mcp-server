@@ -572,7 +572,7 @@ export class WebCiteApiClient {
   /* ---------------------------------------------------------- context graph (v2) */
 
   async repairFolderGeneration(folderId: string, generationId: string, body: {
-    max_tokens?: number; retained_reply_id?: string;
+    max_tokens?: number; retained_reply_id?: string; original_instruction?: string;
     claim_orders?: number[];
     claim_constraints?: { order: number; source_literal: boolean }[];
     reuse_proof?: { generation_id: string; claim_orders: number[] } }, idempotencyKey: string): Promise<Record<string, unknown>> {

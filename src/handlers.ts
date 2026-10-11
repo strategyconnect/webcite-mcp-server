@@ -1529,11 +1529,14 @@ export const handlers: Record<string, ToolHandler> = {
     const maxTokens = args?.max_tokens;
     const orders = args?.claim_orders;
     const constraints = args?.claim_constraints;
+    const originalInstruction = args?.original_instruction;
     const reuse = args?.reuse_proof as { generation_id?: unknown; claim_orders?: unknown } | undefined;
     if (folder !== folder.trim() || folder.length > 200 || !uuid.test(generation) ||
       !/^[\x21-\x7E]{1,128}$/.test(key) || (parent !== undefined && (typeof parent !== 'string' || !uuid.test(parent))) ||
       (maxTokens !== undefined && (typeof maxTokens !== 'number' || !Number.isInteger(maxTokens) || maxTokens < 256 || maxTokens > 8192)))
       throw new ToolFailure('invalid_argument', 'Retained repair requires exact folder/generation/parent identities and bounded settings');
+    if (originalInstruction !== undefined && (typeof originalInstruction !== 'string' || originalInstruction.length < 1 || originalInstruction.length > 8000))
+      throw new ToolFailure('invalid_argument', 'Original repair instruction must contain 1 to 8000 UTF-16 code units');
     if (orders !== undefined && (!Array.isArray(orders) || orders.length < 1 || orders.length > 100 ||
       orders.some(order => typeof order !== 'number' || !Number.isInteger(order) || order < 0 || order > 99) ||
       new Set(orders).size !== orders.length || args?.reuse_proof !== undefined))
@@ -1550,6 +1553,7 @@ export const handlers: Record<string, ToolHandler> = {
     const result = await wrapApi(client.repairFolderGeneration(folder, generation, {
       ...(maxTokens === undefined ? {} : { max_tokens: maxTokens as number }),
       ...(parent === undefined ? {} : { retained_reply_id: parent as string }),
+      ...(originalInstruction === undefined ? {} : { original_instruction: originalInstruction as string }),
       ...(orders === undefined ? {} : { claim_orders: orders as number[] }),
       ...(constraints === undefined ? {} : { claim_constraints: constraints as { order: number; source_literal: boolean }[] }),
       ...(reuse === undefined ? {} : { reuse_proof: reuse as { generation_id: string; claim_orders: number[] } }),

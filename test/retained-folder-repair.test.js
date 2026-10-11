@@ -167,3 +167,29 @@ test('published proof reuse forwards a bounded donor selector and refuses paid o
     }
   } finally { global.fetch = previous; }
 });
+
+test('original repair instruction preserves exact wire bytes and rejects invalid bounds before HTTP', async () => {
+  const previous = global.fetch, calls = [];
+  const old = '11111111-1111-4111-8111-111111111111', next = '22222222-2222-4222-8222-222222222222';
+  global.fetch = async (url, input) => { calls.push({ url, input }); return Response.json({
+    folder_id: 'owned-folder', generation_id: next, answer_id: next, revision_id: next,
+    status: 'grounded', text: 'Source-backed correction.',
+    claims: [{ order: 0, support: 'supported', text: 'Source-backed correction.', citation_ids: ['cit_1'] }],
+    citations: [{ citation_id: 'cit_1', source_version_id: 'source-owned', quote: 'Source-backed correction.' }],
+    repair: { original_generation_id: old, claim_orders: [0] },
+  }); };
+  try {
+    const client = new WebCiteApiClient('fixture', 'http://localhost');
+    const args = { folder_id: 'owned-folder', generation_id: old, idempotency_key: 'task-bound', claim_orders: [0] };
+    for (const value of [undefined, '  Exact task\nwith Unicode 🧾  ', 'x'.repeat(8000)]) {
+      await handlers.repair_folder_generation({ ...args, ...(value === undefined ? {} : { original_instruction: value }) }, client);
+      const body = JSON.parse(calls.at(-1).input.body);
+      assert.equal(Object.hasOwn(body, 'original_instruction'), value !== undefined);
+      if (value !== undefined) assert.equal(body.original_instruction, value);
+    }
+    const before = calls.length;
+    for (const value of ['', 'x'.repeat(8001), null, 42, {}])
+      await assert.rejects(handlers.repair_folder_generation({ ...args, original_instruction: value }, client), /instruction/);
+    assert.equal(calls.length, before);
+  } finally { global.fetch = previous; }
+});
