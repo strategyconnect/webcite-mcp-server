@@ -59,6 +59,9 @@ const STATED_FX_EVIDENCE =
 const SEARCH_NARRATIVE =
   '`search_sources` search_result text is a model-written summary, not evidence. On serving releases implementing narrative_status, no_sources means no citation was retained and narrative fields are empty except for the legacy NOT_SEARCHABLE sentinel. With model_text, [n] identifies the nth returned citation (or the flattened claim_groups citations when citations is absent). A marker is retained only for a fetched publisher passage containing the figures and literal metric/unit context of its sentence or row, or most words of a figureless sentence. Grounding, fallback and unknown passage provenance cannot bind a marker. This conservative passage binding does not certify the statement; treat unmarked figures as unsourced model text and check the original passage with get_source_preview.';
 
+const CITATION_CHAT_ANSWER =
+  'Citation chat (`POST /api/v1/citation/chat`, authenticated product route) also returns `answer` and `answer_status` on serving releases implementing the typed chat answer. `answer` is `{sections: [{heading, blocks}]}`; a block is `{kind: "claim", text, citations}`, where `citations` lists one or more ids of returned `citations` entries, one id per entry and never a range, or `{kind: "unknown", topic}` for a part of the question the sources do not answer. The answer is restructured from the grounded answer and validated (ids must be returned citation ids, claim text carries no [n] markers, and a claim may not state a figure the grounded answer does not contain) with at most one model retry. With `answer_status` valid, `search_result_with_citations_mapping` is rendered from `answer`, so every [n] names the returned citation with id n. Otherwise `answer` is null and `answer_status` says why: invalid (failed validation twice), model_error, or no_answer_text (for example a cached replay); the text fields keep the original grounded answer. `citations`, `search_result` and `excluded` are unchanged.';
+
 const VERIFICATION_TIMEOUT =
   'On serving releases implementing the 600-second verification default, CITATION_AGENT_TIMEOUT_MS accepts integer milliseconds from 1 to 2147483647. Missing or blank values use 600000 ms; invalid nonblank values warn and use that default. Reaching the backend ceiling remains a 503 VERIFICATION_TIMEOUT failure. Aborting does not establish a zero charge or a refund. The Redis paid-request lock must last at least the configured agent budget plus 60 seconds. Short verification overrides retain the 300000 ms paid-work lock floor for visual extraction.';
 const AGENT_CHECKPOINTS =
@@ -237,7 +240,7 @@ export function renderWebciteGuide(input: {
         '4. If the original source or country is not established by the document and checked URLs, report it as unresolved. Do not infer a country from currency alone or cite a news summary as the original publication.',
         '`ask_document` checks numerical answers inside supplied text; it does not discover external source URLs.',
       ],
-      [RETRIEVAL_ATTEMPTS, LITERAL_SOURCE_CONTEXT, ASSET_OWNERSHIP, SEARCH_CANCELLATION, SEARCH_NARRATIVE],
+      [RETRIEVAL_ATTEMPTS, LITERAL_SOURCE_CONTEXT, ASSET_OWNERSHIP, SEARCH_CANCELLATION, SEARCH_NARRATIVE, CITATION_CHAT_ANSWER],
     );
   }
 
