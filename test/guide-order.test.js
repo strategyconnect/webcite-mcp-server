@@ -94,3 +94,10 @@ test('folder guide separates hinted core and ordinary budgets without promising 
   assert.match(guide, /Without navigation queries, N is 1, preserving the original text, anchor and physical-unit allowances/);
   assert.doesNotMatch(guide, /Without this field, ordinary retrieval retains its existing limits/);
 });
+
+test('source_trace documents the typed citation chat answer', () => {
+  const guide = renderWebciteGuide({ workflow: 'source_trace' });
+  assert.match(guide, /POST \/api\/v1\/citation\/chat/);
+  assert.match(guide, /one id per entry and never a range/);
+  assert.match(guide, /`answer_status` valid, `search_result_with_citations_mapping` is rendered from `answer`/);
+});
