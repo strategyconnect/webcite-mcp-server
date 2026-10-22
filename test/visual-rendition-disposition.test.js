@@ -109,7 +109,7 @@ test('actual MCP tool boundary exposes same existing names and visual options', 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport); await client.connect(clientTransport);
   try {
-    const catalog = await client.listTools(); assert.equal(catalog.tools.length, 33);
+    const catalog = await client.listTools(); assert.equal(catalog.tools.length, 34);
     const extract = catalog.tools.find(row => row.name === 'extract_document');
     assert.equal(extract.inputSchema.properties.visual_rendition.type, 'boolean');
     const result = await client.callTool({ name: 'extract_document', arguments: input });

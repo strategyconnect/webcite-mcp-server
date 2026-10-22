@@ -18,7 +18,7 @@ Use this copy when submitting Webcite to Anthropic’s Connectors Directory.
 
 ## Long description
 
-Webcite checks AI claims against sources, opens the passage a quote came from, and extracts figures from documents. Default tools are a short core set so Claude can pick them up easily. Free plan includes 100 credits per month. Get a key at webcite.co/api-keys, then add this connector URL.
+Webcite checks AI claims against sources, opens the passage a quote came from, and extracts figures from documents. The default public profile includes supported public verification, document review and source-reading workflows. Call `webcite_guide` for the current tool workflow and inspect the serving version before relying on a server capability. Free plan includes 100 credits per month. Get a key at webcite.co/api-keys, then add this connector URL.
 
 ## Screenshots to capture
 

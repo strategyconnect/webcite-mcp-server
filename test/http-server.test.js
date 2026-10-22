@@ -71,7 +71,7 @@ test('stateless hosted tools recover missing and obsolete IDs and isolate reques
     const init=await post(1,'initialize',{protocolVersion:'2025-03-26',capabilities:{},clientInfo:{name:'stateless-test',version:'1'}});
     assert.equal(init.status,200);assert.equal(init.headers.get('mcp-session-id'),null);assert.ok((await payload(init)).result.capabilities.tools);
     const notification=await post(undefined,'notifications/initialized',{});assert.equal(notification.status,202);
-    const listed=await post(2,'tools/list',{},'account-a','obsolete-before-restart');assert.equal(listed.status,200);assert.equal((await payload(listed)).result.tools.length,33);
+    const listed=await post(2,'tools/list',{},'account-a','obsolete-before-restart');assert.equal(listed.status,200);assert.equal((await payload(listed)).result.tools.length,34);
     for(const [id,key,session,remaining] of [[3,'account-a',undefined,11],[4,'account-b','obsolete-before-restart',22]]) {
       const response=await post(id,'tools/call',{name:'get_credit_balance',arguments:{}},key,session);
       assert.equal(response.status,200);const result=(await payload(response)).result;
@@ -169,10 +169,10 @@ test('actual StreamableHTTP client keeps read-only tools working across app rest
   const client=new Client({name:'actual-stateless-client',version:'1'});
   try {
     await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.address().port}/mcp`),{requestInit:{headers:{authorization:'Bearer account-a','mcp-session-id':'legacy-before-deployment'}}}));
-    assert.equal((await client.listTools()).tools.length,33);
+    assert.equal((await client.listTools()).tools.length,34);
     assert.notEqual((await client.callTool({name:'get_credit_balance',arguments:{}})).isError,true);
     app=createRemoteMcpApp(options);
-    assert.equal((await client.listTools()).tools.length,33);
+    assert.equal((await client.listTools()).tools.length,34);
     assert.notEqual((await client.callTool({name:'get_credit_balance',arguments:{}})).isError,true);
     assert.equal(calls,2);
   } finally {await client.close();await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>backend.close(resolve));}

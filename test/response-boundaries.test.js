@@ -221,7 +221,7 @@ test('actual public MCP malformed JSON failure retains known receipt and never c
 
 test('shared guide explains retained receipts and saved-read cancellation without a refund claim', () => {
   const { renderWebciteGuide } = require(`${root}/dist/guide.js`);
-  for (const workflow of ['quick_verify', 'document_review']) {
+  for (const workflow of ['document_review', 'billing']) {
     const guide = renderWebciteGuide({ workflow });
     assert.match(guide, /Cancelling a get_document_review MCP request forwards cancellation/);
     assert.match(guide, /Missing receipt fields remain unknown/);

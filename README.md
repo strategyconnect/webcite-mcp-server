@@ -7,8 +7,81 @@ MCP (Model Context Protocol) server for WebCite — lets any AI agent verify fac
 
 Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
 
-## 1.9.41 release notes
+## Verification and document acceptance
 
+On servers implementing retained generation navigation, a folder generation can include one navigation-query provider stage within the existing five-credit generation operation. Its route is selected before calling the provider, and a refusal, invalid reply, failure or unknown outcome remains an error without provider switching, automatic retry or silent original-query fallback. Public memo model and token usage keep their existing meaning; separate query-provider measurements are internal. Internal staged continuation is identity-bound and requires complete accounting with no draft dispatch. It does not expose a new public preparation feature. Confirm the serving release before relying on this behavior.
+
+On servers implementing isolated generation retrieval budgets, the default 16-anchor retrieval limit gives evidence-reference hints and mandatory core context up to 32,000 retained-text characters, plus up to 32,000 incremental ordinary-retrieval characters, bounded by 64,000 in total. Without evidence references, retained text remains bounded by 32,000 characters. Ordinary retrieval allows up to 16 anchors per retained navigation query, or 16 with no navigation queries, subject to the same text and physical-unit ceilings. The physical-unit ceiling is 48 plus three times the reference count; each passage is capped at 2,000 UTF-16 characters. Stored source inventory retains its separate 100 MiB aggregate read guard. These are bounded retrieval allowances, not guarantees of exhaustive source coverage, complete prompt size or provider-token cost. Confirm the serving release before relying on them.
+
+For an official-source requirement, supply `filters` on `verify_claim` or `verify_claim_stream`, for example `{"official_country":"ae","is_primary_source":true,"domain":["centralbank.ae"]}`. Pass a known public HTTPS report in `source_urls`; writing a URL or `site:` expression in the claim is not a substitute for these fields. Match the quoted metric, observation period, geography, currency and scale. Different official publications can remain unresolved rather than yielding one universal corrected figure.
+
+Upload original image, PDF or PowerPoint bytes and wait for parsing before review. Inspect input coverage, unreadable regions, claim limits and per-claim source/page locators. A successful upload, a completed review, or many citations does not certify that every figure was read or verified. Citation links are not a guarantee of pixel-level highlighting on an uploaded slide. An extraction failure stays a failure; a bounded search with no evidence does not prove the data is unavailable. Open the original publisher passage before treating a stance badge as proof.
+
+Preserve saved review, citation, job and operation IDs on a timeout or uncertain outcome. Read retained progress before retrying and reuse an explicit idempotency key only with the same request. Package publication does not deploy the hosted API, frontend or MCP binary. Check their actual serving identities before asserting that reported cases are fixed in production.
+
+## 1.9.57 release notes
+
+Updates the guide for original-document acceptance and scoped application access. App-bound keys cannot use legacy account administration or share personal UUID citations. Folder traces respect retained source and linked-memory visibility. Confirm the serving release before relying on these controls. Tool names and client interfaces are unchanged.
+
+## 1.9.56 release notes
+
+Adds hosted MCP `upload_url` and publishes the reviewed timeout and evidence workflows:
+
+- `upload_url` stores bounded original bytes from public HTTPS URLs through public-address and redirect checks, returning owned asset references and usage. Upload success does not certify parsing or a full review.
+- Local SDK and self-hosted MCP requests default to a 15-minute headers/body budget, with a validated `WEBCITE_API_TIMEOUT_MS` override. Supporting verification servers use a 600-second default, preserve `VERIFICATION_TIMEOUT` failures and keep the paid-work lock floor. Cancellation does not establish a refund.
+- `source_trace` distinguishes extraction, source discovery and checked publication evidence. Search narrative fields separate model prose from literal fetched-snippet bindings; the bindings do not certify a claim.
+- Supporting servers retain uniquely bound printed PDF table headings, captions, units and headers without changing TOTAL rows or borrowing ambiguous context.
+- Claim-stated FX arithmetic uses one unambiguous explicit currency equality or unit ratio and printed source currency/scale. Rates are never fetched or assumed, and arithmetic does not independently promote a citation stance.
+
+The bundled guide qualifies server capabilities by their serving release. Publishing this package does not deploy a server, enable billing or change existing subscription price snapshots. Other MCP tool and client contracts are preserved.
+
+## 1.9.55 release notes
+
+Updates the bundled `webcite_guide` with the reviewed credit overage contract:
+
+- Held reservations are excluded from settled overage. Returning unused credits does not erase billing for the portion that was actually settled.
+- Calendar renewal resets the period's overage watermark. Delayed activation preserves an existing period's allocation and spending.
+- Durable overage events retain their identity across retries. Delivery retries use a fresh timestamp, including after a long outage.
+- Reporting requires a meter and an explicit UTC activation time. Earlier billing periods are excluded, and a new meter does not change existing subscription price snapshots.
+
+The MCP tools and client API are unchanged from 1.9.54. Server billing still depends on its serving release, migrations and meter configuration; publishing the guide does not enable billing.
+
+## 1.9.54 release notes
+
+Clarifies the bundled `webcite_guide` for servers implementing the reviewed recovery fixes:
+
+- Activation keeps valid provider billing dates; first calendar renewal can recover an older processing-time fallback without accepting stale or overlapping periods.
+- No-carry renewal grants the full new allocation even when unresolved earlier reservations exceed it.
+- A failed operation lock prevents provider admission. Fresh older extraction saves unknown usage before its cursor advances when receipt persistence fails.
+
+The MCP tools and client API are unchanged from 1.9.53. Publishing this guide does not activate server features or apply migrations; confirm the serving release.
+
+## 1.9.53 release notes
+
+Updates the bundled `webcite_guide` with reviewed backend contracts:
+
+- No-carry free and paid renewal, billing-period checks on refunds, and explicit reconciliation for ambiguous legacy reservations.
+- Source-capable ASR servers, retained speech receipts, and validated cache replay on an owned, settled zero-credit operation.
+- Recovered extraction usage priced using an available rate for its original occurrence time. Existing receipts keep their saved pricing without backfill; unknown pricing remains unknown.
+
+The MCP tools and client API are unchanged from 1.9.52. These guide updates do not activate backend features or apply migrations. Confirm the serving release before relying on a server capability.
+
+## 1.9.52 release notes
+
+Adds the missing README release notes for 1.9.51. This documentation patch preserves its MCP tools, client API and bundled workflow guide.
+
+## 1.9.51 release notes
+
+Updates the bundled `webcite_guide` with the reviewed backend contracts:
+
+- Billing-period handling for held credits, refunds, free-plan rollover and paid renewal.
+- Provider-attempt admission on reserved operations, retained usage receipts and explicit retry behavior.
+- Legacy document-extraction retry and incomplete table-repair handling, while durable reviews retain their fail-closed behavior.
+- Email OTP delivery failures and per-key bot request limits, including configuration errors.
+
+The MCP tools and client API are unchanged from 1.9.50. Publishing the SDK does not activate backend features or apply database migrations; those require their own server release.
+
+## 1.9.41 release notes
 
 Cancelling a `verify_claim_stream` MCP request now forwards its cancellation signal to the backend HTTP request. Stopping a stream early or encountering a terminal error cancels its unfinished response body. Partial events and original failures remain failures; a completed stream consumes its result, done marker and EOF without extra cancellation. Cancellation does not certify a refund or rollback of paid work. Direct SDK callers can pass an `AbortSignal` as the second argument to `verifyClaimStream` to interrupt a pending read.
 
@@ -78,7 +151,7 @@ These changes do not repair or regenerate historical evidence. Backend policy an
 
 Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change a local server's tool discovery. This does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
 
-On the hosted connector, `upload_file` is a small-file compatibility path accepting `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`.
+On the hosted connector, `upload_file` is a small-file compatibility path accepting `filename` and `file_base64` (up to 20 MB decoded). It does not read a path from the server. Local stdio usage still accepts `file_path`. Public, docs and research profiles also expose `upload_url`: the authenticated server fetches original bytes from a public HTTPS URL with a 100 MB cap, a 30-second budget and checked DNS/redirects. It forwards no caller credentials and returns owned `asset_id`, `asset_url` and `source_version_id`. This does not access a private chat attachment or local file. Preserve the receipt on an uncertain failure before retrying.
 
 A file attached to a Claude chat is not automatically passed to a remote MCP tool. Upload the original binary through Webcite Playground or the authenticated multipart/resumable HTTP API within the parser's format and size limits, then use its asset ID with the same Webcite account in Claude. If upload completion returns `parse_job_id`, wait for parsing; if it returns `parse_required`, call its `parse_endpoint`. Do not base64-encode extracted text as a substitute for the original file. A client that directly supplies original bytes may still use `upload_file` for small files.
 
@@ -88,7 +161,7 @@ The table below describes common tools across profiles. It is not the remote ser
 
 | Tool | Description | Credits |
 |------|-------------|---------|
-| `webcite_guide` | Pick verification, full-document, source-tracing or numeric workflow | 0 |
+| `webcite_guide` | Pick verification, full-document, source-tracing or numeric workflow, or read the billing reference | 0 |
 | `verify_claim` | Full fact verification with stance analysis and verdict | 2-4 |
 | `get_credit_balance` | Read remaining, used and total credits | 0 |
 | `get_document_review` | Page saved claims and uncovered source passages independently | 0 |
@@ -100,6 +173,7 @@ The table below describes common tools across profiles. It is not the remote ser
 | `list_citations` | List your past verifications | 1 |
 | `get_citation` | Get details of a specific verification | 1 |
 | `upload_file` | Upload a document for use as verification context | 1 |
+| `upload_url` | Store original file bytes from a public HTTPS URL, with public-address, redirect and size guards | 1 on successful storage |
 | `get_source_preview` | Resolve a citation to its source, with a bindBack check | 1 |
 | `verify_batch` | Check up to 200 quotes against their sources in one call | 1 per item |
 | `verify_feedback` | Accept, reject or flag a batch result | 1 |
@@ -628,6 +702,7 @@ The numeric engine's measured accuracy against its gold-set corpus: conflict det
 |----------|-------------|---------|
 | `WEBCITE_API_KEY` | Your WebCite API key (required) | - |
 | `WEBCITE_API_URL` | API base URL | `https://api.webcite.co` |
+| `WEBCITE_API_TIMEOUT_MS` | Headers and body timeout for each API request, in milliseconds (positive integer; invalid values fall back to the default with a warning) | `900000` (15 minutes) |
 
 For new agent conversations using MongoDB checkpoints, configure your local SDK or self-hosted MCP server with the durable API base:
 

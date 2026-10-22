@@ -128,14 +128,17 @@ import type {
   SSEEvent,
   ReviewDocumentOptions,
   UploadResponse,
+  UploadUrlOptions,
   VerifyClaimOptions,
   VerifyClaimResponse,
   WorkflowExecutionResponse,
 } from './types.js';
 import { ApiClientError } from './errors.js';
+import { apiDispatcher } from './api-dispatcher.js';
 
 export * from './types.js';
 export { ApiClientError, ToolFailure } from './errors.js';
+export { DEFAULT_API_TIMEOUT_MS, resolveApiTimeoutMs } from './api-dispatcher.js';
 
 export class WebCiteApiClient {
   private baseUrl: string;
@@ -164,7 +167,8 @@ export class WebCiteApiClient {
     const response = await fetch(url, {
       ...options,
       headers,
-    });
+      dispatcher: apiDispatcher(),
+    } as RequestInit);
 
     if (!response.ok) {
       throw await this.responseError(response);
@@ -285,7 +289,8 @@ export class WebCiteApiClient {
       },
       body,
       signal,
-    });
+      dispatcher: apiDispatcher(),
+    } as RequestInit);
 
     if (!response.ok) {
       throw await this.responseError(response);
@@ -497,6 +502,19 @@ export class WebCiteApiClient {
     return this.request('/api/v1/accuracy', { method: 'GET' });
   }
 
+  async uploadUrl(options: UploadUrlOptions): Promise<UploadResponse> {
+    const result = await this.request('/api/v1/upload/url', {
+      method: 'POST', body: JSON.stringify(options),
+    }) as { successCode?: number; data?: Partial<UploadResponse> };
+    const data = result?.data;
+    if (result?.successCode !== 200 || typeof data?.asset_id !== 'string' || !data.asset_id.trim() || data.asset_id !== data.asset_id.trim() || data.asset_id.length > 191 ||
+        typeof data.source_version_id !== 'string' || !data.source_version_id.trim() || data.source_version_id !== data.source_version_id.trim() || data.source_version_id.length > 191 ||
+        typeof data.asset_url !== 'string' || !data.asset_url.trim() || typeof data.filename !== 'string' || !data.filename.trim() || data.filename.length > 255 ||
+        !Number.isSafeInteger(data.size) || (data.size as number) <= 0 || (data.size as number) > 100 * 1024 * 1024)
+      throw new ApiClientError(502, 'URL upload response did not contain usable stored asset references', creditUsage(result));
+    return { ...data, ...(creditUsage(result) ? { credit_usage: creditUsage(result) } : {}) } as UploadResponse;
+  }
+
   async uploadFile(filePath: string): Promise<UploadResponse> {
     const fileBuffer = await fs.readFile(filePath);
     return this.uploadBytes(fileBuffer, path.basename(filePath));
@@ -514,7 +532,8 @@ export class WebCiteApiClient {
         'x-api-key': this.apiKey,
       },
       body: formData,
-    });
+      dispatcher: apiDispatcher(),
+    } as RequestInit);
 
     if (!response.ok) {
       throw await this.responseError(response);
@@ -551,6 +570,15 @@ export class WebCiteApiClient {
   }
 
   /* ---------------------------------------------------------- context graph (v2) */
+
+  async repairFolderGeneration(folderId: string, generationId: string, body: {
+    max_tokens?: number; retained_reply_id?: string; original_instruction?: string;
+    claim_orders?: number[];
+    claim_constraints?: { order: number; source_literal: boolean }[];
+    reuse_proof?: { generation_id: string; claim_orders: number[] } }, idempotencyKey: string): Promise<Record<string, unknown>> {
+    return this.request(`/api/v2/folders/${encodeURIComponent(folderId)}/generations/${encodeURIComponent(generationId)}/repair`,
+      { method: 'POST', body: JSON.stringify(body) }, { idempotencyKey });
+  }
 
   async getAnswer(revisionId: string): Promise<ResolvedAnswerResponse> {
     return this.request(`/api/v2/answers/${encodeURIComponent(revisionId)}`, {
@@ -1141,5 +1169,3 @@ export class WebCiteApiClient {
     );
   }
 }
-
-export { WebCiteProductClient } from './product-client.js';

@@ -22,6 +22,7 @@ export const CORE_TOOL_ORDER = [
 ] as const;
 
 const DOCS_EXTRA = [
+  'upload_url',
   'analyze_document',
   'classify_document',
   'document_gaps',
@@ -40,6 +41,7 @@ const RESEARCH_EXTRA = [
 
 /** Public API tools only; advanced context and evaluation controls stay opt-in. */
 const PUBLIC_TOOLS = [
+  'upload_url',
   ...CORE_TOOL_ORDER,
   'get_document_review',
   'revise_document_claim_analysis',

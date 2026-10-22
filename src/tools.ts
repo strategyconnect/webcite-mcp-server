@@ -561,6 +561,18 @@ const claimScopeProperties = {
 /** Stable public API workflows missing from the original v1 tool catalog. */
 export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   {
+    name: 'upload_url',
+    description: `Upload original file bytes from a public HTTPS URL, including through hosted MCP. No caller credentials or headers are forwarded. Private addresses, unsafe redirects, unsupported formats, empty files and files over 100 MB are refused. This does not access a local file or a private chat attachment. Save asset_id, asset_url and source_version_id; use the owned asset_id for review and extraction. An uncertain failure does not prove that no upload charge occurred; preserve the receipt rather than automatically repeating it. Credits: 1 for a stored upload.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        url: { type: 'string', maxLength: 8192, description: 'Public HTTPS URL of the original file.' },
+        filename: { type: 'string', minLength: 1, maxLength: 255, description: 'Optional display filename matching the fetched format.' },
+      },
+      required: ['url'],
+    },
+  },
+  {
     name: 'get_credit_balance',
     description: 'Read the authenticated account credit balance for an explicit balance question or an unresolved credit refusal. A routine document review does not require this call; use inline credit_usage from normal responses. Costs 0 credits. Returns remaining, used and total credits; no billing change is made.',
     inputSchema: { type: 'object', properties: {} },
@@ -711,6 +723,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
 ];
 
 export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
+  'POST /api/v1/upload/url': 'upload_url',
   'GET /api/v1/payment/credits/balance': 'get_credit_balance',
   'GET /api/v1/playground/chat/document-reviews/:reviewId': 'get_document_review',
   'POST /api/v1/playground/chat/document-reviews/:reviewId/claims/:claimId/analysis-revisions': 'revise_document_claim_analysis',
@@ -734,6 +747,29 @@ export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
  * Scope always comes from the authenticated API key, never from MCP annotations.
  */
 export const CONTEXT_TOOLS: ToolDefinition[] = [
+  {
+    name: 'repair_folder_generation',
+    description: 'Repair failed quoted claims in a complete retained native folder generation. Optional claim_orders selects unique existing orders for explicit source-backed wording or heading correction, preserving all unselected claims, order and layout; it cannot be combined with reuse_proof. For retained_reply_id completion, repeat the exact parent claim_orders and max_tokens; changed selection refuses. Scope comes from the authenticated API key, never MCP annotations. Requires current write permission, unchanged original offered source bytes and an explicit idempotency key. Optional retained_reply_id completes only failed proof from that exact completed paid reply with the same max_tokens, preserving its valid repairs. Model repair uses one separate five-credit operation, no new query, retrieval or first draft. Optional reuse_proof names a published donor generation and unique claim_orders, without retained_reply_id: exact matching claim text and current literal physical proof are unioned with existing quotes, preserving other claims/layout and paid lineage, at zero credits and zero model attempts. Quote/number guards apply; semantic entailment remains not_checked. Preserve failed replies and inspect receipts before another intent. Available in the full profile.',
+    inputSchema: { type: 'object', properties: {
+      folder_id: { type: 'string', minLength: 1, maxLength: 200 },
+      generation_id: { type: 'string', format: 'uuid' },
+      idempotency_key: { type: 'string', pattern: '^[!-~]{1,128}$' },
+      max_tokens: { type: 'integer', minimum: 256, maximum: 8192, default: 4096 },
+      claim_orders: { type: 'array', minItems: 1, maxItems: 100, uniqueItems: true,
+        items: { type: 'integer', minimum: 0, maximum: 99 } },
+      claim_constraints: { type: 'array', maxItems: 100, items: { type: 'object',
+        additionalProperties: false, required: ['order', 'source_literal'], properties: {
+          order: { type: 'integer', minimum: 0, maximum: 99 }, source_literal: { type: 'boolean' },
+        } }, description: 'Only with retained_reply_id and explicit claim_orders. Unique selected orders; true requires an exact whole-source quotation, false permits prose. Absent preserves legacy mode; [] selects typed completion. Cannot be combined with reuse_proof.' },
+      original_instruction: { type: 'string', minLength: 1, maxLength: 8000, description: 'Exact retained original task. Server verifies its instructionHash before reservation; request intent, never source evidence.' },
+      retained_reply_id: { type: 'string', format: 'uuid' },
+      reuse_proof: { type: 'object', additionalProperties: false, properties: {
+        generation_id: { type: 'string', format: 'uuid' },
+        claim_orders: { type: 'array', minItems: 1, maxItems: 100, uniqueItems: true,
+          items: { type: 'integer', minimum: 0, maximum: 99 } },
+      }, required: ['generation_id', 'claim_orders'] },
+    }, required: ['folder_id', 'generation_id', 'idempotency_key'] },
+  },
   {
     name: 'get_answer',
     description: `Resolve an immutable answer revision by ID. Returns the sealed answer text, packet identities, justifications, spans and presentation numbers.
@@ -1236,7 +1272,7 @@ Credits: 1. HTTP: POST /api/v2/context/numbers/inventory`,
   },
   {
     name: 'find_contradictions',
-    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank/padded bounds never invent a contradiction. Blank/whitespace/surrounding-padded interval endpoints and missing/blank/padded decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value; backend #289) — never trim-launder pads into certified known bounds or magnitudes, and never treat an empty pair list as a certified all-clear. Period kind: pass claims[].period_kind 'flow' (total over the interval), 'stock' (level at a date) or 'unknown' (default). Differing values over the same exact period contradict unless one is a stated flow and the other a stated stock. Nested or overlapping periods contradict as two stocks, are distinct periods as two flows (YTD vs annual), and fail closed as contradiction_scan_incomplete: insufficient_comparison_context when either kind is unknown. A stated flow and a stated stock are always distinct, never compared. A contradiction_scan_incomplete refusal still lists the pairs it found and the unresolved codes. Fiscal-year labels are not mapped to the calendar year without a stated fiscal calendar. Coverage complete means a certified scan. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified contradiction-scan replay pin; same honesty as settle/compare/assess #92/#99/#101/#102).
+    description: `Find pairwise contradiction candidates over interval-valued claims (W3). Unknown/open/blank/padded bounds never invent a contradiction. Blank/whitespace/surrounding-padded interval endpoints and missing/blank/padded decimals on conflicting or unknown pairs fail closed as contradiction_scan_incomplete (unknown_interval_bounds / missing_decimal_value; backend #289) — never trim-launder pads into certified known bounds or magnitudes, and never treat an empty pair list as a certified all-clear. Coverage complete means a certified scan. Blank/padded string idempotency_key → incomplete_operation_idempotency_identity (never trim-launder into a certified contradiction-scan replay pin; same honesty as settle/compare/assess #92/#99/#101/#102).
 
 Credits: 1. HTTP: POST /api/v2/context/contradictions`,
     inputSchema: {
@@ -1270,12 +1306,6 @@ Credits: 1. HTTP: POST /api/v2/context/contradictions`,
                 type: ['string', 'null'],
                 description:
                   'Exact decimal text. Null/blank/surrounding-padded on conflicting or unknown-bound pairs → contradiction_scan_incomplete: missing_decimal_value (#289; never trim-launder " 10 " into 10).',
-              },
-              period_kind: {
-                type: ['string', 'null'],
-                enum: ['flow', 'stock', 'unknown', null],
-                description:
-                  "Optional. 'flow' = total over the interval (revenue for H1, YTD); 'stock' = level at a date (balance, headcount as of). Omitted/null = 'unknown': nested or overlapping periods then return insufficient_comparison_context instead of a contradiction. Other values are refused (HTTP 400).",
               },
             },
             required: ['interval', 'decimal_value'],
@@ -2370,6 +2400,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
 
 /** HTTP route each context tool maps to — used by tests and docs. */
 export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {
+  'POST /api/v2/folders/:id/generations/:generationId/repair': 'repair_folder_generation',
   'GET /api/v2/answers/:revisionId': 'get_answer',
   'GET /api/v2/evidence-packets/:id': 'get_evidence_packet',
   'POST /api/v2/context/query': 'query_context',

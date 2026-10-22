@@ -13,7 +13,13 @@ PORT=8787 WEBCITE_MCP_PROFILE=public node dist/http-server.js
 # MCP:   POST http://127.0.0.1:8787/mcp  with Authorization: Bearer <api_key>
 ```
 
-## Production (observed 2026-09-30, before the durable review release)
+## Serving release
+
+The public endpoint, hosted binary and npm package have separate release identities. Read `https://api.webcite.co/mcp-health`, the backend health identity and the npm registry before reporting a feature as deployed. A repository version or published package does not establish that production has the same backend, tool catalog or billing policy.
+
+The public profile includes `review_document`, `get_document_review_job` and `get_document_review`. A durable document review returns a saved job ID; read its progress and retained results before resuming. Preserve the exact original input and any unresolved stop, lock or credit outcome. A checkpoint does not mean every claim was checked. See the [current tool profiles](../README.md#tool-profiles) and `webcite_guide` for supported workflows.
+
+## Historical production observation (2026-09-30)
 
 Live URL (production Nginx proxies to the 1.9.12 PM2 process on `:8819`):
 
@@ -38,7 +44,7 @@ and resume using the exact original input. Large saved pages provide smaller
 MCP summaries and explicit offsets; full citation records remain on the Webcite
 API. A checkpoint never means every claim has been checked.
 
-The next release starts a backend job and returns `job_id` without holding an MCP
+The durable review release starts a backend job and returns `job_id` without holding an MCP
 request open. Poll `get_document_review_job`, then read the saved review and its
 coverage gaps with `get_document_review`. Deploy the backend document-review-jobs
 API before this MCP package.

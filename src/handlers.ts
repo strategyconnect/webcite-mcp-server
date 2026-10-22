@@ -1513,7 +1513,82 @@ function wrapApi<T>(promise: Promise<T>): Promise<T> {
   });
 }
 
+function validClaimConstraints(value: unknown, orders: unknown): value is { order: number; source_literal: boolean }[] {
+  return Array.isArray(value) && value.length <= 100 && Array.isArray(orders)
+    && value.every(row => row && typeof row === 'object' && !Array.isArray(row)
+      && Object.keys(row).sort().join(',') === 'order,source_literal'
+      && Number.isInteger(row.order) && orders.includes(row.order) && typeof row.source_literal === 'boolean')
+    && new Set(value.map(row => row.order)).size === value.length;
+}
+
 export const handlers: Record<string, ToolHandler> = {
+  repair_folder_generation: async (args, client) => {
+    const folder = requireString(args, 'folder_id'), generation = requireString(args, 'generation_id');
+    const key = requireString(args, 'idempotency_key'), parent = args?.retained_reply_id;
+    const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+    const maxTokens = args?.max_tokens;
+    const orders = args?.claim_orders;
+    const constraints = args?.claim_constraints;
+    const originalInstruction = args?.original_instruction;
+    const reuse = args?.reuse_proof as { generation_id?: unknown; claim_orders?: unknown } | undefined;
+    if (folder !== folder.trim() || folder.length > 200 || !uuid.test(generation) ||
+      !/^[\x21-\x7E]{1,128}$/.test(key) || (parent !== undefined && (typeof parent !== 'string' || !uuid.test(parent))) ||
+      (maxTokens !== undefined && (typeof maxTokens !== 'number' || !Number.isInteger(maxTokens) || maxTokens < 256 || maxTokens > 8192)))
+      throw new ToolFailure('invalid_argument', 'Retained repair requires exact folder/generation/parent identities and bounded settings');
+    if (originalInstruction !== undefined && (typeof originalInstruction !== 'string' || originalInstruction.length < 1 || originalInstruction.length > 8000))
+      throw new ToolFailure('invalid_argument', 'Original repair instruction must contain 1 to 8000 UTF-16 code units');
+    if (orders !== undefined && (!Array.isArray(orders) || orders.length < 1 || orders.length > 100 ||
+      orders.some(order => typeof order !== 'number' || !Number.isInteger(order) || order < 0 || order > 99) ||
+      new Set(orders).size !== orders.length || args?.reuse_proof !== undefined))
+      throw new ToolFailure('invalid_argument', 'Explicit repair requires unique bounded claim orders without proof reuse');
+    if (constraints !== undefined && (parent === undefined || reuse !== undefined || !validClaimConstraints(constraints, orders)))
+      throw new ToolFailure('invalid_argument', 'Typed completion requires unique constraints in explicitly selected retained claims, without proof reuse');
+    if (reuse !== undefined && (!reuse || typeof reuse !== 'object' || Array.isArray(reuse) || parent !== undefined
+      || Object.keys(reuse).sort().join(',') !== 'claim_orders,generation_id'
+      || typeof reuse.generation_id !== 'string' || !uuid.test(reuse.generation_id)
+      || !Array.isArray(reuse.claim_orders) || reuse.claim_orders.length < 1 || reuse.claim_orders.length > 100
+      || reuse.claim_orders.some(order => typeof order !== 'number' || !Number.isInteger(order) || order < 0 || order > 99)
+      || new Set(reuse.claim_orders).size !== reuse.claim_orders.length))
+      throw new ToolFailure('invalid_argument', 'Published proof reuse requires an exact donor and unique bounded claim orders, without retained_reply_id');
+    const result = await wrapApi(client.repairFolderGeneration(folder, generation, {
+      ...(maxTokens === undefined ? {} : { max_tokens: maxTokens as number }),
+      ...(parent === undefined ? {} : { retained_reply_id: parent as string }),
+      ...(originalInstruction === undefined ? {} : { original_instruction: originalInstruction as string }),
+      ...(orders === undefined ? {} : { claim_orders: orders as number[] }),
+      ...(constraints === undefined ? {} : { claim_constraints: constraints as { order: number; source_literal: boolean }[] }),
+      ...(reuse === undefined ? {} : { reuse_proof: reuse as { generation_id: string; claim_orders: number[] } }),
+    }, key));
+    const repair = result.repair as Record<string, unknown> | undefined;
+    const reused = repair?.reuse_proof as { generation_id?: unknown; claim_orders?: unknown } | undefined;
+    const usage = result.usage as Record<string, unknown> | undefined;
+    const citations = Array.isArray(result.citations) ? result.citations : [];
+    const claims = Array.isArray(result.claims) ? result.claims : [];
+    const citationIds = new Set(citations.map(citation => citation?.citation_id));
+    requireApiShape(result.folder_id === folder && typeof result.generation_id === 'string' &&
+      uuid.test(result.generation_id) && result.generation_id !== generation && typeof result.text === 'string' && result.text.trim().length > 0 &&
+      typeof result.answer_id === 'string' && uuid.test(result.answer_id) &&
+      typeof result.revision_id === 'string' && uuid.test(result.revision_id) &&
+      ['grounded', 'partially_grounded'].includes(result.status as string) &&
+      claims.length > 0 && citations.length > 0 && citationIds.size === citations.length &&
+      citations.every(citation => typeof citation?.citation_id === 'string' && citation.citation_id.length > 0 &&
+        typeof citation.quote === 'string' && citation.quote.length > 0 && typeof citation.source_version_id === 'string' && citation.source_version_id.length > 0) &&
+      claims.every((claim, order) => claim?.order === order && ['supported', 'partial', 'unsupported'].includes(claim.support) &&
+        typeof claim.text === 'string' && claim.text.length > 0 &&
+        Array.isArray(claim.citation_ids) && claim.citation_ids.every((id: unknown) => typeof id === 'string' && citationIds.has(id))) &&
+      repair?.original_generation_id === generation && repair?.retained_reply_id === parent &&
+      JSON.stringify(repair?.claim_orders) === JSON.stringify(orders) &&
+      (constraints === undefined ? repair?.claim_constraints === undefined
+        : validClaimConstraints(repair?.claim_constraints, orders)
+          && repair.claim_constraints.length === (constraints as unknown[]).length
+          && repair.claim_constraints.every((row, index) => row.order === (constraints as { order: number }[])[index].order
+            && row.source_literal === (constraints as { source_literal: boolean }[])[index].source_literal)) &&
+      reused?.generation_id === reuse?.generation_id && JSON.stringify(reused?.claim_orders) === JSON.stringify(reuse?.claim_orders) &&
+      (reuse === undefined || (usage?.credits === 0 && usage?.model_attempts === 0
+        && usage?.method === 'retained_published_proof' && usage?.model === null
+        && usage?.input_tokens === null && usage?.output_tokens === null)),
+    'repair_folder_generation');
+    return ok(`Retained repair generation ${result.generation_id}. Semantic entailment remains not_checked.\n${result.text}`, result);
+  },
   webcite_guide: async (args, _client) => {
     return ok(
       renderWebciteGuide({
@@ -2052,6 +2127,19 @@ export const handlers: Record<string, ToolHandler> = {
       normalized.citations.forEach((citation, i) => parts.push(formatCitation(citation, i)));
     }
     return ok(parts.join('\n\n'), { ...result, ...normalized });
+  },
+
+  upload_url: async (args, client) => {
+    const url = requireString(args, 'url');
+    const filename = args?.filename;
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { throw new ToolFailure('invalid_argument', 'A public HTTPS URL is required'); }
+    if (Object.keys(args ?? {}).some(key => !['url', 'filename'].includes(key)) || url.length > 8192 || parsed.protocol !== 'https:' || parsed.username || parsed.password ||
+        (parsed.port && parsed.port !== '443') ||
+        (filename !== undefined && (typeof filename !== 'string' || !filename.trim() || filename.length > 255)))
+      throw new ToolFailure('invalid_argument', 'Use a public HTTPS URL without credentials and an optional display filename');
+    const result = await wrapApi(client.uploadUrl({ url, ...(filename !== undefined ? { filename: filename as string } : {}) }));
+    return ok(`# File Uploaded Successfully\n**Asset ID:** ${result.asset_id}\n**Source version ID:** ${result.source_version_id}\n**Filename:** ${result.filename}\n**Size:** ${result.size} bytes\n${creditUsage(result) ? '' : 'Request credit usage: unknown; preserve the upload receipt.'}`, { ...result });
   },
 
   upload_file: async (args, client) => {
