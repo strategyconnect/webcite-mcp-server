@@ -196,3 +196,31 @@ test('document and page extraction propagate native failure state without losing
     }
   }
 });
+
+test('extract_document and extract_pages forward mode lite, omit mode by default and refuse an unknown mode', async () => {
+  const { TOOLS, PUBLIC_EXTRA_TOOLS } = require('../dist/tools.js');
+  for (const name of ['extract_document', 'extract_pages']) {
+    const tool = [...TOOLS, ...PUBLIC_EXTRA_TOOLS].find((entry) => entry.name === name);
+    assert.deepEqual(tool.inputSchema.properties.mode.enum, ['standard', 'lite'], name);
+    assert.doesNotMatch(tool.inputSchema.properties.mode.description, /haiku|claude|gemini|gpt|model/i, name);
+  }
+  const sent = [];
+  const result = { format: 'pdf', markdown: 'text', units: [], state: 'complete', reason: null, code: null, chunks: [] };
+  const client = { extractDocument: async (body) => { sent.push(['extract_document', body]); return result; },
+    extractPages: async (body) => { sent.push(['extract_pages', body]); return result; } };
+  for (const tool of ['extract_document', 'extract_pages']) {
+    await handlers[tool]({ asset_id: 'asset-1', mode: 'lite' }, client);
+    await handlers[tool]({ asset_id: 'asset-1' }, client);
+    await handlers[tool]({ asset_id: 'asset-1', mode: 'standard' }, client);
+    await assert.rejects(handlers[tool]({ asset_id: 'asset-1', mode: 'fast' }, client), /mode must be standard or lite/);
+  }
+  assert.deepEqual(sent, [
+    ['extract_document', { asset_id: 'asset-1', asset_url: undefined, mode: 'lite' }],
+    ['extract_document', { asset_id: 'asset-1', asset_url: undefined }],
+    ['extract_document', { asset_id: 'asset-1', asset_url: undefined, mode: 'standard' }],
+    ['extract_pages', { asset_id: 'asset-1', asset_url: undefined, mode: 'lite' }],
+    ['extract_pages', { asset_id: 'asset-1', asset_url: undefined }],
+    ['extract_pages', { asset_id: 'asset-1', asset_url: undefined, mode: 'standard' }],
+  ]);
+  await assert.rejects(handlers.extract_document({ asset_id: 'asset-1', source_version_id: 'v1', idempotency_key: 'k-1', visual_rendition: true, mode: 'lite' }, client), /visual rendition is read in standard mode/i);
+});

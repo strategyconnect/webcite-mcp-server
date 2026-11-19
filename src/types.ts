@@ -364,7 +364,14 @@ export interface AssetRefOptions {
   asset_url?: string;
 }
 
-export interface ExtractDocumentOptions extends AssetRefOptions {
+export type ExtractionMode = 'standard' | 'lite';
+
+export interface ExtractModeOptions extends AssetRefOptions {
+  /** `lite` reads every page with one smaller, faster reader; omitted is `standard`. */
+  mode?: ExtractionMode;
+}
+
+export interface ExtractDocumentOptions extends ExtractModeOptions {
   /** Opt in to JPEG/PNG model layout evidence; does not select the rendition. */
   visual_rendition?: boolean;
   source_version_id?: string;
