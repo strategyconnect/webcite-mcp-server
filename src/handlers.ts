@@ -1967,7 +1967,7 @@ export const handlers: Record<string, ToolHandler> = {
         }
       }
     }
-    return { ...ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending (includes failed): ${result.pending_claims}${failedCount}${materialCount}${duplicateCount}${coverage}\nThe requested page exceeds Claude's tool response limit. Even one item per stream exceeds the limit. No claim or side-list item was consumed. Use the Webcite API for full citation objects and coverage lists at these offsets; repeating this tool call cannot retrieve this oversized page.`, {
+    return { ...ok(`# Saved document review ${reviewId}\nStatus: ${result.status}\nCompleted: ${result.completed_claims}/${result.total_claims} physical rows; pending (includes failed): ${result.pending_claims}${failedCount}${materialCount}${duplicateCount}${coverage}\nThe requested page exceeds the MCP client's tool response limit. Even one item per stream exceeds the limit. No claim or side-list item was consumed. Use the Webcite API for full citation objects and coverage lists at these offsets; repeating this tool call cannot retrieve this oversized page.`, {
       review_id: reviewId, status: result.status, total_claims: result.total_claims, material_claims: result.material_claims ?? null,
       completed_claims: result.completed_claims, pending_claims: result.pending_claims,
       non_factual_claims: result.non_factual_claims,

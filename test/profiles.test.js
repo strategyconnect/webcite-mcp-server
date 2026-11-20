@@ -130,7 +130,7 @@ test('full slide audits and image numerics route to supported tools', () => {
   assert.match(description('webcite_guide'), /workflow=document_review/);
   assert.match(description('extract_document'), /use review_document for a whole-document or whole-slide/);
   assert.match(description('review_document'), /Do not substitute separate verify_claim calls/);
-  assert.match(description('extract_document'), /Claude connectors omit structuredContent.*read_source_unit/);
+  assert.match(description('extract_document'), /MCP clients omit structuredContent.*read_source_unit/);
   for (const name of ['verify_claim', 'verify_claim_stream']) {
     assert.equal(publicTools.find((tool) => tool.name === name).inputSchema.properties.source_urls.maxItems, 5);
   }
