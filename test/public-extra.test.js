@@ -205,12 +205,16 @@ test('extract_document and extract_pages forward mode lite, omit mode by default
     const tool = [...TOOLS, ...PUBLIC_EXTRA_TOOLS].find((entry) => entry.name === name);
     const description = tool.inputSchema.properties.mode.description;
     assert.deepEqual(tool.inputSchema.properties.mode.enum, ['standard', 'lite'], name);
-    assert.match(description, /lite \(default\)/, name);
-    assert.match(description, /standard opts into the higher-accuracy read/, name);
+    assert.doesNotMatch(description, /lite \(default\)/, name);
+    assert.match(description, /created on or after 20 November 2026 \(04:00 UTC\) read in lite/, name);
+    assert.match(description, /older accounts read in standard/, name);
+    assert.match(description, /standard is the higher-accuracy read/, name);
     assert.doesNotMatch(description, modelWords, name);
   }
   const liteGuide = renderWebciteGuide({ workflow: 'document_review' }).split('\n').find((line) => line.includes('mode "standard"'));
-  assert.match(liteGuide, /Lite is the default/);
+  assert.doesNotMatch(liteGuide, /Lite is the default/);
+  assert.match(liteGuide, /created on or after 20 November 2026 \(04:00 UTC\) reads in lite/);
+  assert.match(liteGuide, /older account reads in standard/);
   assert.match(liteGuide, /0\.12 credits a page in lite and 0\.75 in standard/);
   assert.doesNotMatch(liteGuide, /lite_mode_unavailable|smaller, faster reader|haiku|claude|gemini|gpt|argon|terra|\bLLMs?\b|effort|thinking/i);
   const sent = [];

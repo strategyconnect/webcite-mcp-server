@@ -367,7 +367,7 @@ export interface AssetRefOptions {
 export type ExtractionMode = 'standard' | 'lite';
 
 export interface ExtractModeOptions extends AssetRefOptions {
-  /** Omitted or `lite` is the faster, lower-cost read; `standard` opts into the higher-accuracy read. */
+  /** `lite` is the faster, lower-cost read; `standard` is the higher-accuracy read. Omitted: lite for accounts created on or after 2026-11-20 04:00 UTC, standard for older accounts. */
   mode?: ExtractionMode;
 }
 
