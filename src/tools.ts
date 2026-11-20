@@ -409,7 +409,7 @@ Prefer analyze_document for an uploaded PDF, spreadsheet or JPEG/PNG/WebP image.
     description: `Analyze figures in an uploaded PDF, spreadsheet or JPEG/PNG/WebP image. Image figures are OCR/model reads that need source review; an absent or ambiguous figure is not a verified zero. Returns figures, conflicts, recomputations, a review flag and category. For external fact-checking of every slide claim, also use review_document.
 
 - **Spreadsheets** (xlsx/xls/csv): extracted deterministically with exact cell provenance. No model calls.
-- **PDFs**: a vision model reads the printed figures (it never computes); those are model reads, capped at needs_review. Requires a configured vision model.
+- **PDFs**: the page image is read for the printed figures (it never computes); those are image reads, capped at needs_review. Requires image reading to be configured on the server.
 - **JPEG/PNG/WebP**: OCR reads the image, then source-grounded finance analysis checks recognized figures. Incompatible or missing arithmetic scope remains unresolved.
 
 Credits: 3. The document is downloaded and parsed. PDFs and images may require vision reads. Rate-limited more strictly than compute-only endpoints.`,
@@ -499,7 +499,7 @@ Credits: 1`,
 
 Handles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deterministic-first; scanned PDFs and images fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.
 
-Only the text display is truncated. Some Claude connectors omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.
+Only the text display is truncated. Some MCP clients omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.
 
 After extraction, use review_document for a whole-document or whole-slide external fact-check; poll get_document_review_job, then read saved results and gaps with get_document_review. Do not verify each extracted figure separately with verify_claim.
 

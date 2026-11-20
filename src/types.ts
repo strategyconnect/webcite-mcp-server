@@ -267,7 +267,7 @@ export interface FigureProvenance {
   page?: number;
   sheet?: string;
   cell?: string;
-  /** How the value was read: a deterministic rule, or a vision model. */
+  /** How the value was read: a deterministic rule, or a read of the page image. */
   method: 'rule' | 'model';
   /** The passage the model cited when it read the value (model reads only). */
   quote?: string;

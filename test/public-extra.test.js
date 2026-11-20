@@ -237,3 +237,14 @@ test('extract_document and extract_pages forward mode lite, omit mode by default
   ]);
   await assert.rejects(handlers.extract_document({ asset_id: 'asset-1', source_version_id: 'v1', idempotency_key: 'k-1', visual_rendition: true, mode: 'lite' }, client), /visual rendition is read in standard mode/i);
 });
+
+test('public tool descriptions, guide and handler messages carry no model or vendor names', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const banned = /haiku|claude|anthropic|gemini|openai|\bgpt|argon|terra|vision model|\bLLMs?\b|language model|effort|thinking|smaller reader|google(?!\.rpc\.RetryInfo)/i;
+  for (const file of ['tools.ts', 'guide.ts', 'types.ts', 'handlers.ts']) {
+    const text = fs.readFileSync(path.join(__dirname, '..', 'src', file), 'utf8');
+    const hit = text.match(banned);
+    assert.equal(hit, null, `${file}: ${hit && text.slice(Math.max(0, hit.index - 60), hit.index + 30)}`);
+  }
+});
