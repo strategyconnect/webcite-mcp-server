@@ -367,7 +367,7 @@ export interface AssetRefOptions {
 export type ExtractionMode = 'standard' | 'lite';
 
 export interface ExtractModeOptions extends AssetRefOptions {
-  /** `lite` reads every page with one smaller, faster reader; omitted is `standard`. */
+  /** Omitted or `lite` is the faster, lower-cost read; `standard` opts into the higher-accuracy read. */
   mode?: ExtractionMode;
 }
 

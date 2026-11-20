@@ -1467,7 +1467,7 @@ function assetRef(args: Args): AssetRefOptions {
   return { asset_id: assetId as string | undefined, asset_url: assetUrl as string | undefined };
 }
 
-/** The extraction mode the caller asked for; omitted when the caller sent none, so the server default applies. */
+/** The extraction mode the caller asked for; omitted when the caller sent none, so the server default (lite) applies. */
 function extractionMode(args: Args): { mode?: 'standard' | 'lite' } {
   const mode = args?.mode;
   if (mode === undefined) return {};
