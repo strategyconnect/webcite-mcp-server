@@ -1467,6 +1467,15 @@ function assetRef(args: Args): AssetRefOptions {
   return { asset_id: assetId as string | undefined, asset_url: assetUrl as string | undefined };
 }
 
+/** The extraction mode the caller asked for; omitted when the caller sent none, so the server default (lite) applies. */
+function extractionMode(args: Args): { mode?: 'standard' | 'lite' } {
+  const mode = args?.mode;
+  if (mode === undefined) return {};
+  if (mode !== 'standard' && mode !== 'lite')
+    throw new ToolFailure('invalid_argument', 'mode must be standard or lite', { actionable: 'Omit mode, or send mode "standard" or "lite".' });
+  return { mode };
+}
+
 function verifyOptions(args: Args): VerifyClaimOptions {
   const sourceUrls = args?.source_urls;
   if (sourceUrls !== undefined &&
@@ -2285,9 +2294,11 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   extract_document: async (args, client) => {
-    const ref = assetRef(args);
+    const ref = { ...assetRef(args), ...extractionMode(args) };
     const visual = args?.visual_rendition;
     const version = args?.source_version_id, key = args?.idempotency_key;
+    if (visual === true && ref.mode === 'lite')
+      throw new ToolFailure('invalid_argument', 'A visual rendition is read in standard mode only: omit mode or send mode "standard"');
     if ((visual !== undefined && typeof visual !== 'boolean') ||
         (visual !== true && (version !== undefined || key !== undefined)) ||
         (visual === true && (!ref.asset_id || ref.asset_url || typeof version !== 'string' ||
@@ -2380,7 +2391,7 @@ export const handlers: Record<string, ToolHandler> = {
   },
 
   extract_pages: async (args, client) => {
-    const result = await wrapApi(client.extractPages(assetRef(args)));
+    const result = await wrapApi(client.extractPages({ ...assetRef(args), ...extractionMode(args) }));
     return extractionResult(JSON.stringify(result), result);
   },
 

@@ -509,6 +509,7 @@ Credits: 1`,
     inputSchema: {
       type: 'object' as const,
       properties: { ...assetRefProperties,
+        mode: { type: 'string', enum: ['standard', 'lite'], description: 'lite (default) or standard: lite is the faster, lower-cost read (balance estimate 0.12 credits a page); standard opts into the higher-accuracy read (0.75 credits a page), better on complex tables, handwriting and scans.' },
         visual_rendition: { type: 'boolean', description: 'Explicit JPEG/PNG layout evidence; requires owned asset_id, source_version_id and idempotency_key.' },
         source_version_id: { type: 'string', minLength: 1, maxLength: 191, description: 'Exact immutable owned source version, only with visual_rendition:true.' },
         idempotency_key: { type: 'string', pattern: '^[!-~]{1,128}$', description: 'Explicit operation identity for visual rendition. Preserve this key; never automatically redispatch under a new key.' },
@@ -697,7 +698,8 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   {
     name: 'extract_pages',
     description: 'Extract citation-ready document chunks with page, sheet or section anchors. Returns extraction state and reason even when no chunks exist. Costs 1 credit.',
-    inputSchema: { type: 'object', properties: { ...assetRefProperties } },
+    inputSchema: { type: 'object', properties: { ...assetRefProperties,
+      mode: { type: 'string', enum: ['standard', 'lite'], description: 'lite (default) or standard: lite is the faster, lower-cost read (balance estimate 0.12 credits a page); standard opts into the higher-accuracy read (0.75 credits a page), better on complex tables, handwriting and scans.' }, } },
   },
   {
     name: 'prepare_ocr_rescue',

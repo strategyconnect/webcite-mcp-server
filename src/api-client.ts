@@ -108,6 +108,7 @@ import type {
   EvaluationDescribeResponse,
   ExtractedDoc,
   ExtractDocumentOptions,
+  ExtractModeOptions,
   VisualRendition,
   ReviewVisualReference,
   ExtractedFigure,
@@ -432,7 +433,7 @@ export class WebCiteApiClient {
   }
 
   extractDocument(options: ExtractDocumentOptions & { visual_rendition: true }): Promise<VisualRendition>;
-  extractDocument(options: AssetRefOptions & { visual_rendition?: false }): Promise<ExtractedDoc>;
+  extractDocument(options: ExtractModeOptions & { visual_rendition?: false }): Promise<ExtractedDoc>;
   extractDocument(options: ExtractDocumentOptions): Promise<ExtractedDoc | VisualRendition>;
   async extractDocument(options: ExtractDocumentOptions): Promise<ExtractedDoc | VisualRendition> {
     const { idempotency_key, ...body } = options;
@@ -477,7 +478,7 @@ export class WebCiteApiClient {
     return this.request(`/api/v2/sources/${encodeURIComponent(versionId)}/representations/${encodeURIComponent(representationId)}/units/${encodeURIComponent(unitId)}`, { method: 'GET' });
   }
 
-  async extractPages(options: AssetRefOptions): Promise<Record<string, unknown>> {
+  async extractPages(options: ExtractModeOptions): Promise<Record<string, unknown>> {
     return this.request('/api/v1/extract/pages', {
       method: 'POST', body: JSON.stringify(options),
     });
