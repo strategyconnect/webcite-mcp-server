@@ -1,5 +1,5 @@
 node_modules
-src
+dist
 test
 .git
 .github
@@ -7,4 +7,3 @@ docs
 *.md
 !README.md
 .dockerignore
-tsconfig.json
