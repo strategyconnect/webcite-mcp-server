@@ -61,18 +61,10 @@ Optional later: add GoDaddy A record `mcp` → prod IP and a dedicated vhost; un
 
 ## Auth
 
-API key only (no OAuth). Clients send either:
+Two ways, both billed to the same account credits:
 
-- `Authorization: Bearer <api_key>`
-- `x-api-key: <api_key>`
-
-Keys are created at https://webcite.co/api-keys.
-
-**Claude custom connector:** choose **No sign-in** (not Sign in now), then under
-Request headers add `Authorization` = `Bearer <key>` (or `x-api-key` = `<key>`).
-
-Do **not** send `WWW-Authenticate: Bearer` on 401 — Claude treats that as OAuth
-and auto-selects Sign in now / CIMD registration.
+- **API key** (unchanged): `Authorization: Bearer <api_key>` or `x-api-key: <api_key>`. Keys are created at https://webcite.co/api-keys. In Claude, choose **No sign-in** and add the header under Request headers.
+- **OAuth 2.1** (ChatGPT, Claude **Sign in**, MCP Inspector): a 401 without credentials carries `WWW-Authenticate: Bearer resource_metadata="https://api.webcite.co/.well-known/oauth-protected-resource/mcp", scope="webcite:mcp"`. The authorization server is the Webcite API (`https://api.webcite.co`, metadata at `/.well-known/oauth-authorization-server`): dynamic client registration, PKCE S256, consent at webcite.co, 1 hour access tokens (`webcite_oat_...`) and rotating 30 day refresh tokens. This server introspects OAuth access tokens (cached up to 60 s) and answers 401 `invalid_token` for an expired or revoked one. Design: webcite-backend `docs/plans/2026-11-24-mcp-oauth.md`.
 
 ## Deploy coupling
 
