@@ -15,6 +15,43 @@ import { SERVER_VERSION } from './version.js';
 
 const DEFAULT_API_URL = 'https://api.webcite.co';
 const DEFAULT_PORT = 8787;
+const OAUTH_SCOPE = 'webcite:mcp';
+/** Access tokens from Webcite's OAuth server; plain API keys never take this path. */
+const OAUTH_TOKEN_PREFIX = 'webcite_oat_';
+const INTROSPECTION_CACHE_MS = 60_000;
+
+/**
+ * Is this OAuth access token live and issued for this MCP endpoint? Asks the API's introspection
+ * endpoint and caches a live answer for up to a minute. Returns undefined when the API cannot be
+ * reached, so the request continues and the API validates the token itself.
+ */
+function createTokenCheck(apiBaseUrl: string) {
+  const cache = new Map<string, number>();
+  const audience = `${new URL(apiBaseUrl).origin}/mcp`;
+  return async (token: string): Promise<boolean | undefined> => {
+    const until = cache.get(token);
+    if (until && until > Date.now()) return true;
+    try {
+      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/v1/oauth/introspect`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token }).toString(),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return undefined;
+      const body = (await res.json()) as { active?: boolean; aud?: string; exp?: number };
+      const live = body.active === true && body.aud === audience;
+      if (live) {
+        // ponytail: unbounded only in theory; entries die with their token, sweep when the map grows.
+        if (cache.size > 10_000) cache.clear();
+        cache.set(token, Math.min(Date.now() + INTROSPECTION_CACHE_MS, (body.exp ?? 0) * 1000));
+      }
+      return live;
+    } catch {
+      return undefined;
+    }
+  };
+}
 
 export function extractApiKey(req: IncomingMessage): string | undefined {
   const headerKey = req.headers['x-api-key'];
@@ -40,6 +77,9 @@ export function createRemoteMcpApp(options?: {
 } {
   const apiBaseUrl = options?.apiBaseUrl || process.env.WEBCITE_API_URL || DEFAULT_API_URL;
   const profile = options?.profile ?? resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public');
+  const resourceMetadata = `${new URL(apiBaseUrl).origin}/.well-known/oauth-protected-resource/mcp`;
+  const challenge = `resource_metadata="${resourceMetadata}", scope="${OAUTH_SCOPE}"`;
+  const tokenIsLive = createTokenCheck(apiBaseUrl);
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
@@ -47,6 +87,7 @@ export function createRemoteMcpApp(options?: {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization, x-api-key, mcp-session-id');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Expose-Headers', 'WWW-Authenticate, Mcp-Session-Id');
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
@@ -87,20 +128,25 @@ export function createRemoteMcpApp(options?: {
     }
     const apiKey = extractApiKey(req);
     if (!apiKey) {
-      // Do not send WWW-Authenticate: Bearer — Claude treats that as OAuth and
-      // auto-selects "Sign in now". This server is API-key only (static headers).
-      res.writeHead(401, {
-        'content-type': 'application/json',
-      });
+      // OAuth discovery for ChatGPT, Claude and other MCP clients. Clients that send an API key
+      // never reach this branch, so static-header connections are unchanged.
+      res.writeHead(401, { 'content-type': 'application/json', 'www-authenticate': `Bearer ${challenge}` });
       res.end(
         JSON.stringify({
           error: 'unauthorized',
-          message: 'Provide Authorization: Bearer <api_key> or x-api-key header',
+          message: 'Sign in with OAuth, or provide Authorization: Bearer <api_key> or x-api-key header',
           get_key: 'https://webcite.co/api-keys',
-          claude:
-            'Choose No sign-in, then add Authorization: Bearer <key> (or x-api-key) under Request headers',
+          docs: 'https://webcite.co/connect',
         }),
       );
+      return;
+    }
+    if (apiKey.startsWith(OAUTH_TOKEN_PREFIX) && (await tokenIsLive(apiKey)) === false) {
+      res.writeHead(401, {
+        'content-type': 'application/json',
+        'www-authenticate': `Bearer error="invalid_token", error_description="The access token is expired or revoked", ${challenge}`,
+      });
+      res.end(JSON.stringify({ error: 'invalid_token' }));
       return;
     }
 
