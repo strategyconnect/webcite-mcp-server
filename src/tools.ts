@@ -50,7 +50,7 @@ export const TOOLS: ToolDefinition[] = [
     description: `Verify a factual claim against authoritative sources. Returns sources with stance analysis (supports/contradicts/neutral) and an overall verdict.
 
 Use this when you need to:
-- Fact-check one specific claim. For an entire uploaded document or slide, call review_document once with its asset_id, not one verify_claim call per extracted figure.
+- Fact-check one specific claim (whole-document review is a separate tool, review_document)
 - Find sources that support or contradict a statement
 - Get a confidence score for a claim's accuracy
 
@@ -96,12 +96,12 @@ Credits: 2-4 depending on options (search: 2, +stance: 1, +verdict: 1)`,
     name: 'verify_claim_stream',
     description: `Verify a factual claim using the streaming endpoint. Collects all intermediate results (claim decomposition progress, per-sub-claim results) and returns the assembled result.
 
-Prefer this over verify_claim when:
-- The claim is complex and may take a long time to verify
-- You want intermediate progress data (sub-claim decomposition, per-claim results)
-- You want to avoid HTTP timeouts on long-running verifications
+Suited to:
+- Complex claims that may take a long time to verify
+- Cases that need intermediate progress data (sub-claim decomposition, per-claim results)
+- Long-running verifications where a single HTTP request could time out
 
-Returns the same formatted output as verify_claim. Credits: same as verify_claim.`,
+Output format and credits match verify_claim.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -141,7 +141,7 @@ Returns the same formatted output as verify_claim. Credits: same as verify_claim
 
 Use this when you need to:
 - Find sources on a topic quickly
-- Trace an original report from a screenshot or slide using its distinctive values, units and years; inspect candidates with get_source_preview
+- Trace an original report from a screenshot or slide using its distinctive values, units and years; returns candidate URLs
 - Get raw search results for further analysis
 - Save credits by skipping analysis
 
@@ -348,16 +348,14 @@ Credits: 1`,
   },
   {
     name: 'analyze_conflicts',
-    description: `Verify NUMBERS, not just text. Give the figures you already extracted (from extract_figures, or your own pipeline) and the engine:
+    description: `Checks numeric figures for consistency. Input: figures already extracted (the extract_figures output format, or your own pipeline). The engine:
 
 - **recomputes** every derivable metric from its primitives (gross margin from revenue and COGS, growth from two periods) and flags where the stated value does not match the computed one;
 - **detects cross-document conflicts** — figures for the same metric/entity/period that disagree beyond the metric's tolerance;
 - **flags semantic conflicts** — values that are each plausible alone but jointly impossible;
 - returns a **review** flag with the concrete reasons a human should look.
 
-Deterministic — no model calls, so a conflict either exists or it does not. Credits: 1.
-
-Prefer analyze_document for an uploaded PDF, spreadsheet or JPEG/PNG/WebP image.`,
+Deterministic, with no model calls, so a conflict either exists or it does not. Works on supplied figures only; uploaded files are read by analyze_document. Credits: 1.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -409,7 +407,7 @@ Prefer analyze_document for an uploaded PDF, spreadsheet or JPEG/PNG/WebP image.
   },
   {
     name: 'analyze_document',
-    description: `Analyze figures in an uploaded PDF, spreadsheet or JPEG/PNG/WebP image. Image figures are OCR/model reads that need source review; an absent or ambiguous figure is not a verified zero. Returns figures, conflicts, recomputations, a review flag and category. For external fact-checking of every slide claim, also use review_document.
+    description: `Analyze figures in an uploaded PDF, spreadsheet or JPEG/PNG/WebP image. Image figures are OCR/model reads that need source review; an absent or ambiguous figure is not a verified zero. Returns figures, conflicts, recomputations, a review flag and category. Checks internal numeric consistency only; external fact-checking of every claim is done by review_document.
 
 - **Spreadsheets** (xlsx/xls/csv): extracted deterministically with exact cell provenance. No model calls.
 - **PDFs**: the page image is read for the printed figures (it never computes); those are image reads, capped at needs_review. Requires image reading to be configured on the server.
@@ -434,7 +432,7 @@ Credits: 3. The document is downloaded and parsed. PDFs and images may require v
 Use this when you need to:
 - File an uploaded document into a data-room category
 - Know what a workbook actually contains before reading it
-- Feed \`category\` and \`covers\` into document_gaps
+- Produce the \`category\` and \`covers\` values that document_gaps accepts as input
 
 Credits: 1`,
     inputSchema: {
@@ -504,7 +502,7 @@ Handles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deter
 
 Only the text display is truncated. Some MCP clients omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.
 
-After extraction, use review_document for a whole-document or whole-slide external fact-check; poll get_document_review_job, then read saved results and gaps with get_document_review. Do not verify each extracted figure separately with verify_claim.
+Extraction does not fact-check claims; whole-document or whole-slide external fact-checking is done by review_document, which reads the stored source itself.
 
 Optional visual_rendition: true creates model-generated layout evidence for an owned JPEG/PNG and exact source_version_id. Supply an explicit idempotency_key and preserve it on uncertain recovery. Returns a partial representation and source_units IDs for read_source_unit without replacing the selected source. The dedicated visual endpoint refuses on an unsupported server; never fall back to ordinary extraction. Default extraction is unchanged. Inspect operation receipts for provider usage; a layout role is not certification.
 
@@ -527,7 +525,7 @@ This is deterministic financial-model reading: header scale ("$M" / "'000"), acc
 
 Reads spreadsheets (cell-level), PDFs with a text layer (grounded and cited by page), and other text formats deterministically. Scanned pages and images go through vision OCR first, then grounding, and are marked as model reads.
 
-Feed the result straight into analyze_conflicts. Credits: 2`,
+The output is in the figures format analyze_conflicts accepts. Credits: 2`,
     inputSchema: {
       type: 'object' as const,
       properties: { ...assetRefProperties },
@@ -535,9 +533,9 @@ Feed the result straight into analyze_conflicts. Credits: 2`,
   },
   {
     name: 'accuracy_report',
-    description: `The numeric engine's measured accuracy against its gold-set corpus: conflict detection rate and precision, and recompute correctness. Reproducible and gated on every build — an accuracy regression cannot ship.
+    description: `The numeric engine's measured accuracy against its gold-set corpus: conflict detection rate and precision, and recompute correctness. Reproducible and checked on every build.
 
-Use this when you need to state how accurate the verification is, rather than assert it.
+Returns measured figures for stating how accurate the verification is.
 
 Credits: 1`,
     inputSchema: {
@@ -606,7 +604,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'revise_document_claim_analysis',
-    description: 'Re-evaluate one owned, settled saved claim using retained snippets and the current evidence policy, without new research, model calls or credits. The review must be inactive. Read original_result_hash from get_document_review first. Idempotent for the original result and policy version. Preserves the original result and credit receipt; missing scope assessment remains inconclusive.',
+    description: 'Re-evaluate one owned, settled saved claim using retained snippets and the current evidence policy, without new research, model calls or credits. The review must be inactive. Requires original_result_hash, as returned for the claim by get_document_review. Idempotent for the original result and policy version. Preserves the original result and credit receipt; missing scope assessment remains inconclusive.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 }, claim_id: { type: 'string', minLength: 1 },
       original_result_hash: { type: 'string', pattern: '^[a-f0-9]{64}$' },
@@ -614,7 +612,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'record_review_nonclaim',
-    description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. Inspect its full text first with get_review_source_span; a structural role alone never proves nonclaim. Optional visual_evidence references stored model layout for the same immutable source; the server rechecks literal offsets and geometry. An isolated page footer can qualify, factual/numeric headings cannot. Agent actions are not analyst approval. Failed residual-only reviews may reconcile retained complete extraction responses without new generation; missing evidence refuses. Leave assertion-bearing passages uncovered and source partial. Records rationale and authenticated reviewer identity. Costs 0 credits.',
+    description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. The assessment must cover the full passage text (get_review_source_span returns it); a structural role alone never proves nonclaim. Optional visual_evidence references stored model layout for the same immutable source; the server rechecks literal offsets and geometry. An isolated page footer can qualify, factual/numeric headings cannot. Agent actions are not analyst approval. Failed residual-only reviews may reconcile retained complete extraction responses without new generation; missing evidence refuses. Leave assertion-bearing passages uncovered and source partial. Records rationale and authenticated reviewer identity. Costs 0 credits.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 }, asset_id: { type: 'string', format: 'uuid' },
       start: { type: 'integer', minimum: 0 }, end: { type: 'integer', minimum: 1 },
@@ -628,14 +626,14 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_document_review_job',
-    description: 'Poll a durable document review job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Use the same job_id until complete, partial_coverage, credits_exhausted or failed. Then read saved claims and uncovered source spans with get_document_review using its review_id.',
+    description: 'Poll a durable document review job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Terminal statuses are complete, partial_coverage, credits_exhausted and failed. Returns the job status, progress and review_id; saved claims and uncovered source spans are read by review_id with get_document_review.',
     inputSchema: { type: 'object', properties: {
       job_id: { type: 'string', minLength: 36 },
     }, required: ['job_id'] },
   },
   {
     name: 'review_document',
-    description: 'For "audit this document", "check every figure on this slide", or every material claim in an uploaded file, call this directly with the existing asset_id. Stored source parsing is handled by the server; extract_document is optional when extracted content is also needed. Do not substitute separate verify_claim calls: they can omit claims and lose saved progress. Starts a durable full review and immediately returns a job_id. Poll get_document_review_job until terminal, then page through get_document_review. Repeating the same input reuses its job without a new charge. After credits are replenished or a failed job is diagnosed, resume the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); preserve completed claims and the failed job receipt. Only report full coverage when coverage_complete is true.',
+    description: 'Full-document fact-check for requests such as "audit this document", "check every figure on this slide", or every material claim in an uploaded file. Input: the existing asset_id(s), a prompt and a stable thread_id. The server parses the stored source itself, so no separate extraction step is needed. Unlike separate single-claim checks, it covers every claim and saves progress. Starts a durable full review and immediately returns a job_id; job status comes from get_document_review_job and saved result pages from get_document_review. Repeating the same input reuses its job without a new charge. A failed or credit-exhausted review resumes on the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); completed claims and the failed job receipt are preserved. Full coverage is reported only when coverage_complete is true.',
     inputSchema: { type: 'object', properties: {
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
@@ -661,7 +659,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'read_source_unit',
-    description: 'Read one owned immutable source unit by the IDs returned from a source representation. Inspect its numeric content before choosing figure_index.',
+    description: 'Read one owned immutable source unit by the IDs returned from a source representation. Returns its text and numeric content, which identify the figure_index values for numeric verification.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1 },
       representation_id: { type: 'string', minLength: 1 },
@@ -677,14 +675,14 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_latest_representation',
-    description: 'Locate the latest representation and source unit IDs of an owned retained source. Use these IDs to read evidence or verify a numeric claim.',
+    description: 'Locate the latest representation and source unit IDs of an owned retained source. These IDs address source units for evidence reads and numeric verification.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1 },
     }, required: ['source_version_id'] },
   },
   {
     name: 'ask_document',
-    description: 'Check numerical answers inside supplied document text. Returns a job ID; poll with get_ask_result. It does not search for external source URLs or identify the original publisher. Costs 5 credits. Unverified numbers remain null.',
+    description: 'Check numerical answers inside supplied document text. Returns a job ID; the result is read with get_ask_result. It does not search for external source URLs or identify the original publisher. Costs 5 credits. Unverified numbers remain null.',
     inputSchema: { type: 'object', properties: {
       question: { type: 'string', minLength: 1, maxLength: 2000 },
       documentText: { type: 'string', minLength: 1, maxLength: 2000000 },
@@ -706,7 +704,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'prepare_ocr_rescue',
-    description: 'Prepare judged OCR rescue for an owned OCR source representation before previewing unresolved citations. A new successful preparation costs 5 credits; retained replays are free. Requires the backend OCR feature; return unavailable states honestly.',
+    description: 'Prepare judged OCR rescue for an owned OCR source representation before previewing unresolved citations. A new successful preparation costs 5 credits; retained replays cost 0 credits. Requires the backend OCR feature; return unavailable states honestly.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1 },
       representation_id: { type: 'string', minLength: 1 },

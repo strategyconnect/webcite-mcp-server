@@ -747,4 +747,4 @@ All verification results include:
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
