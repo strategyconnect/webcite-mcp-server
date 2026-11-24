@@ -44,12 +44,74 @@ test('mcp without key returns 401', async () => {
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }),
   });
   assert.equal(res.status, 401);
-  // Must not advertise Bearer WWW-Authenticate — Claude OAuth auto-detect
-  assert.equal(res.headers.get('www-authenticate'), null);
+  // OAuth discovery (MCP authorization spec, ChatGPT, Claude): point at the protected resource metadata.
+  assert.equal(
+    res.headers.get('www-authenticate'),
+    'Bearer resource_metadata="https://api.webcite.co/.well-known/oauth-protected-resource/mcp", scope="webcite:mcp"',
+  );
+  assert.match(res.headers.get('access-control-expose-headers') || '', /WWW-Authenticate/i);
   const body = await res.json();
   assert.equal(body.error, 'unauthorized');
-  assert.match(String(body.claude || ''), /No sign-in/);
   await new Promise((resolve) => server.close(resolve));
+});
+
+test('OAuth access tokens are introspected; inactive or foreign tokens get 401 invalid_token, API keys are never introspected', async () => {
+  const introspected = [];
+  const backend = http.createServer(async (req, res) => {
+    if (req.url === '/api/v1/oauth/introspect') {
+      let raw = ''; for await (const c of req) raw += c;
+      const token = new URLSearchParams(raw).get('token');
+      introspected.push(token);
+      const base = `http://127.0.0.1:${backend.address().port}`;
+      const body = token === 'webcite_oat_live' ? { active: true, aud: `${base}/mcp`, exp: Math.floor(Date.now() / 1000) + 600 }
+        : token === 'webcite_oat_foreign' ? { active: true, aud: 'https://other.example/mcp', exp: Math.floor(Date.now() / 1000) + 600 }
+          : { active: false };
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); return;
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ credits: { remaining: 5, used: 0, total: 100 } }));
+  });
+  await new Promise((resolve) => backend.listen(0, '127.0.0.1', resolve));
+  const apiBaseUrl = `http://127.0.0.1:${backend.address().port}`;
+  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl });
+  const server = http.createServer((req, res) => void handler(req, res));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const post = (key) => fetch(`http://127.0.0.1:${server.address().port}/mcp`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+  });
+  try {
+    const live = await post('webcite_oat_live');
+    assert.equal(live.status, 200);
+    assert.equal((await post('webcite_oat_live')).status, 200);
+    for (const key of ['webcite_oat_dead', 'webcite_oat_foreign']) {
+      const res = await post(key);
+      assert.equal(res.status, 401, key);
+      assert.match(res.headers.get('www-authenticate'), /^Bearer error="invalid_token", .*resource_metadata="http:\/\/127\.0\.0\.1:\d+\/\.well-known\/oauth-protected-resource\/mcp"/);
+    }
+    assert.equal((await post('webcite_plainkey')).status, 200);
+    assert.deepEqual(introspected, ['webcite_oat_live', 'webcite_oat_dead', 'webcite_oat_foreign']);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await new Promise((resolve) => backend.close(resolve));
+  }
+});
+
+test('OAuth token still works when introspection is unreachable (the API validates it)', async () => {
+  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: 'http://127.0.0.1:9' });
+  const server = http.createServer((req, res) => void handler(req, res));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/mcp`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer webcite_oat_x', 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+    });
+    assert.equal(res.status, 200);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('stateless hosted tools recover missing and obsolete IDs and isolate request keys', async () => {
