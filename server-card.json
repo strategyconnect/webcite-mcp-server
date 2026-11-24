@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
   "name": "co.webcite/webcite",
-  "version": "1.9.62",
+  "version": "1.9.63",
   "title": "Webcite",
   "description": "Read documents and check claims against sources, with citations, verdicts and coverage.",
   "icons": [
