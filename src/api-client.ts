@@ -141,6 +141,13 @@ export * from './types.js';
 export { ApiClientError, ToolFailure } from './errors.js';
 export { DEFAULT_API_TIMEOUT_MS, resolveApiTimeoutMs } from './api-dispatcher.js';
 
+/**
+ * Sent on every call this server makes to the Webcite API, so usage reports can tell MCP calls from
+ * direct REST calls made with the same key. The API stores it as a label only: it carries no
+ * authority and changes no access, limit or price.
+ */
+export const SURFACE_HEADER = { 'x-webcite-surface': 'mcp' } as const;
+
 export class WebCiteApiClient {
   private baseUrl: string;
   private apiKey: string;
@@ -159,6 +166,7 @@ export class WebCiteApiClient {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'x-api-key': this.apiKey,
+      ...SURFACE_HEADER,
       ...(options.headers as Record<string, string> | undefined),
     };
     if (extras.idempotencyKey) {
@@ -286,6 +294,7 @@ export class WebCiteApiClient {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': this.apiKey,
+        ...SURFACE_HEADER,
         Accept: 'text/event-stream',
       },
       body,
@@ -531,6 +540,7 @@ export class WebCiteApiClient {
       method: 'POST',
       headers: {
         'x-api-key': this.apiKey,
+        ...SURFACE_HEADER,
       },
       body: formData,
       dispatcher: apiDispatcher(),
