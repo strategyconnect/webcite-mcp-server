@@ -1,2 +1,2 @@
 /** Kept in step with package.json — asserted by the test suite. */
-export const SERVER_VERSION = '1.9.64';
+export const SERVER_VERSION = '1.9.65';
