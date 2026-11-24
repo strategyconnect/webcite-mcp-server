@@ -6,6 +6,7 @@
  */
 
 import { WEBCITE_GUIDE_TOOL } from './guide.js';
+import { withAnnotations, type ToolAnnotations } from './tool-annotations.js';
 
 export interface ToolDefinition {
   name: string;
@@ -15,6 +16,8 @@ export interface ToolDefinition {
     properties: Record<string, unknown>;
     required?: string[];
   };
+  title?: string;
+  annotations?: ToolAnnotations;
 }
 
 const assetRefProperties = {
@@ -2398,7 +2401,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
   ...TOOLS,
   ...PUBLIC_EXTRA_TOOLS,
   ...CONTEXT_TOOLS,
-];
+].map(withAnnotations);
 
 /** HTTP route each context tool maps to — used by tests and docs. */
 export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {

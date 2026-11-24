@@ -7,6 +7,7 @@ const {
 } = require('../dist/profiles.js');
 const { ALL_TOOLS } = require('../dist/tools.js');
 const { WEBCITE_GUIDE_TOOL } = require('../dist/guide.js');
+const { withAnnotations } = require('../dist/tool-annotations.js');
 const { runSmoke } = require('../dist/index.js');
 const { handlers } = require('../dist/handlers.js');
 
@@ -28,7 +29,7 @@ test('core profile is short and starts with guide', () => {
   const core = filterToolsByProfile(ALL_TOOLS, 'core');
   assert.ok(core.length <= 12);
   assert.equal(core[0].name, 'webcite_guide');
-  assert.deepEqual(core[0], WEBCITE_GUIDE_TOOL);
+  assert.deepEqual(core[0], withAnnotations(WEBCITE_GUIDE_TOOL));
   assert.ok(core[0].inputSchema.properties.workflow.enum.includes('document_review'));
   assert.ok(core.some((t) => t.name === 'verify_claim'));
   assert.ok(!core.some((t) => t.name === 'eval_catalog'));
