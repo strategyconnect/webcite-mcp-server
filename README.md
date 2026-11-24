@@ -1,11 +1,97 @@
-# WebCite MCP Server
+# Webcite MCP Server
 
-> Remote Streamable HTTP MCP: **https://api.webcite.co/mcp**. Start at **https://webcite.co/connect**. The remote server uses the `public` profile for all supported public API workflows. Check the published npm version before pinning it, because repository changes can precede publication.
+[![npm](https://img.shields.io/npm/v/webcite-mcp-server)](https://www.npmjs.com/package/webcite-mcp-server)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-co.webcite%2Fwebcite-blue)](https://registry.modelcontextprotocol.io/v0.1/servers?search=co.webcite/webcite)
 
+Read documents and check claims against sources, with citations, verdicts and coverage.
 
-MCP (Model Context Protocol) server for WebCite — lets any AI agent verify factual claims against authoritative sources, bind quotes back to the passage they came from, and read the numbers out of documents deterministically.
+Webcite gives an AI agent tools to extract PDFs, scans and office files to Markdown, verify claims against web sources with a citation for each one, fact-check every claim in a document, and recompute the figures in it. It runs as a hosted server at `https://api.webcite.co/mcp` or locally with `npx -y webcite-mcp-server`. The free plan includes 100 credits a month.
 
-Works with **any MCP-compatible client** including Claude Desktop, Claude Code, Cursor, Continue, Cody, Zed, Windsurf, OpenAI Agents SDK, LangChain, and more.
+## Install
+
+You need a Webcite API key. Create one at [webcite.co/api-keys](https://webcite.co/api-keys) (sign up at [webcite.co](https://webcite.co) first). The examples use `webcite_your_api_key_here`; replace it with your key.
+
+### Claude (web and desktop, hosted)
+
+Settings, Connectors, Add custom connector. Paste `https://api.webcite.co/mcp`, choose **No sign-in**, and add a request header named `Authorization` with the value `Bearer webcite_your_api_key_here`. No Node or config file is needed. [webcite.co/connect](https://webcite.co/connect) walks through the same steps.
+
+### Claude Desktop (local)
+
+Add to `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`), then restart Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "webcite": {
+      "command": "npx",
+      "args": ["-y", "webcite-mcp-server"],
+      "env": {
+        "WEBCITE_API_KEY": "webcite_your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### Claude Code
+
+Hosted:
+
+```bash
+claude mcp add --transport http webcite https://api.webcite.co/mcp --header "Authorization: Bearer webcite_your_api_key_here"
+```
+
+Local:
+
+```bash
+claude mcp add webcite -e WEBCITE_API_KEY=webcite_your_api_key_here -- npx -y webcite-mcp-server
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project, or `~/.cursor/mcp.json` for every project:
+
+```json
+{
+  "mcpServers": {
+    "webcite": {
+      "url": "https://api.webcite.co/mcp",
+      "headers": {
+        "Authorization": "Bearer webcite_your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+For the local server, replace the entry with `"command": "npx", "args": ["-y", "webcite-mcp-server"], "env": { "WEBCITE_API_KEY": "webcite_your_api_key_here" }`.
+
+### VS Code
+
+Add to `.vscode/mcp.json`. VS Code asks for the key once and stores it:
+
+```json
+{
+  "inputs": [
+    { "type": "promptString", "id": "webcite-api-key", "description": "Webcite API key", "password": true }
+  ],
+  "servers": {
+    "webcite": {
+      "type": "http",
+      "url": "https://api.webcite.co/mcp",
+      "headers": { "Authorization": "Bearer ${input:webcite-api-key}" }
+    }
+  }
+}
+```
+
+For the local server, use `"type": "stdio", "command": "npx", "args": ["-y", "webcite-mcp-server"], "env": { "WEBCITE_API_KEY": "${input:webcite-api-key}" }`.
+
+### Other clients
+
+Any MCP client that runs a stdio command works with `npx -y webcite-mcp-server` and `WEBCITE_API_KEY` in its environment. Configurations for Continue, Cody and Zed are under [Other client configurations](#other-client-configurations).
+
+Start with the `webcite_guide` tool: it picks the workflow for the request and costs no credits. Tool profiles and the full tool reference follow below.
 
 ## Verification and document acceptance
 
@@ -205,80 +291,7 @@ To identify the original publication behind a screenshot or slide, call
 distinctive table values, and inspect candidate URLs. `ask_document` checks
 numbers inside supplied text; it does not discover external sources.
 
-## Installation
-
-### Claude remote connector (recommended)
-
-1. Create an API key at [webcite.co/api-keys](https://webcite.co/api-keys).
-2. Open [webcite.co/connect](https://webcite.co/connect).
-3. **Claude:** Settings → Connectors → Add custom connector → paste `https://api.webcite.co/mcp`. Choose **No sign-in**, then add a Request header named `x-api-key` with your API key as its value.
-
-No Node, no `npx`, no JSON config files.
-
-### Claude Desktop
-
-Add to `claude_desktop_config.json`:
-
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "webcite": {
-      "command": "npx",
-      "args": ["-y", "webcite-mcp-server"],
-      "env": {
-        "WEBCITE_API_KEY": "webcite_your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-### Claude Code (CLI)
-
-```bash
-# Add to Claude Code
-claude mcp add webcite -- npx -y webcite-mcp-server
-
-# Set API key
-export WEBCITE_API_KEY=webcite_your_api_key_here
-```
-
-Or add to `~/.claude/claude_settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "webcite": {
-      "command": "npx",
-      "args": ["-y", "webcite-mcp-server"],
-      "env": {
-        "WEBCITE_API_KEY": "webcite_your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-### Cursor
-
-Add to `.cursor/mcp.json` in your project or `~/.cursor/mcp.json` globally:
-
-```json
-{
-  "mcpServers": {
-    "webcite": {
-      "command": "npx",
-      "args": ["-y", "webcite-mcp-server"],
-      "env": {
-        "WEBCITE_API_KEY": "webcite_your_api_key_here"
-      }
-    }
-  }
-}
-```
+## Other client configurations
 
 ### Continue
 
@@ -353,13 +366,6 @@ WEBCITE_API_KEY=webcite_xxx webcite-mcp-server
 # Or with npx (no install)
 WEBCITE_API_KEY=webcite_xxx npx webcite-mcp-server
 ```
-
-## Getting Your API Key
-
-1. Sign up at [webcite.co](https://webcite.co)
-2. Log in and go to **API Keys** in the sidebar
-3. Create a new API key
-4. Add it to your MCP configuration
 
 ## Usage Examples
 

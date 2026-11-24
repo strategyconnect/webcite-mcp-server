@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+  "name": "co.webcite/webcite",
+  "version": "1.9.61",
+  "title": "Webcite",
+  "description": "Read documents and check claims against sources, with citations, verdicts and coverage.",
+  "icons": [
+    {
+      "src": "https://webcite.co/icon.png",
+      "mimeType": "image/png",
+      "sizes": ["1000x1000"]
+    }
+  ],
+  "websiteUrl": "https://webcite.co/api-docs/mcp",
+  "repository": {
+    "url": "https://github.com/strategyconnect/webcite-mcp-server",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.webcite.co/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Webcite API key as a Bearer token. Create a key at https://webcite.co/api-keys.",
+          "isRequired": true,
+          "isSecret": true,
+          "value": "Bearer {api_key}",
+          "variables": {
+            "api_key": {
+              "description": "Webcite API key",
+              "isRequired": true,
+              "isSecret": true
+            }
+          }
+        }
+      ],
+      "supportedProtocolVersions": ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
+    }
+  ]
+}
