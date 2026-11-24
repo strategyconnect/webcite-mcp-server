@@ -29,6 +29,8 @@ export interface SourceFilters {
   official_country?: string;
   publication_year?: { from?: number; to?: number };
   domain?: string[];
+  /** Domains, with subdomains, that no cited source may come from. */
+  exclude_domain?: string[];
 }
 
 export interface ReviewDocumentOptions {

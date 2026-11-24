@@ -41,6 +41,7 @@ const sourceFiltersInput = {
     official_country: { type: 'string', pattern: '^[a-z]{2}$' },
     publication_year: { type: 'object', additionalProperties: false, properties: { from: { type: 'integer' }, to: { type: 'integer' } } },
     domain: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 20 },
+    exclude_domain: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 20 },
   },
 };
 
