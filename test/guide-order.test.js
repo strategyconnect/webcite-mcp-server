@@ -33,6 +33,9 @@ test('billing workflow keeps every moved account and accounting sentence reachab
   const billing = renderWebciteGuide({ workflow: 'billing' });
   for (const internal of BILLING_INTERNALS) assert.match(billing, internal);
   assert.match(billing, /Email OTP login and resend-code requests return HTTP 503/);
+  assert.match(billing, /Free credits renew every 30 days while credits remain\./);
+  assert.match(billing, /A free account that uses all its credits is not renewed and must upgrade to a paid plan to continue\./);
+  assert.doesNotMatch(billing, /free-plan renewal restores the full monthly allocation/);
   assert.match(billing, /A provider attempt is admitted only while its owned operation is reserved/);
   assert.match(billing, /WEBCITE_API_URL=https:\/\/api\.webcite\.co\/durable/);
   assert.match(billing, /Accounting preserves known saved conversion values/);
