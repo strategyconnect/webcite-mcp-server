@@ -52,9 +52,12 @@ test('public profile includes public workflows without internal controls', () =>
   }
 });
 
-test('server instructions mention free credits and verify_claim', () => {
-  assert.match(SERVER_INSTRUCTIONS, /100 credits/);
+test('server instructions name verify_claim and carry no plan or start order', () => {
   assert.match(SERVER_INSTRUCTIONS, /verify_claim/);
+  assert.match(SERVER_INSTRUCTIONS, /webcite_guide with workflow=choose/);
+  // Directory listings reject plan promotion and imperative start orders.
+  assert.doesNotMatch(SERVER_INSTRUCTIONS, /free plan|credits\/month/i);
+  assert.doesNotMatch(SERVER_INSTRUCTIONS, /\bSTART:/);
 });
 
 test('webcite_guide handler is zero-API', async () => {
