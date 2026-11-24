@@ -51,6 +51,8 @@ const LITERAL_SOURCE_CONTEXT =
   'Retain literal source context without treating proximity or relevance as proof of a metric, observation period or unit. HTML table units can retain standard ISO currency codes, literal currency symbols and explicit nonfinancial Unit: or Units: declarations. Unknown or ambiguous headers, units and periods stay unknown; do not infer a currency from an ambiguous symbol. Native PDF year-table quotations retain a uniquely bound printed heading, caption, unit line and column header as source context, when present. Printed TOTAL rows and their component values remain unchanged. On servers implementing retained-table-consistency/2, source findings add only the literal displayed percentages in one spreadsheet ownership column under a holder header, and never infer a denominator or a corrected allocation. Columns labelled as a change, delta or dilution are not ownership columns, and rows labelled as subtotals are skipped rather than added. Each added percentage keeps its own printed rounding. A sum above 100% beyond that rounding, or a source total above 100% stated as a literal or as a SUM over exactly those cells with no subtotal inside, is a discrepancy. When the rows exceed 100% but a literal stated total of 100% or less disagrees, or when issued holdings share the column with reserved, pool or option rows and the source states neither a fully diluted basis nor such a total, the result stays needs_evidence. A table with more holder rows than one finding can anchor (20 occurrences) is reported as needs_evidence that the table is too large to verify, anchoring the header, first and last holder rows and any stated total. Separate tables are never added together, and a table with a formula or non-percentage ownership row is not summed. Context does not certify the metric or observation period, and a heading is not borrowed across earlier table rows or ambiguous overlapping text.';
 const MCP_PROFILES =
   'Local and hosted MCP expose public API tools by default. Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change local discovery.';
+const TOOL_HINTS =
+  'Each tool lists a title and MCP behaviour hints. Read-only tools (the guide, balance and saved-result reads) change nothing. Paid checks and uploads add records and spend credits but do not change or delete existing data. Folder repair, learning apply and operation settle, release and resolve change existing state and are marked destructive.';
 const API_TIMEOUT =
   'Local SDK and self-hosted MCP API requests allow up to 15 minutes (900000 ms) for response headers and body by default. Set `WEBCITE_API_TIMEOUT_MS` to a positive integer of milliseconds to change it; invalid values fall back to the default with a warning.';
 const STATED_FX_EVIDENCE =
@@ -100,6 +102,7 @@ const BILLING_REFERENCE = [
   RETRIEVAL_ATTEMPTS,
   LITERAL_SOURCE_CONTEXT,
   MCP_PROFILES,
+  TOOL_HINTS,
   API_TIMEOUT,
   VERIFICATION_TIMEOUT,
   AGENT_CHECKPOINTS,
