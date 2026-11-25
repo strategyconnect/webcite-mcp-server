@@ -63,8 +63,10 @@ Optional later: add GoDaddy A record `mcp` → prod IP and a dedicated vhost; un
 
 Two ways, both billed to the same account credits:
 
-- **API key** (unchanged): `Authorization: Bearer <api_key>` or `x-api-key: <api_key>`. Keys are created at https://webcite.co/api-keys. In Claude, choose **No sign-in** and add the header under Request headers.
-- **OAuth 2.1** (ChatGPT, Claude **Sign in**, MCP Inspector): a 401 without credentials carries `WWW-Authenticate: Bearer resource_metadata="https://api.webcite.co/.well-known/oauth-protected-resource/mcp", scope="webcite:mcp"`. The authorization server is the Webcite API (`https://api.webcite.co`, metadata at `/.well-known/oauth-authorization-server`): dynamic client registration, PKCE S256, consent at webcite.co, 1 hour access tokens (`webcite_oat_...`) and rotating 30 day refresh tokens. This server introspects OAuth access tokens (cached up to 60 s) and answers 401 `invalid_token` for an expired or revoked one. Design: webcite-backend `docs/plans/2026-11-24-mcp-oauth.md`.
+- **OAuth 2.1** (the first choice in ChatGPT, Claude **Sign in** and MCP Inspector): a 401 without credentials carries `WWW-Authenticate: Bearer resource_metadata="https://api.webcite.co/.well-known/oauth-protected-resource/mcp", scope="webcite:mcp"`. The authorization server is the Webcite API (`https://api.webcite.co`, metadata at `/.well-known/oauth-authorization-server`): dynamic client registration, PKCE S256, consent at webcite.co, 1 hour access tokens (`webcite_oat_...`) and rotating 30 day refresh tokens. This server introspects OAuth access tokens (cached up to 60 s) and answers 401 `invalid_token` for an expired or revoked one. Design: webcite-backend `docs/plans/2026-11-24-mcp-oauth.md`.
+- **API key** (for clients without OAuth; unchanged): `Authorization: Bearer <api_key>` or `x-api-key: <api_key>`. Keys are created at https://webcite.co/api-keys. In Claude, choose **No sign-in** and add the header under Request headers.
+
+A client can narrow its own tool list with `?profile=core|docs|research|public` and `?read_only=true` on the `/mcp` URL. Both only remove tools from the served profile; unknown values are ignored.
 
 ## Deploy coupling
 

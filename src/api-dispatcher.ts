@@ -1,5 +1,5 @@
 /**
- * HTTP dispatcher for WebCite API requests.
+ * HTTP dispatcher for Webcite API requests.
  *
  * Global fetch otherwise uses undici's default 300 s headers/body timeouts, which cut off
  * long verifications before the API finishes. WEBCITE_API_TIMEOUT_MS overrides the limit.

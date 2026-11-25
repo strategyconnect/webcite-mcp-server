@@ -52,6 +52,11 @@ test('mcp without key returns 401', async () => {
   assert.match(res.headers.get('access-control-expose-headers') || '', /WWW-Authenticate/i);
   const body = await res.json();
   assert.equal(body.error, 'unauthorized');
+  assert.match(body.message, /Connect with OAuth at https:\/\/api\.webcite\.co\/mcp/);
+  assert.match(body.message, /create an API key at https:\/\/webcite\.co\/api-keys and send it as Authorization: Bearer <api_key>/);
+  assert.match(body.message, /https:\/\/webcite\.co\/api-docs\/mcp/);
+  assert.equal(body.get_key, 'https://webcite.co/api-keys');
+  assert.equal(body.docs, 'https://webcite.co/connect');
   await new Promise((resolve) => server.close(resolve));
 });
 
@@ -238,4 +243,39 @@ test('actual StreamableHTTP client keeps read-only tools working across app rest
     assert.notEqual((await client.callTool({name:'get_credit_balance',arguments:{}})).isError,true);
     assert.equal(calls,2);
   } finally {await client.close();await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>backend.close(resolve));}
+});
+
+test('hosted ?profile= and ?read_only=true narrow one connection; the plain URL serves the default list', async () => {
+  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: 'http://127.0.0.1:1' });
+  const server = http.createServer((req, res) => { void handler(req, res); });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}/mcp`;
+  const headers = { authorization: 'Bearer test-key', 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
+  const rpc = async (query, method, params) => {
+    const response = await fetch(base + query, { method: 'POST', headers, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    const data = (await response.text()).split('\n').find((line) => line.startsWith('data: '));
+    return JSON.parse(data.slice(6)).result;
+  };
+  const list = async (query) => (await rpc(query, 'tools/list', {})).tools;
+  try {
+    const plain = await list('');
+    assert.equal(plain.length, 34);
+    assert.deepEqual((await list('?profile=full')).map((t) => t.name), plain.map((t) => t.name));
+    assert.deepEqual((await list('?profile=nope&read_only=maybe')).map((t) => t.name), plain.map((t) => t.name));
+    const core = await list('?profile=core');
+    assert.equal(core.length, 16);
+    assert.equal(core[0].name, 'webcite_guide');
+    assert.ok(core.some((t) => t.name === 'review_document') && core.some((t) => t.name === 'upload_url'));
+    const readOnly = await list('?read_only=true');
+    assert.ok(readOnly.length > 0);
+    assert.ok(readOnly.every((t) => t.annotations.readOnlyHint === true));
+    assert.ok(!readOnly.some((t) => t.name === 'verify_claim'));
+    const refused = await rpc('?read_only=true', 'tools/call', { name: 'verify_claim', arguments: { claim: 'x' } });
+    assert.equal(refused.isError, true);
+    assert.match(refused.content[0].text, /not served on this connection \(read_only=true\)/);
+    const guide = await rpc('?profile=core&read_only=true', 'tools/call', { name: 'webcite_guide', arguments: {} });
+    assert.notEqual(guide.isError, true);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });

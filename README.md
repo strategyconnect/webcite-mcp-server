@@ -3,17 +3,46 @@
 [![npm](https://img.shields.io/npm/v/webcite-mcp-server)](https://www.npmjs.com/package/webcite-mcp-server)
 [![MCP Registry](https://img.shields.io/badge/MCP_Registry-co.webcite%2Fwebcite-blue)](https://registry.modelcontextprotocol.io/v0.1/servers?search=co.webcite/webcite)
 
-Read documents and check claims against sources, with citations, verdicts and coverage.
+Webcite ([webcite.co](https://webcite.co)) is an evidence suite for AI apps and agents. It parses documents, verifies claims against sources and binds each citation to the passage it quotes. This package is its MCP server; the same jobs are available through the public REST API.
 
-Webcite gives an AI agent tools to extract PDFs, scans and office files to Markdown, verify claims against web sources with a citation for each one, fact-check every claim in a document, and recompute the figures in it. It runs as a hosted server at `https://api.webcite.co/mcp` or locally with `npx -y webcite-mcp-server`. The free plan includes 100 credits a month.
+| Job | Tools |
+| --- | --- |
+| Parse a PDF, scan, image, spreadsheet or office file to Markdown, OCR included | `upload_file` or `upload_url`, then `extract_document` or `extract_pages` |
+| Verify a claim against web sources, with citations, a stance for each source and a verdict | `verify_claim`, `verify_claim_stream` |
+| Check that quotes appear in their sources | `verify_batch`, `get_source_preview` |
+| Find sources without a verdict | `search_sources` |
+| Fact-check every claim in a document, with a coverage report | `review_document`, `get_document_review_job`, `get_document_review` |
+| Extract figures and find conflicts between them | `extract_figures`, `analyze_document`, `analyze_conflicts` |
+
+`webcite_guide` lists each workflow with its inputs and cost, and costs no credits.
+
+**Hosted:** add `https://api.webcite.co/mcp` to an MCP client and sign in with OAuth. This works in ChatGPT and Claude. Clients without OAuth send an API key as `Authorization: Bearer <key>`.
+
+**Local (stdio):**
+
+```bash
+WEBCITE_API_KEY=webcite_your_api_key_here npx -y webcite-mcp-server
+```
+
+- Docs: [webcite.co/api-docs/mcp](https://webcite.co/api-docs/mcp)
+- Benchmark: Webcite's document parsing ranked first on ParseBench 2 at 91.74 overall (ranking pending approval by LlamaIndex). See the [benchmark results](https://webcite.co/benchmarks).
+- The free plan includes 100 credits a month. Enterprise implementations run in private clouds and on premises; write to support@webcite.co.
+
+Webcite is not affiliated with WebCite, the web archiving service at webcitation.org.
 
 ## Install
 
-You need a Webcite API key. Create one at [webcite.co/api-keys](https://webcite.co/api-keys) (sign up at [webcite.co](https://webcite.co) first). The examples use `webcite_your_api_key_here`; replace it with your key.
+Hosted connections sign in with OAuth, so they need no key. The local server, and any client without OAuth, needs a Webcite API key: create one at [webcite.co/api-keys](https://webcite.co/api-keys) (sign up at [webcite.co](https://webcite.co) first). The examples use `webcite_your_api_key_here`; replace it with your key.
 
 ### Claude (web and desktop, hosted)
 
-Settings, Connectors, Add custom connector. Paste `https://api.webcite.co/mcp`, choose **No sign-in**, and add a request header named `Authorization` with the value `Bearer webcite_your_api_key_here`. No Node or config file is needed. [webcite.co/connect](https://webcite.co/connect) walks through the same steps.
+Settings, Connectors, Add custom connector. Paste `https://api.webcite.co/mcp` and sign in with your Webcite account when Claude asks. No Node, key or config file is needed. [webcite.co/connect](https://webcite.co/connect) walks through the same steps.
+
+To use an API key instead, choose **No sign-in** and add a request header named `Authorization` with the value `Bearer webcite_your_api_key_here`.
+
+### ChatGPT (hosted)
+
+Add `https://api.webcite.co/mcp` as a connector and sign in with your Webcite account. [webcite.co/connect](https://webcite.co/connect) has the steps.
 
 ### Claude Desktop (local)
 
@@ -35,7 +64,13 @@ Add to `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claud
 
 ### Claude Code
 
-Hosted:
+Hosted, signing in with OAuth (run `/mcp` in Claude Code to sign in):
+
+```bash
+claude mcp add --transport http webcite https://api.webcite.co/mcp
+```
+
+Hosted, with an API key:
 
 ```bash
 claude mcp add --transport http webcite https://api.webcite.co/mcp --header "Authorization: Bearer webcite_your_api_key_here"
@@ -91,7 +126,7 @@ For the local server, use `"type": "stdio", "command": "npx", "args": ["-y", "we
 
 Any MCP client that runs a stdio command works with `npx -y webcite-mcp-server` and `WEBCITE_API_KEY` in its environment. Configurations for Continue, Cody and Zed are under [Other client configurations](#other-client-configurations).
 
-Start with the `webcite_guide` tool: it picks the workflow for the request and costs no credits. Tool profiles and the full tool reference follow below.
+Tool profiles and the full tool reference follow below.
 
 ## Verification and document acceptance
 
@@ -104,6 +139,19 @@ For an official-source requirement, supply `filters` on `verify_claim` or `verif
 Upload original image, PDF or PowerPoint bytes and wait for parsing before review. Inspect input coverage, unreadable regions, claim limits and per-claim source/page locators. A successful upload, a completed review, or many citations does not certify that every figure was read or verified. Citation links are not a guarantee of pixel-level highlighting on an uploaded slide. An extraction failure stays a failure; a bounded search with no evidence does not prove the data is unavailable. Open the original publisher passage before treating a stance badge as proof.
 
 Preserve saved review, citation, job and operation IDs on a timeout or uncertain outcome. Read retained progress before retrying and reuse an explicit idempotency key only with the same request. Package publication does not deploy the hosted API, frontend or MCP binary. Check their actual serving identities before asserting that reported cases are fixed in production.
+
+## 1.9.66 release notes
+
+Presentation and onboarding changes. Tool names, input schemas and behaviour are unchanged, and the default `public` profile serves the same 34 tools in the same order.
+
+- The product name is written Webcite throughout the package, including the description, tool descriptions and error messages.
+- Server instructions open with what Webcite does and which tool does each job. The reporting rules for saved reviews follow, unchanged.
+- Fourteen tool descriptions start with the job the tool does.
+- Hosted connections are documented OAuth first, with the API key as the alternative. An unauthorized error names both routes and links the docs.
+- The `core` profile adds `upload_url`, `review_document`, `get_document_review_job` and `get_document_review`.
+- A hosted client can narrow its own tool list with `?profile=` and `?read_only=true` on the connection URL. A connection without them is unchanged.
+
+Publishing this package does not deploy the hosted server; confirm the serving release before relying on the hosted items.
 
 ## 1.9.57 release notes
 
@@ -229,11 +277,13 @@ These changes do not repair or regenerate historical evidence. Backend policy an
 
 | Profile | Tools exposed | When to use it |
 | --- | --- | --- |
-| `core` | `webcite_guide`, `get_credit_balance`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts` | Short local list for everyday verification. |
+| `core` | `webcite_guide`, `get_credit_balance`, `verify_claim`, `search_sources`, `get_source_preview`, `verify_batch`, `upload_file`, `extract_document`, `extract_figures`, `list_citations`, `get_citation`, `analyze_conflicts`, `upload_url`, `review_document`, `get_document_review_job`, `get_document_review` | Short list covering each main job. |
 | `public` (local and remote default) | Core plus `review_document`, `get_document_review_job`, `get_document_review`, `verify_claim_stream`, `verify_feedback`, `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `ask_document`, `get_ask_result`, `extract_pages`, `prepare_ocr_rescue`, `verify_numeric_claim`, `register_source`, `publish_text_representation`, `get_latest_representation`, `read_source_unit` | All supported public API workflows, including saved document reviews and anchored evidence. |
 | `docs` | Core plus `analyze_document`, `classify_document`, `document_gaps`, `accuracy_report`, `verify_feedback` | Deeper document work. |
 | `research` | Docs plus `get_answer`, `query_context`, `get_evidence_packet`, `compare_assertions`, `get_change_impact`, `verify_claim_stream` | Context and research workflows where the backend enables them. |
 | `full` | All tools registered by this package | Advanced local integrations and evaluation. Backend permissions and feature flags still apply. |
+
+A hosted client can narrow its own tool list in the connection URL: `https://api.webcite.co/mcp?profile=core` (also `docs`, `research` or `public`) suits clients that load every tool up front or run many servers, and `?read_only=true` serves only the tools marked read-only (of those, `get_source_preview`, `list_citations`, `get_citation` and `accuracy_report` cost 1 credit per call). These parameters only remove tools from the default list; a connection without them is unchanged.
 
 Set `WEBCITE_MCP_PROFILE=core|docs|research|full` to change a local server's tool discovery. This does not turn on a backend feature or grant access to another user's sources. Production graph retrieval, claim-first generation, research runs and OCR are separately gated. See the [V2.0.0 release notes](https://github.com/strategyconnect/webcite-backend/releases/tag/V2.0.0) for scope and limits.
 
@@ -582,7 +632,7 @@ Get full details of a specific verification.
 
 ### upload_file
 
-Upload a file to WebCite for use as verification context. Supports documents (PDF, DOCX, TXT) and other common file types. Returns a file ID usable as `asset_id` everywhere below.
+Upload a PDF, scan, image, spreadsheet or office file to Webcite and get an asset_id for extraction or review. Returns a file ID usable as `asset_id` everywhere below.
 
 **Parameters:**
 - `file_path` (required): Absolute path to the file to upload
@@ -706,7 +756,7 @@ The numeric engine's measured accuracy against its gold-set corpus: conflict det
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `WEBCITE_API_KEY` | Your WebCite API key (required) | - |
+| `WEBCITE_API_KEY` | Your Webcite API key (required) | - |
 | `WEBCITE_API_URL` | API base URL | `https://api.webcite.co` |
 | `WEBCITE_API_TIMEOUT_MS` | Headers and body timeout for each API request, in milliseconds (positive integer; invalid values fall back to the default with a warning) | `900000` (15 minutes) |
 

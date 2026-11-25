@@ -1,9 +1,9 @@
 # MCP ↔ HTTP parity table
 
-Maps every WebCite MCP tool to its HTTP route, request fields, output shape,
+Maps every Webcite MCP tool to its HTTP route, request fields, output shape,
 failure/partial semantics, credit cost, and source-identity rules.
 
-Scope always comes from the authenticated WebCite API key. MCP annotations
+Scope always comes from the authenticated Webcite API key. MCP annotations
 (`readOnlyHint`, `idempotentHint`, etc.) are descriptive only and never supply
 tenant or permission scope.
 

@@ -1,5 +1,5 @@
 /**
- * Coverage guard: MCP tools must stay in step with WebCite public HTTP routes.
+ * Coverage guard: MCP tools must stay in step with Webcite public HTTP routes.
  *
  * v1 tools stay 1:1 with ENDPOINT_TOOLS. Context (v2) tools live in a separate
  * map so adding them cannot break the existing v1 guard.

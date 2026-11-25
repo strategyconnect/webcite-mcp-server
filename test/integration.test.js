@@ -1,5 +1,5 @@
 /**
- * End-to-end: drive the real MCP server over stdio against a stub WebCite API.
+ * End-to-end: drive the real MCP server over stdio against a stub Webcite API.
  *
  * Asserts two things per tool — the HTTP request it sends (method, path, body),
  * and the artifact it renders back. A tool that "does not throw" but returns a
@@ -5357,7 +5357,7 @@ test('every tool round-trips through the real server against the API', async (t)
     // /api/v1/citations/:id is not stubbed, so the stub answers 404.
     const bad = await rpc('tools/call', { name: 'get_citation', arguments: { citation_id: 'nope' } });
     assert.equal(bad.result.isError, true);
-    assert.match(bad.result.content[0].text, /404|not_found|WebCite API error/i);
+    assert.match(bad.result.content[0].text, /404|not_found|Webcite API error/i);
   });
 });
 

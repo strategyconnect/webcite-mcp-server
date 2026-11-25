@@ -1,6 +1,6 @@
 import type { CreditUsage } from './credit-usage.js';
 /**
- * WebCite API types — request options and response shapes for the public v1 API.
+ * Webcite API types: request options and response shapes for the public v1 API.
  */
 
 /* ------------------------------------------------------------------ verify */

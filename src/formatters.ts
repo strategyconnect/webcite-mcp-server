@@ -1,5 +1,5 @@
 /**
- * Human-readable formatting of WebCite API responses for MCP tool output.
+ * Human-readable formatting of Webcite API responses for MCP tool output.
  */
 
 import { citationReaderCoverage, formatPublisherReaderCoverage } from './publisher-reader-coverage.js';
