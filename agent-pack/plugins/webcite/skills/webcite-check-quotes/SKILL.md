@@ -1,6 +1,6 @@
 ---
 name: webcite-check-quotes
-description: Use when the user wants to confirm that quotes or cited passages actually appear in the sources they cite, check every citation in a draft, or see the exact passage behind a citation. Checks many quote and source pairs at once with Webcite. Triggers: check quotes, verify citations, does the source say this, misquote.
+description: "Use when the user wants to confirm that quotes or cited passages actually appear in the sources they cite, check every citation in a draft, or see the exact passage behind a citation. Checks many quote and source pairs at once with Webcite. Triggers: check quotes, verify citations, does the source say this, misquote."
 license: MIT
 compatibility: Needs the Webcite MCP server (https://api.webcite.co/mcp, OAuth sign-in) or a Webcite API key in WEBCITE_API_KEY for the REST API at https://api.webcite.co.
 ---
