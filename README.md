@@ -32,78 +32,85 @@ Webcite is not affiliated with WebCite, the web archiving service at webcitation
 
 ## Install
 
-Hosted connections sign in with OAuth, so they need no key. The local server, and any client without OAuth, needs a Webcite API key: create one at [webcite.co/api-keys](https://webcite.co/api-keys) (sign up at [webcite.co](https://webcite.co) first). The examples use `webcite_your_api_key_here`; replace it with your key.
+Hosted connections sign in with OAuth, so the commands below carry no key. The client opens a browser to sign in with your Webcite account (sign up at [webcite.co](https://webcite.co) first). The local server, and any client without OAuth, needs a Webcite API key: create one at [webcite.co/api-keys](https://webcite.co/api-keys). The key examples use `webcite_your_api_key_here`; replace it with your key, and never paste a key into a chat.
 
-### Claude (web and desktop, hosted)
+### Hosted, one line per client
 
-Settings, Connectors, Add custom connector. Paste `https://api.webcite.co/mcp` and sign in with your Webcite account when Claude asks. No Node, key or config file is needed. [webcite.co/connect](https://webcite.co/connect) walks through the same steps.
+Each line was checked against that client's own documentation on 25 November 2026.
 
-To use an API key instead, choose **No sign-in** and add a request header named `Authorization` with the value `Bearer webcite_your_api_key_here`.
-
-### ChatGPT (hosted)
-
-Add `https://api.webcite.co/mcp` as a connector and sign in with your Webcite account. [webcite.co/connect](https://webcite.co/connect) has the steps.
-
-### Claude Desktop (local)
-
-Add to `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`), then restart Claude Desktop:
-
-```json
-{
-  "mcpServers": {
-    "webcite": {
-      "command": "npx",
-      "args": ["-y", "webcite-mcp-server"],
-      "env": {
-        "WEBCITE_API_KEY": "webcite_your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-### Claude Code
-
-Hosted, signing in with OAuth (run `/mcp` in Claude Code to sign in):
+**Claude Code** ([docs](https://code.claude.com/docs/en/mcp)):
 
 ```bash
 claude mcp add --transport http webcite https://api.webcite.co/mcp
 ```
 
-Hosted, with an API key:
+Then run `/mcp` in Claude Code, or `claude mcp login webcite` in your shell, to sign in.
+
+**Claude (web and desktop)** ([help](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp)): Customize, Connectors, **+ Add**, **Add custom connector**. Paste `https://api.webcite.co/mcp` and sign in when Claude asks. On Team and Enterprise plans an Owner adds it under Organization settings, Connectors, **Add**, **Custom**, **Web**. No Node, key or config file is needed. [webcite.co/connect](https://webcite.co/connect) walks through the same steps.
+
+**ChatGPT** ([docs](https://developers.openai.com/apps-sdk/deploy/connect-chatgpt)): open [ChatGPT Plugins](https://chatgpt.com/plugins), select the plus button, then **Add custom MCP server**. Enter `https://api.webcite.co/mcp` as the URL (Webcite signs in with OAuth), configure authentication, select **I understand and want to continue**, then **Create as a plugin**, and sign in with your Webcite account. Account and workspace policies decide whether custom MCP servers are available.
+
+**Codex** ([docs](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)):
 
 ```bash
-claude mcp add --transport http webcite https://api.webcite.co/mcp --header "Authorization: Bearer webcite_your_api_key_here"
+codex mcp add webcite --url https://api.webcite.co/mcp
+codex mcp login webcite
 ```
 
-Local:
+This writes `[mcp_servers.webcite]` with `url = "https://api.webcite.co/mcp"` to `~/.codex/config.toml`. In a terminal without a local browser, use `codex mcp login webcite --no-browser`.
+
+**Gemini CLI** ([docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md)):
 
 ```bash
-claude mcp add webcite -e WEBCITE_API_KEY=webcite_your_api_key_here -- npx -y webcite-mcp-server
+gemini mcp add --transport http webcite https://api.webcite.co/mcp
 ```
 
-### Cursor
+Then run `/mcp auth webcite` in Gemini CLI to sign in. In `settings.json` the entry is `"webcite": { "httpUrl": "https://api.webcite.co/mcp" }` under `mcpServers`.
 
-Add to `.cursor/mcp.json` in your project, or `~/.cursor/mcp.json` for every project:
+**Cursor** ([docs](https://cursor.com/docs/mcp)): add to `.cursor/mcp.json` in your project, or `~/.cursor/mcp.json` for every project, and sign in when Cursor asks:
+
+```json
+{
+  "mcpServers": {
+    "webcite": {
+      "url": "https://api.webcite.co/mcp"
+    }
+  }
+}
+```
+
+**VS Code** ([docs](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)):
+
+```bash
+code --add-mcp '{"name":"webcite","type":"http","url":"https://api.webcite.co/mcp"}'
+```
+
+Or add `"webcite": { "type": "http", "url": "https://api.webcite.co/mcp" }` under `mcpServers` in `.mcp.json` at the workspace root, or under `servers` in `.vscode/mcp.json`. VS Code opens a browser to sign in on first use. An install link that opens the server in VS Code for review: [vscode:mcp/install](https://vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522webcite%2522%252C%2522type%2522%253A%2522http%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fapi.webcite.co%252Fmcp%2522%257D).
+
+**Devin Desktop (formerly Windsurf)** ([docs](https://docs.devin.ai/desktop/cascade/mcp)): add to `.devin/mcp_config.json` in your project, or `~/.config/devin/mcp_config.json`:
 
 ```json
 {
   "mcpServers": {
     "webcite": {
       "url": "https://api.webcite.co/mcp",
-      "headers": {
-        "Authorization": "Bearer webcite_your_api_key_here"
-      }
+      "transport": "http"
     }
   }
 }
 ```
 
-For the local server, replace the entry with `"command": "npx", "args": ["-y", "webcite-mcp-server"], "env": { "WEBCITE_API_KEY": "webcite_your_api_key_here" }`.
+**Smaller tool list.** Append `?profile=core` to the URL (for example `https://api.webcite.co/mcp?profile=core`) for 16 tools that still cover every job, or `?read_only=true` for the read-only tools. See [Tool profiles](#tool-profiles).
 
-### VS Code
+### Hosted with an API key (headless agents and clients without OAuth)
 
-Add to `.vscode/mcp.json`. VS Code asks for the key once and stores it:
+Send the key as `Authorization: Bearer <key>` (an `x-api-key` header also works). Claude Code:
+
+```bash
+claude mcp add --transport http webcite https://api.webcite.co/mcp --header "Authorization: Bearer webcite_your_api_key_here"
+```
+
+In Claude (web and desktop), choose **No sign in** and add a request header named `Authorization` with the value `Bearer webcite_your_api_key_here`. In Cursor, add `"headers": { "Authorization": "Bearer webcite_your_api_key_here" }` to the entry above. In VS Code, keep the key out of the file with an input variable:
 
 ```json
 {
@@ -120,7 +127,31 @@ Add to `.vscode/mcp.json`. VS Code asks for the key once and stores it:
 }
 ```
 
-For the local server, use `"type": "stdio", "command": "npx", "args": ["-y", "webcite-mcp-server"], "env": { "WEBCITE_API_KEY": "${input:webcite-api-key}" }`.
+### Local (stdio)
+
+The local server reads files on your machine by path. Claude Code:
+
+```bash
+claude mcp add webcite -e WEBCITE_API_KEY=webcite_your_api_key_here -- npx -y webcite-mcp-server
+```
+
+Claude Desktop: add to `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`), then restart Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "webcite": {
+      "command": "npx",
+      "args": ["-y", "webcite-mcp-server"],
+      "env": {
+        "WEBCITE_API_KEY": "webcite_your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+In Cursor, use `"command": "npx", "args": ["-y", "webcite-mcp-server"], "env": { "WEBCITE_API_KEY": "webcite_your_api_key_here" }`; in VS Code, `"type": "stdio"` with the same command and `"env": { "WEBCITE_API_KEY": "${input:webcite-api-key}" }`.
 
 ### Other clients
 
@@ -139,6 +170,17 @@ For an official-source requirement, supply `filters` on `verify_claim` or `verif
 Upload original image, PDF or PowerPoint bytes and wait for parsing before review. Inspect input coverage, unreadable regions, claim limits and per-claim source/page locators. A successful upload, a completed review, or many citations does not certify that every figure was read or verified. Citation links are not a guarantee of pixel-level highlighting on an uploaded slide. An extraction failure stays a failure; a bounded search with no evidence does not prove the data is unavailable. Open the original publisher passage before treating a stance badge as proof.
 
 Preserve saved review, citation, job and operation IDs on a timeout or uncertain outcome. Read retained progress before retrying and reuse an explicit idempotency key only with the same request. Package publication does not deploy the hosted API, frontend or MCP binary. Check their actual serving identities before asserting that reported cases are fixed in production.
+
+## 1.9.67 release notes
+
+Tool names, input schemas, order and behaviour are unchanged; the default `public` profile serves the same 34 tools in the same order with the same descriptions.
+
+- The hosted server serves a request whose `MCP-Protocol-Version` header names a revision newer than the SDK implements (Claude sends `2026-07-28`) at the latest supported version, `2025-11-25`, instead of answering 400. Supported versions are unchanged; a malformed or unknown older value still gets 400. `/mcp/` with a trailing slash is the same endpoint as `/mcp`.
+- `webcite_guide`, `verify_claim`, `extract_document` and `review_document` carry `_meta["anthropic/alwaysLoad"]: true`, so Claude Code loads them up front instead of through tool search. Other clients ignore the key.
+- A test pins the default profile's tool names, order, first sentences and always-loaded set, so a change to any of them is deliberate.
+- `eval/tool-selection` holds an offline tool-selection eval: realistic requests mapped to the expected tool, a catalogue snapshot, a deterministic scorer and an optional model mode that is off by default.
+- The README lists a hosted one-line install for each client, with no key in the command, and the free plan figure is corrected to 100 credits.
+- `agent-pack/` holds skills and plugin manifests for Claude Code, Codex, Cursor and Gemini CLI, ready to publish as their own repository.
 
 ## 1.9.66 release notes
 
@@ -786,7 +828,7 @@ All verification results include:
 
 | Plan | Monthly Credits | Price |
 |------|-----------------|-------|
-| Free | 50 | $0 |
+| Free | 100, renewed every 30 days while credits remain; an account that uses all its credits upgrades to continue | $0 |
 | Builder | 500 | $20/month |
 | Enterprise | 10,000+ | [Contact Sales](https://webcite.co/#pricing) |
 

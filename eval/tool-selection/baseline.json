@@ -1,0 +1,3292 @@
+{
+  "source": "snapshot",
+  "selector": "bm25 (deterministic, offline)",
+  "profiles": {
+    "public": {
+      "summary": {
+        "profile": "public",
+        "server_version": "1.9.67",
+        "tools": 34,
+        "positive_cases": 40,
+        "negative_cases": 8,
+        "expected_tool_in_profile": 40,
+        "lexical_top1_accuracy_pct": 70,
+        "lexical_top5_recall_pct": 90,
+        "by_job": {
+          "parse": {
+            "cases": 8,
+            "top1": 3,
+            "top5": 7
+          },
+          "verify": {
+            "cases": 7,
+            "top1": 5,
+            "top5": 6
+          },
+          "quotes": {
+            "cases": 6,
+            "top1": 5,
+            "top5": 6
+          },
+          "review": {
+            "cases": 7,
+            "top1": 7,
+            "top5": 7
+          },
+          "figures": {
+            "cases": 6,
+            "top1": 4,
+            "top5": 6
+          },
+          "search": {
+            "cases": 6,
+            "top1": 4,
+            "top5": 4
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "parse-01",
+          "job": "parse",
+          "expected": [
+            "upload_url"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_file",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "upload_file",
+              "score": 7.01
+            },
+            {
+              "name": "extract_document",
+              "score": 7.006
+            },
+            {
+              "name": "get_source_preview",
+              "score": 6.151
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.033
+            },
+            {
+              "name": "verify_claim_stream",
+              "score": 4.714
+            }
+          ]
+        },
+        {
+          "id": "parse-02",
+          "job": "parse",
+          "expected": [
+            "extract_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_document",
+              "score": 10.964
+            },
+            {
+              "name": "extract_figures",
+              "score": 10.24
+            },
+            {
+              "name": "get_source_preview",
+              "score": 9.454
+            },
+            {
+              "name": "document_gaps",
+              "score": 7.806
+            },
+            {
+              "name": "ask_document",
+              "score": 7.35
+            }
+          ]
+        },
+        {
+          "id": "parse-03",
+          "job": "parse",
+          "expected": [
+            "extract_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 11.103
+            },
+            {
+              "name": "classify_document",
+              "score": 8.503
+            },
+            {
+              "name": "get_source_preview",
+              "score": 7.437
+            },
+            {
+              "name": "extract_document",
+              "score": 6.861
+            },
+            {
+              "name": "analyze_document",
+              "score": 6.13
+            }
+          ]
+        },
+        {
+          "id": "parse-04",
+          "job": "parse",
+          "expected": [
+            "upload_file"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "analyze_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "analyze_document",
+              "score": 9.66
+            },
+            {
+              "name": "upload_file",
+              "score": 8.631
+            },
+            {
+              "name": "document_gaps",
+              "score": 8.126
+            },
+            {
+              "name": "extract_figures",
+              "score": 7.931
+            },
+            {
+              "name": "extract_document",
+              "score": 7.891
+            }
+          ]
+        },
+        {
+          "id": "parse-05",
+          "job": "parse",
+          "expected": [
+            "extract_pages"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_pages",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_pages",
+              "score": 16.29
+            },
+            {
+              "name": "get_source_preview",
+              "score": 8.386
+            },
+            {
+              "name": "get_document_review",
+              "score": 8.212
+            },
+            {
+              "name": "classify_document",
+              "score": 7.964
+            },
+            {
+              "name": "extract_figures",
+              "score": 7.879
+            }
+          ]
+        },
+        {
+          "id": "parse-06",
+          "job": "parse",
+          "expected": [
+            "upload_url"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_url",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "upload_url",
+              "score": 7.556
+            },
+            {
+              "name": "get_document_review_job",
+              "score": 5.136
+            },
+            {
+              "name": "extract_document",
+              "score": 4.87
+            },
+            {
+              "name": "search_sources",
+              "score": 4.709
+            },
+            {
+              "name": "verify_claim_stream",
+              "score": 4.62
+            }
+          ]
+        },
+        {
+          "id": "parse-07",
+          "job": "parse",
+          "expected": [
+            "classify_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 13.519
+            },
+            {
+              "name": "review_document",
+              "score": 8.906
+            },
+            {
+              "name": "classify_document",
+              "score": 8.343
+            },
+            {
+              "name": "analyze_document",
+              "score": 7.298
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 6.262
+            }
+          ]
+        },
+        {
+          "id": "parse-08",
+          "job": "parse",
+          "expected": [
+            "extract_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_pages",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_pages",
+              "score": 11.166
+            },
+            {
+              "name": "extract_document",
+              "score": 9.897
+            },
+            {
+              "name": "classify_document",
+              "score": 7.06
+            },
+            {
+              "name": "extract_figures",
+              "score": 6.985
+            },
+            {
+              "name": "upload_file",
+              "score": 4.291
+            }
+          ]
+        },
+        {
+          "id": "verify-01",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 9.136
+            },
+            {
+              "name": "review_document",
+              "score": 8.691
+            },
+            {
+              "name": "verify_batch",
+              "score": 7.705
+            },
+            {
+              "name": "extract_document",
+              "score": 7.001
+            },
+            {
+              "name": "search_sources",
+              "score": 6.326
+            }
+          ]
+        },
+        {
+          "id": "verify-02",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 5.156
+            },
+            {
+              "name": "verify_claim",
+              "score": 4.665
+            },
+            {
+              "name": "verify_numeric_claim",
+              "score": 4.53
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.112
+            },
+            {
+              "name": "extract_document",
+              "score": 4.092
+            }
+          ]
+        },
+        {
+          "id": "verify-03",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 14.795
+            },
+            {
+              "name": "verify_batch",
+              "score": 10.349
+            },
+            {
+              "name": "get_source_preview",
+              "score": 7.866
+            },
+            {
+              "name": "upload_file",
+              "score": 6.253
+            },
+            {
+              "name": "extract_pages",
+              "score": 5.437
+            }
+          ]
+        },
+        {
+          "id": "verify-04",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 7.09
+            },
+            {
+              "name": "upload_url",
+              "score": 5.675
+            },
+            {
+              "name": "extract_figures",
+              "score": 5.344
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.907
+            },
+            {
+              "name": "review_document",
+              "score": 4.398
+            }
+          ]
+        },
+        {
+          "id": "verify-05",
+          "job": "verify",
+          "expected": [
+            "verify_claim_stream"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim_stream",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim_stream",
+              "score": 13.694
+            },
+            {
+              "name": "get_source_preview",
+              "score": 7.947
+            },
+            {
+              "name": "verify_claim",
+              "score": 6.927
+            },
+            {
+              "name": "review_document",
+              "score": 6.753
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 6.431
+            }
+          ]
+        },
+        {
+          "id": "verify-06",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 11.082
+            },
+            {
+              "name": "search_sources",
+              "score": 5.548
+            },
+            {
+              "name": "document_gaps",
+              "score": 5.454
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 5.111
+            },
+            {
+              "name": "revise_document_claim_analysis",
+              "score": 4.596
+            }
+          ]
+        },
+        {
+          "id": "verify-07",
+          "job": "verify",
+          "expected": [
+            "verify_feedback"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_feedback",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_feedback",
+              "score": 11.15
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.97
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.898
+            },
+            {
+              "name": "get_source_preview",
+              "score": 5.492
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 5.118
+            }
+          ]
+        },
+        {
+          "id": "quotes-01",
+          "job": "quotes",
+          "expected": [
+            "verify_batch"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 23.172
+            },
+            {
+              "name": "get_source_preview",
+              "score": 13.535
+            },
+            {
+              "name": "verify_claim",
+              "score": 7.751
+            },
+            {
+              "name": "extract_document",
+              "score": 7.429
+            },
+            {
+              "name": "verify_claim_stream",
+              "score": 7.07
+            }
+          ]
+        },
+        {
+          "id": "quotes-02",
+          "job": "quotes",
+          "expected": [
+            "verify_batch"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 5.446
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.331
+            },
+            {
+              "name": "extract_figures",
+              "score": 5.042
+            },
+            {
+              "name": "extract_document",
+              "score": 4.506
+            },
+            {
+              "name": "verify_claim",
+              "score": 4.446
+            }
+          ]
+        },
+        {
+          "id": "quotes-03",
+          "job": "quotes",
+          "expected": [
+            "get_source_preview"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 15.565
+            },
+            {
+              "name": "verify_batch",
+              "score": 7.118
+            },
+            {
+              "name": "get_review_source_span",
+              "score": 5.955
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 5.202
+            },
+            {
+              "name": "get_citation",
+              "score": 4.32
+            }
+          ]
+        },
+        {
+          "id": "quotes-04",
+          "job": "quotes",
+          "expected": [
+            "verify_batch"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 10.963
+            },
+            {
+              "name": "document_gaps",
+              "score": 9.038
+            },
+            {
+              "name": "get_source_preview",
+              "score": 8.405
+            },
+            {
+              "name": "webcite_guide",
+              "score": 6.975
+            },
+            {
+              "name": "review_document",
+              "score": 6.576
+            }
+          ]
+        },
+        {
+          "id": "quotes-05",
+          "job": "quotes",
+          "expected": [
+            "get_source_preview"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 10.809
+            },
+            {
+              "name": "verify_batch",
+              "score": 8.718
+            },
+            {
+              "name": "extract_pages",
+              "score": 5.269
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 5.249
+            },
+            {
+              "name": "get_citation",
+              "score": 4.32
+            }
+          ]
+        },
+        {
+          "id": "quotes-06",
+          "job": "quotes",
+          "expected": [
+            "list_citations"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "list_citations",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "list_citations",
+              "score": 11.074
+            },
+            {
+              "name": "analyze_document",
+              "score": 4.427
+            },
+            {
+              "name": "review_document",
+              "score": 4.139
+            },
+            {
+              "name": "document_gaps",
+              "score": 3.654
+            },
+            {
+              "name": "upload_file",
+              "score": 3.001
+            }
+          ]
+        },
+        {
+          "id": "review-01",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 15.341
+            },
+            {
+              "name": "webcite_guide",
+              "score": 9.979
+            },
+            {
+              "name": "verify_batch",
+              "score": 9.546
+            },
+            {
+              "name": "extract_document",
+              "score": 9.219
+            },
+            {
+              "name": "analyze_document",
+              "score": 8.338
+            }
+          ]
+        },
+        {
+          "id": "review-02",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 10.514
+            },
+            {
+              "name": "verify_claim",
+              "score": 9.215
+            },
+            {
+              "name": "search_sources",
+              "score": 8.816
+            },
+            {
+              "name": "verify_batch",
+              "score": 8.371
+            },
+            {
+              "name": "get_source_preview",
+              "score": 5.76
+            }
+          ]
+        },
+        {
+          "id": "review-03",
+          "job": "review",
+          "expected": [
+            "get_document_review_job"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_document_review_job",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_document_review_job",
+              "score": 6.93
+            },
+            {
+              "name": "review_document",
+              "score": 6.923
+            },
+            {
+              "name": "ask_document",
+              "score": 5.026
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.773
+            },
+            {
+              "name": "accuracy_report",
+              "score": 4.457
+            }
+          ]
+        },
+        {
+          "id": "review-04",
+          "job": "review",
+          "expected": [
+            "get_document_review"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_document_review",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_document_review",
+              "score": 14.98
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 5.698
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.896
+            },
+            {
+              "name": "verify_claim",
+              "score": 4.314
+            },
+            {
+              "name": "extract_document",
+              "score": 4.156
+            }
+          ]
+        },
+        {
+          "id": "review-05",
+          "job": "review",
+          "expected": [
+            "upload_url"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 8.747
+            },
+            {
+              "name": "analyze_document",
+              "score": 7.705
+            },
+            {
+              "name": "verify_batch",
+              "score": 6.856
+            },
+            {
+              "name": "verify_claim",
+              "score": 6.833
+            },
+            {
+              "name": "webcite_guide",
+              "score": 5.174
+            }
+          ]
+        },
+        {
+          "id": "review-06",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 8.48
+            },
+            {
+              "name": "extract_figures",
+              "score": 8.432
+            },
+            {
+              "name": "extract_document",
+              "score": 7.908
+            },
+            {
+              "name": "verify_batch",
+              "score": 6.503
+            },
+            {
+              "name": "analyze_document",
+              "score": 6.308
+            }
+          ]
+        },
+        {
+          "id": "review-07",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 7.976
+            },
+            {
+              "name": "extract_document",
+              "score": 6.503
+            },
+            {
+              "name": "verify_batch",
+              "score": 6.18
+            },
+            {
+              "name": "analyze_document",
+              "score": 5.623
+            },
+            {
+              "name": "get_document_review_job",
+              "score": 4.813
+            }
+          ]
+        },
+        {
+          "id": "figures-01",
+          "job": "figures",
+          "expected": [
+            "extract_figures"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 14.664
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 11.028
+            },
+            {
+              "name": "extract_document",
+              "score": 8.267
+            },
+            {
+              "name": "extract_pages",
+              "score": 4.85
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.253
+            }
+          ]
+        },
+        {
+          "id": "figures-02",
+          "job": "figures",
+          "expected": [
+            "analyze_conflicts"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "analyze_conflicts",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "analyze_conflicts",
+              "score": 14.04
+            },
+            {
+              "name": "document_gaps",
+              "score": 8.737
+            },
+            {
+              "name": "analyze_document",
+              "score": 8.091
+            },
+            {
+              "name": "extract_figures",
+              "score": 5.985
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.38
+            }
+          ]
+        },
+        {
+          "id": "figures-03",
+          "job": "figures",
+          "expected": [
+            "analyze_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "document_gaps",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "document_gaps",
+              "score": 8.769
+            },
+            {
+              "name": "extract_figures",
+              "score": 7.507
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 7.478
+            },
+            {
+              "name": "classify_document",
+              "score": 4.687
+            },
+            {
+              "name": "ask_document",
+              "score": 4.214
+            }
+          ]
+        },
+        {
+          "id": "figures-04",
+          "job": "figures",
+          "expected": [
+            "verify_numeric_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_numeric_claim",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_numeric_claim",
+              "score": 15.58
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 10.083
+            },
+            {
+              "name": "verify_claim",
+              "score": 7.932
+            },
+            {
+              "name": "extract_figures",
+              "score": 6.888
+            },
+            {
+              "name": "analyze_document",
+              "score": 6.878
+            }
+          ]
+        },
+        {
+          "id": "figures-05",
+          "job": "figures",
+          "expected": [
+            "extract_figures"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 12.545
+            },
+            {
+              "name": "analyze_document",
+              "score": 9.126
+            },
+            {
+              "name": "upload_file",
+              "score": 7.864
+            },
+            {
+              "name": "extract_document",
+              "score": 7.667
+            },
+            {
+              "name": "ask_document",
+              "score": 6.63
+            }
+          ]
+        },
+        {
+          "id": "figures-06",
+          "job": "figures",
+          "expected": [
+            "ask_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "classify_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "classify_document",
+              "score": 10.085
+            },
+            {
+              "name": "analyze_document",
+              "score": 8.893
+            },
+            {
+              "name": "extract_figures",
+              "score": 8.086
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 7.62
+            },
+            {
+              "name": "review_document",
+              "score": 7.074
+            }
+          ]
+        },
+        {
+          "id": "search-01",
+          "job": "search",
+          "expected": [
+            "search_sources"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "search_sources",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "search_sources",
+              "score": 15.87
+            },
+            {
+              "name": "verify_claim",
+              "score": 10.813
+            },
+            {
+              "name": "document_gaps",
+              "score": 6.249
+            },
+            {
+              "name": "verify_feedback",
+              "score": 5.816
+            },
+            {
+              "name": "review_document",
+              "score": 4.505
+            }
+          ]
+        },
+        {
+          "id": "search-02",
+          "job": "search",
+          "expected": [
+            "webcite_guide"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "webcite_guide",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "webcite_guide",
+              "score": 8.256
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 7.63
+            },
+            {
+              "name": "extract_figures",
+              "score": 7.604
+            },
+            {
+              "name": "classify_document",
+              "score": 7.507
+            },
+            {
+              "name": "document_gaps",
+              "score": 7.371
+            }
+          ]
+        },
+        {
+          "id": "search-03",
+          "job": "search",
+          "expected": [
+            "search_sources"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "search_sources",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "search_sources",
+              "score": 8.444
+            },
+            {
+              "name": "verify_claim",
+              "score": 8.065
+            },
+            {
+              "name": "get_source_preview",
+              "score": 5.828
+            },
+            {
+              "name": "verify_claim_stream",
+              "score": 5.815
+            },
+            {
+              "name": "review_document",
+              "score": 5.391
+            }
+          ]
+        },
+        {
+          "id": "search-04",
+          "job": "search",
+          "expected": [
+            "webcite_guide"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "webcite_guide",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "webcite_guide",
+              "score": 16.088
+            },
+            {
+              "name": "review_document",
+              "score": 7.73
+            },
+            {
+              "name": "classify_document",
+              "score": 7.606
+            },
+            {
+              "name": "upload_file",
+              "score": 7.323
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 7.212
+            }
+          ]
+        },
+        {
+          "id": "search-05",
+          "job": "search",
+          "expected": [
+            "get_credit_balance"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 4.79
+            },
+            {
+              "name": "document_gaps",
+              "score": 3.588
+            },
+            {
+              "name": "accuracy_report",
+              "score": 3.27
+            },
+            {
+              "name": "webcite_guide",
+              "score": 2.818
+            },
+            {
+              "name": "extract_document",
+              "score": 2.455
+            }
+          ]
+        },
+        {
+          "id": "search-06",
+          "job": "search",
+          "expected": [
+            "search_sources"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "record_review_nonclaim",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "record_review_nonclaim",
+              "score": 4.902
+            },
+            {
+              "name": "ask_document",
+              "score": 4.214
+            },
+            {
+              "name": "document_gaps",
+              "score": 3.654
+            },
+            {
+              "name": "upload_file",
+              "score": 2.208
+            },
+            {
+              "name": "get_citation",
+              "score": 1.971
+            }
+          ]
+        },
+        {
+          "id": "none-01",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "ask_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "ask_document",
+              "score": 4.124
+            },
+            {
+              "name": "classify_document",
+              "score": 0.14
+            },
+            {
+              "name": "upload_url",
+              "score": 0.137
+            },
+            {
+              "name": "webcite_guide",
+              "score": 0.137
+            },
+            {
+              "name": "verify_batch",
+              "score": 0.136
+            }
+          ]
+        },
+        {
+          "id": "none-02",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_file",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "upload_file",
+              "score": 3.6
+            },
+            {
+              "name": "classify_document",
+              "score": 3.547
+            },
+            {
+              "name": "search_sources",
+              "score": 3.461
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.187
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 2.77
+            }
+          ]
+        },
+        {
+          "id": "none-03",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 3.095
+            },
+            {
+              "name": "review_document",
+              "score": 2.274
+            },
+            {
+              "name": "classify_document",
+              "score": 2.175
+            },
+            {
+              "name": "verify_batch",
+              "score": 1.389
+            },
+            {
+              "name": "analyze_document",
+              "score": 1.375
+            }
+          ]
+        },
+        {
+          "id": "none-04",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "classify_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "classify_document",
+              "score": 2.711
+            },
+            {
+              "name": "extract_pages",
+              "score": 1.838
+            },
+            {
+              "name": "verify_claim_stream",
+              "score": 1.737
+            },
+            {
+              "name": "verify_claim",
+              "score": 1.495
+            },
+            {
+              "name": "accuracy_report",
+              "score": 0
+            }
+          ]
+        },
+        {
+          "id": "none-05",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "document_gaps",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "document_gaps",
+              "score": 5.337
+            },
+            {
+              "name": "verify_numeric_claim",
+              "score": 4.695
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.391
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 2.347
+            },
+            {
+              "name": "verify_batch",
+              "score": 1.713
+            }
+          ]
+        },
+        {
+          "id": "none-06",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "classify_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "classify_document",
+              "score": 0.14
+            },
+            {
+              "name": "upload_url",
+              "score": 0.137
+            },
+            {
+              "name": "webcite_guide",
+              "score": 0.137
+            },
+            {
+              "name": "verify_batch",
+              "score": 0.136
+            },
+            {
+              "name": "verify_claim",
+              "score": 0.136
+            }
+          ]
+        },
+        {
+          "id": "none-07",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "list_citations",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "list_citations",
+              "score": 6.024
+            },
+            {
+              "name": "webcite_guide",
+              "score": 5.4
+            },
+            {
+              "name": "document_gaps",
+              "score": 2.339
+            },
+            {
+              "name": "verify_batch",
+              "score": 2.145
+            },
+            {
+              "name": "get_source_preview",
+              "score": 2.053
+            }
+          ]
+        },
+        {
+          "id": "none-08",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_file",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "upload_file",
+              "score": 4.452
+            },
+            {
+              "name": "classify_document",
+              "score": 4.381
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 4.304
+            },
+            {
+              "name": "extract_figures",
+              "score": 3.932
+            },
+            {
+              "name": "extract_pages",
+              "score": 3.804
+            }
+          ]
+        }
+      ]
+    },
+    "core": {
+      "summary": {
+        "profile": "core",
+        "server_version": "1.9.67",
+        "tools": 16,
+        "positive_cases": 40,
+        "negative_cases": 8,
+        "expected_tool_in_profile": 33,
+        "lexical_top1_accuracy_pct": 57.5,
+        "lexical_top5_recall_pct": 90,
+        "by_job": {
+          "parse": {
+            "cases": 8,
+            "top1": 4,
+            "top5": 7
+          },
+          "verify": {
+            "cases": 7,
+            "top1": 3,
+            "top5": 5
+          },
+          "quotes": {
+            "cases": 6,
+            "top1": 5,
+            "top5": 6
+          },
+          "review": {
+            "cases": 7,
+            "top1": 5,
+            "top5": 7
+          },
+          "figures": {
+            "cases": 6,
+            "top1": 4,
+            "top5": 6
+          },
+          "search": {
+            "cases": 6,
+            "top1": 2,
+            "top5": 5
+          }
+        }
+      },
+      "rows": [
+        {
+          "id": "parse-01",
+          "job": "parse",
+          "expected": [
+            "upload_url"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_document",
+              "score": 5.876
+            },
+            {
+              "name": "upload_file",
+              "score": 5.395
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.675
+            },
+            {
+              "name": "verify_claim",
+              "score": 4.093
+            },
+            {
+              "name": "upload_url",
+              "score": 3.796
+            }
+          ]
+        },
+        {
+          "id": "parse-02",
+          "job": "parse",
+          "expected": [
+            "extract_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_document",
+              "score": 10.332
+            },
+            {
+              "name": "extract_figures",
+              "score": 9.376
+            },
+            {
+              "name": "get_source_preview",
+              "score": 8.734
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.899
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 5.326
+            }
+          ]
+        },
+        {
+          "id": "parse-03",
+          "job": "parse",
+          "expected": [
+            "extract_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 9.719
+            },
+            {
+              "name": "get_source_preview",
+              "score": 6.262
+            },
+            {
+              "name": "extract_document",
+              "score": 6.255
+            },
+            {
+              "name": "review_document",
+              "score": 4.376
+            },
+            {
+              "name": "verify_batch",
+              "score": 3.414
+            }
+          ]
+        },
+        {
+          "id": "parse-04",
+          "job": "parse",
+          "expected": [
+            "upload_file"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_file",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "upload_file",
+              "score": 7.367
+            },
+            {
+              "name": "extract_document",
+              "score": 7.305
+            },
+            {
+              "name": "extract_figures",
+              "score": 6.963
+            },
+            {
+              "name": "upload_url",
+              "score": 6.67
+            },
+            {
+              "name": "verify_batch",
+              "score": 6.174
+            }
+          ]
+        },
+        {
+          "id": "parse-05",
+          "job": "parse",
+          "expected": [
+            "extract_pages"
+          ],
+          "expected_in_profile": false,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 7.712
+            },
+            {
+              "name": "get_document_review",
+              "score": 7.297
+            },
+            {
+              "name": "extract_figures",
+              "score": 6.96
+            },
+            {
+              "name": "extract_document",
+              "score": 6.687
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.924
+            }
+          ]
+        },
+        {
+          "id": "parse-06",
+          "job": "parse",
+          "expected": [
+            "upload_url"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_url",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "upload_url",
+              "score": 6.19
+            },
+            {
+              "name": "extract_document",
+              "score": 4.6
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.016
+            },
+            {
+              "name": "get_document_review_job",
+              "score": 3.995
+            },
+            {
+              "name": "search_sources",
+              "score": 3.582
+            }
+          ]
+        },
+        {
+          "id": "parse-07",
+          "job": "parse",
+          "expected": [
+            "classify_document"
+          ],
+          "expected_in_profile": false,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 12.091
+            },
+            {
+              "name": "review_document",
+              "score": 7.616
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.17
+            },
+            {
+              "name": "extract_document",
+              "score": 4.432
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.918
+            }
+          ]
+        },
+        {
+          "id": "parse-08",
+          "job": "parse",
+          "expected": [
+            "extract_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_document",
+              "score": 8.829
+            },
+            {
+              "name": "extract_figures",
+              "score": 5.648
+            },
+            {
+              "name": "upload_file",
+              "score": 3.476
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 3.312
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.195
+            }
+          ]
+        },
+        {
+          "id": "verify-01",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 7.296
+            },
+            {
+              "name": "review_document",
+              "score": 7.284
+            },
+            {
+              "name": "extract_document",
+              "score": 5.987
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.978
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 5.063
+            }
+          ]
+        },
+        {
+          "id": "verify-02",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 3.826
+            },
+            {
+              "name": "verify_claim",
+              "score": 3.496
+            },
+            {
+              "name": "extract_document",
+              "score": 3.14
+            },
+            {
+              "name": "verify_batch",
+              "score": 3.005
+            },
+            {
+              "name": "webcite_guide",
+              "score": 2.465
+            }
+          ]
+        },
+        {
+          "id": "verify-03",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 12.912
+            },
+            {
+              "name": "verify_batch",
+              "score": 8.599
+            },
+            {
+              "name": "get_source_preview",
+              "score": 6.587
+            },
+            {
+              "name": "upload_file",
+              "score": 5.013
+            },
+            {
+              "name": "get_citation",
+              "score": 3.395
+            }
+          ]
+        },
+        {
+          "id": "verify-04",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 5.111
+            },
+            {
+              "name": "upload_url",
+              "score": 4.838
+            },
+            {
+              "name": "extract_figures",
+              "score": 4.159
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.576
+            },
+            {
+              "name": "webcite_guide",
+              "score": 3.377
+            }
+          ]
+        },
+        {
+          "id": "verify-05",
+          "job": "verify",
+          "expected": [
+            "verify_claim_stream"
+          ],
+          "expected_in_profile": false,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 7.189
+            },
+            {
+              "name": "review_document",
+              "score": 6.464
+            },
+            {
+              "name": "verify_claim",
+              "score": 6.246
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 5.735
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.534
+            }
+          ]
+        },
+        {
+          "id": "verify-06",
+          "job": "verify",
+          "expected": [
+            "verify_claim"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 9.675
+            },
+            {
+              "name": "search_sources",
+              "score": 4.619
+            },
+            {
+              "name": "upload_url",
+              "score": 3.687
+            },
+            {
+              "name": "extract_document",
+              "score": 3.271
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.15
+            }
+          ]
+        },
+        {
+          "id": "verify-07",
+          "job": "verify",
+          "expected": [
+            "verify_feedback"
+          ],
+          "expected_in_profile": false,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 5.267
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.157
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.612
+            },
+            {
+              "name": "review_document",
+              "score": 3.187
+            },
+            {
+              "name": "search_sources",
+              "score": 3.182
+            }
+          ]
+        },
+        {
+          "id": "quotes-01",
+          "job": "quotes",
+          "expected": [
+            "verify_batch"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 19.225
+            },
+            {
+              "name": "get_source_preview",
+              "score": 11.595
+            },
+            {
+              "name": "verify_claim",
+              "score": 7.002
+            },
+            {
+              "name": "extract_document",
+              "score": 6.6
+            },
+            {
+              "name": "webcite_guide",
+              "score": 5.635
+            }
+          ]
+        },
+        {
+          "id": "quotes-02",
+          "job": "quotes",
+          "expected": [
+            "verify_batch"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 4.908
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.854
+            },
+            {
+              "name": "extract_figures",
+              "score": 4.472
+            },
+            {
+              "name": "verify_claim",
+              "score": 4.325
+            },
+            {
+              "name": "extract_document",
+              "score": 4.16
+            }
+          ]
+        },
+        {
+          "id": "quotes-03",
+          "job": "quotes",
+          "expected": [
+            "get_source_preview"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 14.082
+            },
+            {
+              "name": "verify_batch",
+              "score": 6.781
+            },
+            {
+              "name": "get_citation",
+              "score": 3.342
+            },
+            {
+              "name": "review_document",
+              "score": 3.048
+            },
+            {
+              "name": "extract_document",
+              "score": 3.003
+            }
+          ]
+        },
+        {
+          "id": "quotes-04",
+          "job": "quotes",
+          "expected": [
+            "verify_batch"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 8.878
+            },
+            {
+              "name": "get_source_preview",
+              "score": 6.925
+            },
+            {
+              "name": "review_document",
+              "score": 5.919
+            },
+            {
+              "name": "webcite_guide",
+              "score": 5.771
+            },
+            {
+              "name": "extract_figures",
+              "score": 5.091
+            }
+          ]
+        },
+        {
+          "id": "quotes-05",
+          "job": "quotes",
+          "expected": [
+            "get_source_preview"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 9.649
+            },
+            {
+              "name": "verify_batch",
+              "score": 8.002
+            },
+            {
+              "name": "upload_file",
+              "score": 3.455
+            },
+            {
+              "name": "get_citation",
+              "score": 3.342
+            },
+            {
+              "name": "extract_document",
+              "score": 3.291
+            }
+          ]
+        },
+        {
+          "id": "quotes-06",
+          "job": "quotes",
+          "expected": [
+            "list_citations"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "list_citations",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "list_citations",
+              "score": 8.846
+            },
+            {
+              "name": "review_document",
+              "score": 3.247
+            },
+            {
+              "name": "upload_file",
+              "score": 2.07
+            },
+            {
+              "name": "verify_claim",
+              "score": 1.949
+            },
+            {
+              "name": "extract_document",
+              "score": 1.774
+            }
+          ]
+        },
+        {
+          "id": "review-01",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 12.941
+            },
+            {
+              "name": "webcite_guide",
+              "score": 7.909
+            },
+            {
+              "name": "verify_batch",
+              "score": 7.823
+            },
+            {
+              "name": "extract_document",
+              "score": 7.447
+            },
+            {
+              "name": "verify_claim",
+              "score": 6.676
+            }
+          ]
+        },
+        {
+          "id": "review-02",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 8.925
+            },
+            {
+              "name": "verify_claim",
+              "score": 7.319
+            },
+            {
+              "name": "search_sources",
+              "score": 6.304
+            },
+            {
+              "name": "verify_batch",
+              "score": 6.201
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.682
+            }
+          ]
+        },
+        {
+          "id": "review-03",
+          "job": "review",
+          "expected": [
+            "get_document_review_job"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 5.629
+            },
+            {
+              "name": "get_document_review_job",
+              "score": 5.344
+            },
+            {
+              "name": "verify_batch",
+              "score": 3.869
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.009
+            },
+            {
+              "name": "webcite_guide",
+              "score": 2.315
+            }
+          ]
+        },
+        {
+          "id": "review-04",
+          "job": "review",
+          "expected": [
+            "get_document_review"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "get_document_review",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "get_document_review",
+              "score": 12.583
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.401
+            },
+            {
+              "name": "extract_document",
+              "score": 3.815
+            },
+            {
+              "name": "verify_claim",
+              "score": 3.363
+            },
+            {
+              "name": "webcite_guide",
+              "score": 3.216
+            }
+          ]
+        },
+        {
+          "id": "review-05",
+          "job": "review",
+          "expected": [
+            "upload_url"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 7.454
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.687
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.362
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.182
+            },
+            {
+              "name": "webcite_guide",
+              "score": 4.116
+            }
+          ]
+        },
+        {
+          "id": "review-06",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 7.705
+            },
+            {
+              "name": "review_document",
+              "score": 7.646
+            },
+            {
+              "name": "extract_document",
+              "score": 7.451
+            },
+            {
+              "name": "verify_batch",
+              "score": 6.011
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.546
+            }
+          ]
+        },
+        {
+          "id": "review-07",
+          "job": "review",
+          "expected": [
+            "review_document"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "review_document",
+              "score": 6.661
+            },
+            {
+              "name": "extract_document",
+              "score": 5.727
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.529
+            },
+            {
+              "name": "webcite_guide",
+              "score": 3.751
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.438
+            }
+          ]
+        },
+        {
+          "id": "figures-01",
+          "job": "figures",
+          "expected": [
+            "extract_figures"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 12.726
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 9.527
+            },
+            {
+              "name": "extract_document",
+              "score": 7.413
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.07
+            },
+            {
+              "name": "search_sources",
+              "score": 2.972
+            }
+          ]
+        },
+        {
+          "id": "figures-02",
+          "job": "figures",
+          "expected": [
+            "analyze_conflicts"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "analyze_conflicts",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "analyze_conflicts",
+              "score": 12.347
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.573
+            },
+            {
+              "name": "extract_figures",
+              "score": 4.983
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.921
+            },
+            {
+              "name": "extract_document",
+              "score": 3.451
+            }
+          ]
+        },
+        {
+          "id": "figures-03",
+          "job": "figures",
+          "expected": [
+            "analyze_document"
+          ],
+          "expected_in_profile": false,
+          "lexical_top1": "analyze_conflicts",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "analyze_conflicts",
+              "score": 7.344
+            },
+            {
+              "name": "extract_figures",
+              "score": 6.766
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.105
+            },
+            {
+              "name": "search_sources",
+              "score": 3.35
+            },
+            {
+              "name": "verify_claim",
+              "score": 2.733
+            }
+          ]
+        },
+        {
+          "id": "figures-04",
+          "job": "figures",
+          "expected": [
+            "verify_numeric_claim"
+          ],
+          "expected_in_profile": false,
+          "lexical_top1": "analyze_conflicts",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "analyze_conflicts",
+              "score": 8.604
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.913
+            },
+            {
+              "name": "review_document",
+              "score": 5.264
+            },
+            {
+              "name": "extract_figures",
+              "score": 5.217
+            },
+            {
+              "name": "webcite_guide",
+              "score": 4.499
+            }
+          ]
+        },
+        {
+          "id": "figures-05",
+          "job": "figures",
+          "expected": [
+            "extract_figures"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 10.789
+            },
+            {
+              "name": "extract_document",
+              "score": 6.703
+            },
+            {
+              "name": "upload_file",
+              "score": 6.687
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 4.585
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.563
+            }
+          ]
+        },
+        {
+          "id": "figures-06",
+          "job": "figures",
+          "expected": [
+            "ask_document"
+          ],
+          "expected_in_profile": false,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 6.865
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 6.238
+            },
+            {
+              "name": "review_document",
+              "score": 6.058
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 5.552
+            },
+            {
+              "name": "extract_document",
+              "score": 5.211
+            }
+          ]
+        },
+        {
+          "id": "search-01",
+          "job": "search",
+          "expected": [
+            "search_sources"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "search_sources",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "search_sources",
+              "score": 12.935
+            },
+            {
+              "name": "verify_claim",
+              "score": 9.254
+            },
+            {
+              "name": "review_document",
+              "score": 4.037
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.936
+            },
+            {
+              "name": "verify_batch",
+              "score": 2.81
+            }
+          ]
+        },
+        {
+          "id": "search-02",
+          "job": "search",
+          "expected": [
+            "webcite_guide"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "analyze_conflicts",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "analyze_conflicts",
+              "score": 6.629
+            },
+            {
+              "name": "webcite_guide",
+              "score": 6.423
+            },
+            {
+              "name": "extract_figures",
+              "score": 5.638
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.725
+            },
+            {
+              "name": "review_document",
+              "score": 4.26
+            }
+          ]
+        },
+        {
+          "id": "search-03",
+          "job": "search",
+          "expected": [
+            "search_sources"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 7.752
+            },
+            {
+              "name": "search_sources",
+              "score": 7.512
+            },
+            {
+              "name": "review_document",
+              "score": 5.439
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.968
+            },
+            {
+              "name": "extract_document",
+              "score": 2.876
+            }
+          ]
+        },
+        {
+          "id": "search-04",
+          "job": "search",
+          "expected": [
+            "webcite_guide"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "webcite_guide",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "webcite_guide",
+              "score": 12.645
+            },
+            {
+              "name": "review_document",
+              "score": 6.538
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 5.825
+            },
+            {
+              "name": "upload_file",
+              "score": 5.286
+            },
+            {
+              "name": "extract_document",
+              "score": 5.245
+            }
+          ]
+        },
+        {
+          "id": "search-05",
+          "job": "search",
+          "expected": [
+            "get_credit_balance"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "verify_batch",
+              "score": 4.26
+            },
+            {
+              "name": "extract_document",
+              "score": 2.143
+            },
+            {
+              "name": "webcite_guide",
+              "score": 2.052
+            },
+            {
+              "name": "get_source_preview",
+              "score": 1.712
+            },
+            {
+              "name": "upload_file",
+              "score": 1.409
+            }
+          ]
+        },
+        {
+          "id": "search-06",
+          "job": "search",
+          "expected": [
+            "search_sources"
+          ],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_file",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": true,
+          "lexical_top5": [
+            {
+              "name": "upload_file",
+              "score": 2.034
+            },
+            {
+              "name": "verify_batch",
+              "score": 1.701
+            },
+            {
+              "name": "get_citation",
+              "score": 1.602
+            },
+            {
+              "name": "get_document_review_job",
+              "score": 1.37
+            },
+            {
+              "name": "search_sources",
+              "score": 1.273
+            }
+          ]
+        },
+        {
+          "id": "none-01",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_url",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "upload_url",
+              "score": 0.057
+            },
+            {
+              "name": "verify_batch",
+              "score": 0.057
+            },
+            {
+              "name": "verify_claim",
+              "score": 0.057
+            },
+            {
+              "name": "webcite_guide",
+              "score": 0.057
+            },
+            {
+              "name": "extract_figures",
+              "score": 0.056
+            }
+          ]
+        },
+        {
+          "id": "none-02",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_file",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "upload_file",
+              "score": 1.865
+            },
+            {
+              "name": "search_sources",
+              "score": 1.818
+            },
+            {
+              "name": "get_source_preview",
+              "score": 1.706
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 1.59
+            },
+            {
+              "name": "upload_url",
+              "score": 1.49
+            }
+          ]
+        },
+        {
+          "id": "none-03",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "extract_figures",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "extract_figures",
+              "score": 2.826
+            },
+            {
+              "name": "review_document",
+              "score": 2.151
+            },
+            {
+              "name": "verify_batch",
+              "score": 1.16
+            },
+            {
+              "name": "extract_document",
+              "score": 1.139
+            },
+            {
+              "name": "webcite_guide",
+              "score": 1.044
+            }
+          ]
+        },
+        {
+          "id": "none-04",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "verify_claim",
+              "score": 2.066
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 0
+            },
+            {
+              "name": "extract_document",
+              "score": 0
+            },
+            {
+              "name": "extract_figures",
+              "score": 0
+            },
+            {
+              "name": "get_citation",
+              "score": 0
+            }
+          ]
+        },
+        {
+          "id": "none-05",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "get_source_preview",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "get_source_preview",
+              "score": 3.067
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 2.148
+            },
+            {
+              "name": "verify_batch",
+              "score": 1.43
+            },
+            {
+              "name": "webcite_guide",
+              "score": 1.398
+            },
+            {
+              "name": "review_document",
+              "score": 1.164
+            }
+          ]
+        },
+        {
+          "id": "none-06",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "upload_url",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "upload_url",
+              "score": 0.057
+            },
+            {
+              "name": "verify_batch",
+              "score": 0.057
+            },
+            {
+              "name": "verify_claim",
+              "score": 0.057
+            },
+            {
+              "name": "webcite_guide",
+              "score": 0.057
+            },
+            {
+              "name": "extract_figures",
+              "score": 0.056
+            }
+          ]
+        },
+        {
+          "id": "none-07",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "list_citations",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "list_citations",
+              "score": 4.699
+            },
+            {
+              "name": "webcite_guide",
+              "score": 4.501
+            },
+            {
+              "name": "verify_batch",
+              "score": 1.734
+            },
+            {
+              "name": "get_source_preview",
+              "score": 1.669
+            },
+            {
+              "name": "review_document",
+              "score": 1.513
+            }
+          ]
+        },
+        {
+          "id": "none-08",
+          "job": "none",
+          "expected": [],
+          "expected_in_profile": true,
+          "lexical_top1": "analyze_conflicts",
+          "lexical_top1_correct": false,
+          "lexical_top5_hit": false,
+          "lexical_top5": [
+            {
+              "name": "analyze_conflicts",
+              "score": 3.579
+            },
+            {
+              "name": "upload_file",
+              "score": 2.748
+            },
+            {
+              "name": "extract_figures",
+              "score": 2.489
+            },
+            {
+              "name": "upload_url",
+              "score": 2.404
+            },
+            {
+              "name": "get_source_preview",
+              "score": 2.307
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "instructions": {
+    "length": 4274,
+    "opening_paragraph_chars": 712,
+    "tools_named_in_opening": [
+      "upload_file",
+      "upload_url",
+      "extract_document",
+      "verify_claim",
+      "verify_batch",
+      "review_document",
+      "get_document_review_job",
+      "get_document_review",
+      "extract_figures",
+      "analyze_conflicts",
+      "search_sources",
+      "webcite_guide"
+    ],
+    "checks": [
+      {
+        "criterion": "Opens by saying what Webcite does (first sentence)",
+        "pass": true
+      },
+      {
+        "criterion": "Each of the six jobs names its tool in the opening paragraph",
+        "pass": true
+      },
+      {
+        "criterion": "Each of the six jobs names its tool within the first 600 characters (the research target)",
+        "pass": false
+      },
+      {
+        "criterion": "Points to webcite_guide in the opening paragraph",
+        "pass": true
+      },
+      {
+        "criterion": "Every tool named in the opening paragraph is served by the default profile",
+        "pass": true
+      },
+      {
+        "criterion": "Every tool named in the opening paragraph is served by the core profile",
+        "pass": true
+      },
+      {
+        "criterion": "Reporting caveats come after the job list",
+        "pass": true
+      },
+      {
+        "criterion": "The job list fits inside the 2,048-character limit of Claude Code before v2.1.296",
+        "pass": true
+      },
+      {
+        "criterion": "Whole instructions fit inside the current 4,096-character limit (Claude Code truncates beyond it)",
+        "pass": false
+      }
+    ],
+    "passed": 7,
+    "total": 9
+  }
+}

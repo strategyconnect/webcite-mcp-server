@@ -1,0 +1,8 @@
+{
+  "name": "webcite",
+  "description": "Webcite for AI agents: parse PDFs, scans and office files to Markdown, verify claims against sources with citations and verdicts, check quotes, fact-check whole documents and cross-check figures, through the hosted Webcite MCP server.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Webcite"
+  }
+}

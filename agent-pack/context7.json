@@ -1,0 +1,20 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Webcite",
+  "description": "Webcite parses documents to Markdown and verifies claims against sources, with citations bound to the passages they quote. Skills and MCP setup for AI agents.",
+  "folders": [
+    "plugins/webcite/skills"
+  ],
+  "excludeFolders": [
+    ".claude-plugin",
+    ".agents",
+    ".cursor-plugin"
+  ],
+  "rules": [
+    "Authenticate REST calls with the x-api-key header; create a key at https://webcite.co/api-keys.",
+    "The hosted MCP server is https://api.webcite.co/mcp and signs in with OAuth.",
+    "Operation paths include their version, such as /api/v1/verify.",
+    "A source match, a stance and a verdict are separate results; an absent verdict is not support.",
+    "Never ask the user to paste an API key into the conversation."
+  ]
+}

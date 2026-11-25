@@ -1,0 +1,15 @@
+{
+  "name": "webcite",
+  "description": "Webcite skills and MCP server for Claude Code",
+  "owner": {
+    "name": "Webcite",
+    "email": "support@webcite.co"
+  },
+  "plugins": [
+    {
+      "name": "webcite",
+      "source": "./plugins/webcite",
+      "description": "Webcite for AI agents: parse PDFs, scans and office files to Markdown, verify claims against sources with citations and verdicts, check quotes, fact-check whole documents and cross-check figures, through the hosted Webcite MCP server."
+    }
+  ]
+}
