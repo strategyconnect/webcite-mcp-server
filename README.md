@@ -739,6 +739,16 @@ All verification results include:
 - Documentation: [webcite.co/api-docs/playground](https://webcite.co/api-docs/playground)
 - Email: support@webcite.co
 
+## Release SBOM
+
+`scripts/sbom.sh [--sha <commit>] [--out <file>]` writes `sbom.cdx.json`, a CycloneDX 1.6 SBOM of the
+production npm dependency tree of the server at one commit (default `HEAD`). It reads `package.json`
+and `package-lock.json` from that commit, leaves out dev dependencies, records the commit SHA in
+`metadata.properties` as `webcite:source-commit`, and fails unless the file passes the CycloneDX JSON
+schema. It covers npm packages only, not Node.js or the OS. The generator
+(`@cyclonedx/cyclonedx-npm`, Apache-2.0) runs through `npx` at a pinned version and is not a package
+dependency. Each hosted release keeps its SBOM at `<release>/SBOM/sbom.cdx.json`.
+
 ## License
 
 MIT
