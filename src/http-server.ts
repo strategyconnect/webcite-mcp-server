@@ -18,8 +18,6 @@ import { SERVER_VERSION } from './version.js';
 const DEFAULT_API_URL = 'https://api.webcite.co';
 const DEFAULT_PORT = 8787;
 const OAUTH_SCOPE = 'webcite:mcp';
-/** Seconds a client should wait before retrying while the credential check is unavailable. */
-const AUTH_RETRY_AFTER_S = 10;
 
 export function extractApiKey(req: IncomingMessage): string | undefined {
   const headerKey = req.headers['x-api-key'];
@@ -149,15 +147,8 @@ export function createRemoteMcpApp(options?: {
       return;
     }
     if (credential.status === 'unavailable') {
-      // Not 401: the credential may be fine, and a 401 would send clients into re-authentication.
-      console.error(`MCP credential check unavailable (${credential.reason}); answered 503`);
-      res.writeHead(503, { 'content-type': 'application/json', 'retry-after': String(AUTH_RETRY_AFTER_S) });
-      res.end(JSON.stringify({
-        jsonrpc: '2.0',
-        id: null,
-        error: { code: -32000, message: `Authentication is temporarily unavailable. Retry in ${AUTH_RETRY_AFTER_S} seconds.` },
-      }));
-      return;
+      // Undecided is not invalid: serve the request as before the check existed; a tool call still meets the API's own auth.
+      console.error(`MCP credential check skipped (${credential.reason}); request passed to the MCP handler`);
     }
 
     try {

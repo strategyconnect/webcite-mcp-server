@@ -6,7 +6,13 @@ const OAUTH_TOKEN_PREFIX = 'webcite_oat_';
 export const VALID_CACHE_MS = 60_000;
 /** A revoked or invalid answer is remembered this long, also through an API outage. */
 export const INVALID_CACHE_MS = 30_000;
-const CHECK_TIMEOUT_MS = 5000;
+/**
+ * A request waits at most this long for its credential check. Measured from the PROD and DEV VMs: a live
+ * key answers in 30-100 ms; an unknown or deleted key in 0.6-1.9 s (the API guard bcrypt-scans legacy keys).
+ */
+const CHECK_DEADLINE_MS = 5000;
+/** The check itself keeps running this long, so a late answer still fills the cache for the next request. */
+const CHECK_TIMEOUT_MS = 30_000;
 
 export type CredentialCheck =
   | { status: 'valid' | 'invalid' }
@@ -21,10 +27,13 @@ type Answer = { status: 'valid'; until: number } | { status: 'invalid' } | { sta
  * answers 401 for an unknown, revoked or expired key and 5xx when it could not look the key up.
  * Answers are cached under a sha256 of the credential, never the raw value.
  */
-export function createCredentialCheck(apiBaseUrl: string) {
+export function createCredentialCheck(apiBaseUrl: string, options?: { deadlineMs?: number }) {
   const base = apiBaseUrl.replace(/\/$/, '');
   const audience = `${new URL(apiBaseUrl).origin}/mcp`;
+  const deadlineMs = options?.deadlineMs ?? CHECK_DEADLINE_MS;
   const cache = new Map<string, { status: 'valid' | 'invalid'; until: number }>();
+  /** One check per credential at a time; concurrent requests share it. */
+  const inflight = new Map<string, Promise<Answer>>();
 
   const call = async (path: string, init: RequestInit): Promise<Response | string> => {
     try {
@@ -58,15 +67,30 @@ export function createCredentialCheck(apiBaseUrl: string) {
     return { status: 'valid', until: Date.now() + VALID_CACHE_MS };
   };
 
+  const check = (id: string, credential: string): Promise<Answer> => {
+    const running = inflight.get(id);
+    if (running) return running;
+    const started = (credential.startsWith(OAUTH_TOKEN_PREFIX) ? introspect(credential) : checkKey(credential)).then((answer) => {
+      inflight.delete(id);
+      if (answer.status === 'unavailable') return answer;
+      // ponytail: unbounded only in theory; sweep when the map grows.
+      if (cache.size > 10_000) cache.clear();
+      cache.set(id, answer.status === 'valid' ? answer : { status: 'invalid', until: Date.now() + INVALID_CACHE_MS });
+      return answer;
+    });
+    inflight.set(id, started);
+    return started;
+  };
+
   return async (credential: string): Promise<CredentialCheck> => {
     const id = createHash('sha256').update(credential).digest('hex');
     const hit = cache.get(id);
     if (hit && hit.until > Date.now()) return { status: hit.status };
-    const answer = await (credential.startsWith(OAUTH_TOKEN_PREFIX) ? introspect(credential) : checkKey(credential));
-    if (answer.status === 'unavailable') return answer;
-    // ponytail: unbounded only in theory; sweep when the map grows.
-    if (cache.size > 10_000) cache.clear();
-    cache.set(id, answer.status === 'valid' ? answer : { status: 'invalid', until: Date.now() + INVALID_CACHE_MS });
-    return { status: answer.status };
+    let timer: NodeJS.Timeout | undefined;
+    const late = new Promise<Answer>((resolve) => {
+      timer = setTimeout(() => resolve({ status: 'unavailable', reason: `credential check did not answer within ${deadlineMs} ms` }), deadlineMs);
+    });
+    const answer = await Promise.race([check(id, credential), late]).finally(() => clearTimeout(timer));
+    return answer.status === 'unavailable' ? answer : { status: answer.status };
   };
 }

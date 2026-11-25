@@ -104,19 +104,22 @@ test('OAuth access tokens are introspected; inactive or foreign tokens get 401 i
   }
 });
 
-test('an unchecked OAuth token gets 503, not 200 or 401, when introspection is unreachable', async () => {
+test('an unchecked OAuth token is passed to the MCP handler, not refused, when introspection is unreachable', async () => {
   const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: 'http://127.0.0.1:9' });
   const server = http.createServer((req, res) => void handler(req, res));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const original = console.error;
+  console.error = () => {};
   try {
     const res = await fetch(`http://127.0.0.1:${server.address().port}/mcp`, {
       method: 'POST',
       headers: { authorization: 'Bearer webcite_oat_x', 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
     });
-    assert.equal(res.status, 503);
-    assert.ok(res.headers.get('retry-after'));
+    assert.equal(res.status, 200);
+    assert.match(await res.text(), /"tools":\[/);
   } finally {
+    console.error = original;
     await new Promise((resolve) => server.close(resolve));
   }
 });
