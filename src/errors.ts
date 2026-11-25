@@ -38,7 +38,7 @@ export class ApiClientError extends Error {
   readonly body: string;
 
   constructor(status: number, body: string, readonly credit_usage?: CreditUsage) {
-    super(`WebCite API error (${status}): ${body}`);
+    super(`Webcite API error (${status}): ${body}`);
     this.name = 'ApiClientError';
     this.status = status;
     this.body = body;
@@ -71,7 +71,7 @@ export class ApiClientError extends Error {
     if (this.status === 401 || this.status === 403) {
       return new ToolFailure('unauthorized', this.message, {
         details: { status: this.status, body: this.body },
-        actionable: 'Check that the Webcite API key belongs to this environment. In Claude, choose No sign-in and set Authorization: Bearer <key> in Request headers. Scope is never taken from MCP annotations.',
+        actionable: 'Ask the user to reconnect: sign in with OAuth at https://api.webcite.co/mcp, or create an API key at https://webcite.co/api-keys and send it as Authorization: Bearer <key>. A key must belong to this environment. Docs: https://webcite.co/api-docs/mcp. Scope is never taken from MCP annotations.',
       });
     }
     if (this.status === 503 && /integrity/i.test(this.body)) {

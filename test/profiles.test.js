@@ -27,7 +27,10 @@ test('local profile defaults to all public tools', () => {
 
 test('core profile is short and starts with guide', () => {
   const core = filterToolsByProfile(ALL_TOOLS, 'core');
-  assert.ok(core.length <= 12);
+  assert.equal(core.length, 16);
+  for (const name of ['upload_url', 'review_document', 'get_document_review_job', 'get_document_review']) {
+    assert.ok(core.some((t) => t.name === name), `${name} absent from core profile`);
+  }
   assert.equal(core[0].name, 'webcite_guide');
   assert.deepEqual(core[0], withAnnotations(WEBCITE_GUIDE_TOOL));
   assert.ok(core[0].inputSchema.properties.workflow.enum.includes('document_review'));
@@ -155,4 +158,59 @@ test('runSmoke reports core defaults', () => {
   const smoke = runSmoke('core');
   assert.equal(smoke.ok, true);
   assert.equal(smoke.toolCount, filterToolsByProfile(ALL_TOOLS, 'core').length);
+});
+
+test('the default public profile serves the same tools in the same order as 1.9.65', () => {
+  assert.deepEqual(filterToolsByProfile(ALL_TOOLS, 'public').map((t) => t.name), ["webcite_guide", "get_credit_balance", "verify_claim", "search_sources", "get_source_preview", "verify_batch", "upload_file", "extract_document", "extract_figures", "list_citations", "get_citation", "analyze_conflicts", "upload_url", "analyze_document", "classify_document", "document_gaps", "accuracy_report", "verify_feedback", "verify_claim_stream", "ask_document", "extract_pages", "get_ask_result", "get_document_review", "get_document_review_job", "get_latest_representation", "get_review_source_span", "prepare_ocr_rescue", "publish_text_representation", "read_source_unit", "record_review_nonclaim", "register_source", "review_document", "revise_document_claim_analysis", "verify_numeric_claim"]);
+  assert.deepEqual(filterToolsByProfile(ALL_TOOLS, resolveProfile('')).map((t) => t.name),
+    filterToolsByProfile(ALL_TOOLS, 'public').map((t) => t.name));
+});
+
+test('server instructions open with what Webcite does and which tool does each job, then keep the reporting caveats', () => {
+  assert.ok(SERVER_INSTRUCTIONS.startsWith('Webcite reads documents and checks claims against sources. Use it to: (1) convert a PDF'));
+  const opening = SERVER_INSTRUCTIONS.slice(0, 800);
+  for (const name of ['upload_file', 'upload_url', 'extract_document', 'verify_claim', 'verify_batch', 'review_document',
+    'get_document_review_job', 'get_document_review', 'extract_figures', 'analyze_conflicts', 'search_sources', 'webcite_guide']) {
+    assert.ok(opening.includes(name), `${name} absent from the opening`);
+  }
+  assert.doesNotMatch(opening, /Compact fields omitted/);
+  for (const caveat of [/Compact fields omitted are unknown, not absent/, /pending_claims is unfinished work and includes failed_claims/,
+    /Null or missing counts are unknown, never zero/, /obey poll_after_ms with waits of at most 30 seconds/,
+    /coverage_complete=true and no pending claims/, /Never invent citation URLs/]) {
+    assert.match(SERVER_INSTRUCTIONS, caveat);
+  }
+});
+
+test('a hosted selection narrows the list and never widens it', () => {
+  const { parseToolSelection, applyToolSelection } = require('../dist/profiles.js');
+  const publicTools = filterToolsByProfile(ALL_TOOLS, 'public');
+  const names = (query) => applyToolSelection(publicTools, parseToolSelection(new URLSearchParams(query))).map((t) => t.name);
+  const all = publicTools.map((t) => t.name);
+  for (const query of ['', 'profile=', 'profile=full', 'profile=nope', 'read_only=false', 'read_only=1', 'other=1']) {
+    assert.deepEqual(names(query), all, query);
+  }
+  assert.deepEqual(names('profile=public'), all);
+  assert.deepEqual(names('profile=CORE'), filterToolsByProfile(ALL_TOOLS, 'core').map((t) => t.name));
+  const research = names('profile=research');
+  assert.ok(research.includes('verify_claim_stream'));
+  assert.ok(!research.includes('query_context'), 'research selection must not add tools outside the served profile');
+  const readOnly = names('read_only=true');
+  assert.deepEqual(readOnly, ['webcite_guide', 'get_credit_balance', 'get_source_preview', 'list_citations', 'get_citation',
+    'accuracy_report', 'get_ask_result', 'get_document_review', 'get_document_review_job', 'get_latest_representation',
+    'get_review_source_span', 'read_source_unit']);
+  for (const name of readOnly) assert.equal(ALL_TOOLS.find((t) => t.name === name).annotations.readOnlyHint, true, name);
+  for (const name of ['verify_claim', 'upload_file', 'review_document', 'extract_document']) assert.ok(!readOnly.includes(name), name);
+  assert.deepEqual(names('profile=core&read_only=true'), readOnly.filter((name) => names('profile=core').includes(name)));
+});
+
+test('an unauthorized API answer tells the agent what its user does next', () => {
+  const { ApiClientError } = require('../dist/api-client.js');
+  for (const status of [401, 403]) {
+    const failure = new ApiClientError(status, '{"message":"Unauthorized"}').toToolFailure().toPayload();
+    assert.equal(failure.code, 'unauthorized');
+    assert.match(failure.actionable, /sign in with OAuth at https:\/\/api\.webcite\.co\/mcp/);
+    assert.match(failure.actionable, /create an API key at https:\/\/webcite\.co\/api-keys and send it as Authorization: Bearer <key>/);
+    assert.match(failure.actionable, /https:\/\/webcite\.co\/api-docs\/mcp/);
+    assert.doesNotMatch(failure.actionable, /No sign-in/);
+  }
 });

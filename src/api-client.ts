@@ -1,5 +1,5 @@
 /**
- * WebCite API Client - Public API endpoints
+ * Webcite API Client - Public API endpoints
  */
 
 import { creditUsage, withCreditHeaders } from './credit-usage.js';

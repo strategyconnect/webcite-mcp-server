@@ -10,7 +10,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { WebCiteApiClient } from './api-client.js';
 import { createMcpServer, runSmoke } from './index.js';
-import { resolveProfile } from './profiles.js';
+import { parseToolSelection, resolveProfile } from './profiles.js';
 import { SERVER_VERSION } from './version.js';
 
 const DEFAULT_API_URL = 'https://api.webcite.co';
@@ -134,7 +134,7 @@ export function createRemoteMcpApp(options?: {
       res.end(
         JSON.stringify({
           error: 'unauthorized',
-          message: 'Sign in with OAuth, or provide Authorization: Bearer <api_key> or x-api-key header',
+          message: 'Connect with OAuth at https://api.webcite.co/mcp and sign in, or create an API key at https://webcite.co/api-keys and send it as Authorization: Bearer <api_key> (an x-api-key header also works). Docs: https://webcite.co/api-docs/mcp',
           get_key: 'https://webcite.co/api-keys',
           docs: 'https://webcite.co/connect',
         }),
@@ -179,7 +179,7 @@ export function createRemoteMcpApp(options?: {
         // Backend job IDs carry durable state. A fresh transport avoids lost browser
         // session headers or process restarts blocking otherwise authenticated tools.
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-        const server = createMcpServer(new WebCiteApiClient(apiKey, apiBaseUrl), profile, true);
+        const server = createMcpServer(new WebCiteApiClient(apiKey, apiBaseUrl), profile, true, parseToolSelection(url.searchParams));
         res.once('close', () => { void server.close().catch(error => console.error('MCP transport close failed', error)); });
         await server.connect(transport);
         await transport.handleRequest(req, res, body);
@@ -221,7 +221,7 @@ async function main() {
   });
   server.listen(port, host, () => {
     console.error(
-      `WebCite remote MCP ${SERVER_VERSION} on http://${host}:${port}/mcp (profile=${resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public')})`,
+      `Webcite remote MCP ${SERVER_VERSION} on http://${host}:${port}/mcp (profile=${resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public')})`,
     );
   });
 }

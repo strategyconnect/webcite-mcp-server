@@ -5,7 +5,7 @@
 
 export type McpProfile = 'core' | 'docs' | 'research' | 'public' | 'full';
 
-/** Ordered core tools (guide first). Keep ≤12. */
+/** Ordered core tools (guide first). This order ranks every profile's list, so append nothing here. */
 export const CORE_TOOL_ORDER = [
   'webcite_guide',
   'get_credit_balance',
@@ -19,6 +19,14 @@ export const CORE_TOOL_ORDER = [
   'list_citations',
   'get_citation',
   'analyze_conflicts',
+] as const;
+
+/** Also in core, so the smallest profile covers URL upload and the whole-document review job. Not ranked here: the public order stays as it was. */
+const CORE_EXTRA = [
+  'upload_url',
+  'review_document',
+  'get_document_review_job',
+  'get_document_review',
 ] as const;
 
 const DOCS_EXTRA = [
@@ -72,7 +80,7 @@ export function resolveProfile(raw?: string): McpProfile {
 export function allowedToolNames(profile: McpProfile): Set<string> | null {
   if (profile === 'full') return null;
   if (profile === 'public') return new Set<string>(PUBLIC_TOOLS);
-  const names = new Set<string>(CORE_TOOL_ORDER);
+  const names = new Set<string>([...CORE_TOOL_ORDER, ...CORE_EXTRA]);
   if (profile === 'docs' || profile === 'research') {
     for (const n of DOCS_EXTRA) names.add(n);
   }
@@ -103,6 +111,42 @@ export function filterToolsByProfile<T extends { name: string }>(
   return selected;
 }
 
+/** A hosted client's own narrowing of the served list, from the connection URL. */
+export interface ToolSelection {
+  profile?: McpProfile;
+  readOnly?: boolean;
+}
+
+/** Reads ?profile=core|docs|research|public and ?read_only=true. Anything else is ignored, so the connection is served as before. */
+export function parseToolSelection(params: URLSearchParams): ToolSelection {
+  const raw = params.get('profile')?.trim().toLowerCase();
+  const profile =
+    raw === 'core' || raw === 'docs' || raw === 'research' || raw === 'public' ? raw : undefined;
+  return {
+    ...(profile ? { profile } : {}),
+    ...(params.get('read_only')?.trim().toLowerCase() === 'true' ? { readOnly: true } : {}),
+  };
+}
+
+/** Narrows a served list. It only removes tools: a selection never adds one the server's profile does not expose. */
+export function applyToolSelection<T extends { name: string; annotations?: { readOnlyHint: boolean } }>(
+  tools: T[],
+  selection: ToolSelection = {},
+): T[] {
+  const allow = selection.profile ? allowedToolNames(selection.profile) : null;
+  return tools.filter(
+    (t) => (!allow || allow.has(t.name)) && (!selection.readOnly || t.annotations?.readOnlyHint === true),
+  );
+}
+
+export function selectionExclusionMessage(name: string, selection: ToolSelection): string {
+  const chosen = [
+    ...(selection.profile ? [`profile=${selection.profile}`] : []),
+    ...(selection.readOnly ? ['read_only=true'] : []),
+  ].join(', ');
+  return `Tool "${name}" is not served on this connection (${chosen}). Connect without that URL parameter to reach it.`;
+}
+
 export function profileExclusionMessage(
   name: string,
   profile: McpProfile,
@@ -114,13 +158,10 @@ export function profileExclusionMessage(
   );
 }
 
-export const SERVER_INSTRUCTIONS = `Compact fields omitted are unknown, not absent. Report known material_claims (physical rows excluding duplicates), total_claims (all physical rows), duplicate_claims and non_factual_claims separately. Material counts can include non-factual rows and do not imply all rows are factual assertions. A duplicate display alias can have a different id; original_claim_id is its stored original identity and duplicate_of_id identifies the canonical assertion. Display aliases do not change stored IDs, citations or paid operations. Report pending, failed, rejected and uncovered counts separately. pending_claims is unfinished work and includes failed_claims; failed is a subset, never add it again to a total. Counts do not establish attempt history; do not call other unfinished rows never attempted without recorded attempt data. A provider access error does not rule out incomplete extraction or source coverage. Null or missing counts are unknown, never zero. Do not group unknown rejected or uncovered counts with known zero pending or failed counts. A completed job means processing finished; it does not prove complete source coverage. For a queued or running review, obey poll_after_ms with waits of at most 30 seconds. Never multiply remaining claims by per-claim latency into a long blind sleep. Stop polling immediately on a terminal status and report failed or interrupted work. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them, not routinely.
-Webcite reads documents, verifies claims and binds quotes to sources.
+export const SERVER_INSTRUCTIONS = `Webcite reads documents and checks claims against sources. Use it to: (1) convert a PDF, scan, spreadsheet or office file to Markdown with page and sheet locations (upload_file or upload_url, then extract_document); (2) verify one factual claim against web sources with citations and a verdict (verify_claim); (3) check that quotes appear in their sources (verify_batch); (4) fact-check every claim in a document with a coverage report (review_document, then get_document_review_job and get_document_review); (5) extract and cross-check figures (extract_figures, analyze_conflicts); (6) find sources without a verdict (search_sources). webcite_guide with workflow=choose lists each workflow with inputs and cost.
 
 When a user asks to audit an entire uploaded document or every figure on a slide, use review_document directly with its existing asset_id, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.
 Keep returned extraction structuredContent and reuse it in the conversation; repeated extract calls incur the stated per-call credits.
-
-webcite_guide with workflow=choose lists the workflows below with their inputs and credit costs.
 
 Workflows:
 1) Plain fact → verify_claim({ claim })
@@ -131,4 +172,6 @@ Workflows:
 
 Do not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.
 Never invent citation URLs. Prefer get_source_preview to show evidence.
-Local and hosted profiles default to public. Use WEBCITE_MCP_PROFILE=core|docs|research|full to change local discovery.`;
+Local and hosted profiles default to public. Use WEBCITE_MCP_PROFILE=core|docs|research|full to change local discovery.
+
+Reporting saved results: Compact fields omitted are unknown, not absent. Report known material_claims (physical rows excluding duplicates), total_claims (all physical rows), duplicate_claims and non_factual_claims separately. Material counts can include non-factual rows and do not imply all rows are factual assertions. A duplicate display alias can have a different id; original_claim_id is its stored original identity and duplicate_of_id identifies the canonical assertion. Display aliases do not change stored IDs, citations or paid operations. Report pending, failed, rejected and uncovered counts separately. pending_claims is unfinished work and includes failed_claims; failed is a subset, never add it again to a total. Counts do not establish attempt history; do not call other unfinished rows never attempted without recorded attempt data. A provider access error does not rule out incomplete extraction or source coverage. Null or missing counts are unknown, never zero. Do not group unknown rejected or uncovered counts with known zero pending or failed counts. A completed job means processing finished; it does not prove complete source coverage. For a queued or running review, obey poll_after_ms with waits of at most 30 seconds. Never multiply remaining claims by per-claim latency into a long blind sleep. Stop polling immediately on a terminal status and report failed or interrupted work. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them, not routinely.`;

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { creditUsageText } from './credit-usage.js';
 /**
- * WebCite MCP Server
+ * Webcite MCP Server
  *
  * Fact verification, citation binding, document intelligence, and context-graph
  * tools for any MCP-compatible agent. v1 tools map 1:1 to public API v1; context
@@ -28,6 +28,9 @@ import {
   profileExclusionMessage,
   resolveProfile,
   SERVER_INSTRUCTIONS,
+  applyToolSelection,
+  selectionExclusionMessage,
+  type ToolSelection,
   type McpProfile,
 } from './profiles.js';
 
@@ -52,8 +55,9 @@ export function createMcpServer(
   client: WebCiteApiClient,
   profile: McpProfile,
   remote = false,
+  selection: ToolSelection = {},
 ): Server {
-  const tools = filterToolsByProfile(ALL_TOOLS, profile).map((tool) =>
+  const tools = applyToolSelection(filterToolsByProfile(ALL_TOOLS, profile), selection).map((tool) =>
     remote && tool.name === 'upload_file'
       ? { ...tool, description: 'Small-file compatibility upload: caller-provided base64 bytes, up to 20 MB decoded. For a Claude chat attachment or file above this tool limit, upload the binary through Webcite Playground or HTTP multipart within API format and size limits; the resulting asset_id works with the other tools. A remote MCP server cannot read a local path, and an attachment is not automatically sent as file_base64. Do not generate base64 from document text.',
           inputSchema: { type: 'object' as const, properties: {
@@ -96,7 +100,9 @@ export function createMcpServer(
           content: [
             {
               type: 'text',
-              text: profileExclusionMessage(name, profile),
+              text: filterToolsByProfile(ALL_TOOLS, profile).some((t) => t.name === name)
+                ? selectionExclusionMessage(name, selection)
+                : profileExclusionMessage(name, profile),
             },
           ],
           isError: true,
@@ -202,7 +208,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(
-    `WebCite MCP Server ${SERVER_VERSION} running (profile=${profile}, tools=${filterToolsByProfile(ALL_TOOLS, profile).length})`,
+    `Webcite MCP Server ${SERVER_VERSION} running (profile=${profile}, tools=${filterToolsByProfile(ALL_TOOLS, profile).length})`,
   );
 }
 

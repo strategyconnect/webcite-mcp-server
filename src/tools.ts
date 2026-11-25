@@ -28,7 +28,7 @@ const assetRefProperties = {
   asset_url: {
     type: 'string',
     description:
-      'A direct URL to the file (e.g. your own signed storage URL), so the file need not be uploaded to WebCite. Provide this OR asset_id.',
+      'A direct URL to the file (e.g. your own signed storage URL), so the file need not be uploaded to Webcite. Provide this OR asset_id.',
   },
 };
 
@@ -48,7 +48,7 @@ const sourceFiltersInput = {
 export const TOOLS: ToolDefinition[] = [
   {
     name: 'verify_claim',
-    description: `Verify a factual claim against authoritative sources. Returns sources with stance analysis (supports/contradicts/neutral) and an overall verdict.
+    description: `Fact-check one claim against web sources: returns citations, a stance for each source (supports/contradicts/neutral) and a verdict.
 
 Use this when you need to:
 - Fact-check one specific claim (whole-document review is a separate tool, review_document)
@@ -138,7 +138,7 @@ Output format and credits match verify_claim.`,
   },
   {
     name: 'search_sources',
-    description: `Search for authoritative sources related to a query. Returns raw citations without stance analysis or verdict.
+    description: `Search the web for sources on a query and return citations, without stance or verdict.
 
 Use this when you need to:
 - Find sources on a topic quickly
@@ -212,7 +212,7 @@ Credits: 1`,
   },
   {
     name: 'upload_file',
-    description: `Upload a file to WebCite for use as verification context. Supports documents (PDF, DOCX, TXT) and other common file types.
+    description: `Upload a PDF, scan, image, spreadsheet or office file to Webcite and get an asset_id for extraction or review.
 
 Use this when you need to:
 - Verify claims against a specific document
@@ -235,7 +235,7 @@ Credits: 1`,
   },
   {
     name: 'get_source_preview',
-    description: `Resolve a citation back to its exact source and render it, so you can show the evidence behind a claim.
+    description: `Open a citation at its quoted passage in the source, to show the evidence.
 
 Use this when you need to:
 - Show the exact passage a citation came from (not just the URL)
@@ -274,7 +274,7 @@ Credits: 1`,
   },
   {
     name: 'verify_batch',
-    description: `Check many quotes against their sources in one call. Each item is a quote plus its source: inline text, a URL, or an uploaded asset.
+    description: `Check that quotes appear in the sources you provide (text, URL or uploaded file), many at once. Each item is a quote plus its source: inline text, a URL, or an uploaded asset.
 
 Per item you get back whether the quote is grounded, how it matched (exact / normalized / fuzzy / unbound), the best-matching passage and score even when unbound, a verification band, and a feedback_token.
 
@@ -349,7 +349,7 @@ Credits: 1`,
   },
   {
     name: 'analyze_conflicts',
-    description: `Checks numeric figures for consistency. Input: figures already extracted (the extract_figures output format, or your own pipeline). The engine:
+    description: `Recompute totals and flag figures that conflict across the figures you supply. Input: figures already extracted (the extract_figures output format, or your own pipeline). The engine:
 
 - **recomputes** every derivable metric from its primitives (gross margin from revenue and COGS, growth from two periods) and flags where the stated value does not match the computed one;
 - **detects cross-document conflicts** — figures for the same metric/entity/period that disagree beyond the metric's tolerance;
@@ -497,7 +497,7 @@ Credits: 1`,
   },
   {
     name: 'extract_document',
-    description: `Extract any document into normalized text with provenance: whole-doc markdown, per-page/sheet units carrying their page or sheet, and (for spreadsheets) sheet names.
+    description: `Parse a PDF, scan, spreadsheet or office file to Markdown page by page (OCR included), with the page or sheet each part came from. Returns normalized text with provenance: whole-doc markdown, per-page/sheet units carrying their page or sheet, and (for spreadsheets) sheet names.
 
 Handles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deterministic-first; scanned PDFs and images fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.
 
@@ -520,7 +520,7 @@ Credits: 1`,
   },
   {
     name: 'extract_figures',
-    description: `Extract recognized financial metrics from a document as tagged, source-grounded figures: the value normalized to its canonical unit, what it means (\`metric\`), \`unit\`, optional \`entity\`/\`period\`, a confidence \`band\`, whether it was confirmed against the cited cell (\`bound\`), and full \`provenance\` (asset, sheet, cell, page). This is not a complete inventory of every number.
+    description: `Extract financial figures from a document with units, periods and source locations. Returns recognized financial metrics as tagged, source-grounded figures: the value normalized to its canonical unit, what it means (\`metric\`), \`unit\`, optional \`entity\`/\`period\`, a confidence \`band\`, whether it was confirmed against the cited cell (\`bound\`), and full \`provenance\` (asset, sheet, cell, page). This is not a complete inventory of every number.
 
 This is deterministic financial-model reading: header scale ("$M" / "'000"), accounting negatives, period columns (FY2023 vs FY2024) and unit declarations are all honoured, so a percentage is never mis-read as a currency.
 
@@ -565,7 +565,7 @@ const claimScopeProperties = {
 export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   {
     name: 'upload_url',
-    description: `Upload original file bytes from a public HTTPS URL, including through hosted MCP. No caller credentials or headers are forwarded. Private addresses, unsafe redirects, unsupported formats, empty files and files over 100 MB are refused. This does not access a local file or a private chat attachment. Save asset_id, asset_url and source_version_id; use the owned asset_id for review and extraction. An uncertain failure does not prove that no upload charge occurred; preserve the receipt rather than automatically repeating it. Credits: 1 for a stored upload.`,
+    description: `Upload a file from a public HTTPS URL to Webcite and get an asset_id for extraction or review. Stores the original file bytes, including through hosted MCP. No caller credentials or headers are forwarded. Private addresses, unsafe redirects, unsupported formats, empty files and files over 100 MB are refused. This does not access a local file or a private chat attachment. Save asset_id, asset_url and source_version_id; use the owned asset_id for review and extraction. An uncertain failure does not prove that no upload charge occurred; preserve the receipt rather than automatically repeating it. Credits: 1 for a stored upload.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -582,7 +582,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_document_review',
-    description: 'Read a saved document review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review.',
+    description: 'Read a document review: claims, verdicts, citations and passages not covered. Reads the saved review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1 },
       offset: { type: 'integer', minimum: 0 },
@@ -627,14 +627,14 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'get_document_review_job',
-    description: 'Poll a durable document review job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Terminal statuses are complete, partial_coverage, credits_exhausted and failed. Returns the job status, progress and review_id; saved claims and uncovered source spans are read by review_id with get_document_review.',
+    description: 'Check progress of a document review job. Reads the durable job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Terminal statuses are complete, partial_coverage, credits_exhausted and failed. Returns the job status, progress and review_id; saved claims and uncovered source spans are read by review_id with get_document_review.',
     inputSchema: { type: 'object', properties: {
       job_id: { type: 'string', minLength: 36 },
     }, required: ['job_id'] },
   },
   {
     name: 'review_document',
-    description: 'Full-document fact-check for requests such as "audit this document", "check every figure on this slide", or every material claim in an uploaded file. Input: the existing asset_id(s), a prompt and a stable thread_id. The server parses the stored source itself, so no separate extraction step is needed. Unlike separate single-claim checks, it covers every claim and saves progress. Starts a durable full review and immediately returns a job_id; job status comes from get_document_review_job and saved result pages from get_document_review. Repeating the same input reuses its job without a new charge. A failed or credit-exhausted review resumes on the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); completed claims and the failed job receipt are preserved. Full coverage is reported only when coverage_complete is true.',
+    description: 'Fact-check every material claim in an uploaded document and report coverage; starts a job and returns a job_id. Fits requests such as "audit this document" or "check every figure on this slide". Input: the existing asset_id(s), a prompt and a stable thread_id. The server parses the stored source itself, so no separate extraction step is needed. Unlike separate single-claim checks, it covers every claim and saves progress. Starts a durable full review and immediately returns a job_id; job status comes from get_document_review_job and saved result pages from get_document_review. Repeating the same input reuses its job without a new charge. A failed or credit-exhausted review resumes on the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); completed claims and the failed job receipt are preserved. Full coverage is reported only when coverage_complete is true.',
     inputSchema: { type: 'object', properties: {
       prompt: { type: 'string', minLength: 1, description: 'What to verify in the uploaded document.' },
       asset_ids: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } },
@@ -699,7 +699,7 @@ export const PUBLIC_EXTRA_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'extract_pages',
-    description: 'Extract citation-ready document chunks with page, sheet or section anchors. Returns extraction state and reason even when no chunks exist. Costs 1 credit.',
+    description: 'Split an uploaded document into citation-ready chunks with page, sheet or section anchors, for RAG indexing. Returns extraction state and reason even when no chunks exist. Costs 1 credit.',
     inputSchema: { type: 'object', properties: { ...assetRefProperties,
       mode: { type: 'string', enum: ['standard', 'lite'], description: 'lite or standard. When mode is omitted, accounts created on or after 20 November 2026 (04:00 UTC) read in lite and older accounts read in standard. lite is the faster, lower-cost read (balance estimate 0.12 credits a page); standard is the higher-accuracy read (0.75 credits a page), better on complex tables, handwriting and scans. Either can always be sent explicitly.' }, } },
   },
@@ -747,7 +747,7 @@ export const PUBLIC_EXTRA_ENDPOINT_TOOLS: Record<string, string> = {
 };
 
 /**
- * W1 context/evidence tools — map to WebCite HTTP v2 routes.
+ * W1 context/evidence tools: map to Webcite HTTP v2 routes.
  * Scope always comes from the authenticated API key, never from MCP annotations.
  */
 export const CONTEXT_TOOLS: ToolDefinition[] = [
