@@ -195,7 +195,9 @@ test('a hosted selection narrows the list and never widens it', () => {
   assert.ok(research.includes('verify_claim_stream'));
   assert.ok(!research.includes('query_context'), 'research selection must not add tools outside the served profile');
   const readOnly = names('read_only=true');
-  assert.ok(readOnly.length > 0 && readOnly.length < all.length);
+  assert.deepEqual(readOnly, ['webcite_guide', 'get_credit_balance', 'get_source_preview', 'list_citations', 'get_citation',
+    'accuracy_report', 'get_ask_result', 'get_document_review', 'get_document_review_job', 'get_latest_representation',
+    'get_review_source_span', 'read_source_unit']);
   for (const name of readOnly) assert.equal(ALL_TOOLS.find((t) => t.name === name).annotations.readOnlyHint, true, name);
   for (const name of ['verify_claim', 'upload_file', 'review_document', 'extract_document']) assert.ok(!readOnly.includes(name), name);
   assert.deepEqual(names('profile=core&read_only=true'), readOnly.filter((name) => names('profile=core').includes(name)));
