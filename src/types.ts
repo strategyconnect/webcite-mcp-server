@@ -390,7 +390,6 @@ export interface VisualRendition {
   representation_id: string;
   source_read_status: 'partial';
   visual_provenance: { origin: 'model_generated'; source_bytes_hash: string; [key: string]: unknown };
-  provider_usage_status: 'inspect_operation_receipts';
   /** Existing owned representation locator entries for read_source_unit. */
   source_units: Array<{ sourceUnitId: string; locator: Record<string, unknown>; state: string }>;
 }

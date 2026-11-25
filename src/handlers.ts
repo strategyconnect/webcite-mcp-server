@@ -2312,7 +2312,7 @@ export const handlers: Record<string, ToolHandler> = {
           !('source_version_id' in result) || result.source_version_id !== version || typeof result.representation_id !== 'string' ||
           !result.representation_id || result.representation_id !== result.representation_id.trim() || result.representation_id.length > 191 ||
           result.source_read_status !== 'partial' || result.visual_provenance?.origin !== 'model_generated' ||
-          !/^[a-f0-9]{64}$/.test(result.visual_provenance.source_bytes_hash) || result.provider_usage_status !== 'inspect_operation_receipts' ||
+          !/^[a-f0-9]{64}$/.test(result.visual_provenance.source_bytes_hash) ||
           !Array.isArray(result.source_units) || !result.source_units.length || result.source_units.length > 2000 ||
           result.source_units.some(unit => !unit || typeof unit.sourceUnitId !== 'string' || !unit.sourceUnitId ||
             unit.sourceUnitId !== unit.sourceUnitId.trim() || unit.sourceUnitId.length > 191 || !unit.locator ||

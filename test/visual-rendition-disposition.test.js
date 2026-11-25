@@ -12,7 +12,9 @@ const visual = { format: 'image', markdown: 'Contents', state: 'partial', comple
   source_version_id: 'version-1', representation_id: 'visual-rep', source_read_status: 'partial',
   visual_provenance: { origin: 'model_generated', source_bytes_hash: 'a'.repeat(64) },
   source_units: [{ sourceUnitId: 'visual-unit-2', locator: { kind: 'page', page: 1 }, state: 'partial' }],
-  provider_usage_status: 'inspect_operation_receipts', credit_usage: { credits_used: 1, credits_remaining: 9, monthly_allocation: 10 } };
+  credit_usage: { credits_used: 1, credits_remaining: 9, monthly_allocation: 10 } };
+/** A backend from before public responses dropped provider_usage_status still returns it. */
+const olderVisual = { ...visual, provider_usage_status: 'inspect_operation_receipts' };
 const action = { review_id: 'review-1', asset_id: asset, start: 0, end: 8, source_quote: 'Contents', rationale: 'An explicit navigation label', visual_evidence: reference };
 
 test('real HTTP handler retains explicit partial visual rendition and exact operation key', async () => {
@@ -28,6 +30,14 @@ test('real HTTP handler retains explicit partial visual rendition and exact oper
     assert.equal(result.structuredContent.units, undefined);
     assert.match(result.text, /partial|Partial/);
   } finally { global.fetch = prior; }
+});
+
+test('visual rendition is accepted with or without provider_usage_status', async () => {
+  for (const response of [visual, olderVisual]) {
+    const result = await handlers.extract_document(input, { extractDocument: async () => response });
+    assert.deepEqual(result.structuredContent, response);
+    assert.match(result.text, /Partial model-generated visual rendition visual-rep/);
+  }
 });
 
 for (const bad of [ { ...input, idempotency_key: undefined }, { ...input, source_version_id: ' version-1' },
