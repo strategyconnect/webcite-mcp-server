@@ -1,6 +1,6 @@
 ---
 name: webcite-review-document
-description: Use when the user asks to audit, fact-check or check every claim or figure in a whole document, report, memo, deck or AI-generated draft, or wants a coverage report of what was and was not verified. Runs a Webcite document review job over an uploaded file. Triggers: audit this document, fact-check the whole report, check every figure, hallucination audit.
+description: "Use when the user asks to audit, fact-check or check every claim or figure in a whole document, report, memo, deck or AI-generated draft, or wants a coverage report of what was and was not verified. Runs a Webcite document review job over an uploaded file. Triggers: audit this document, fact-check the whole report, check every figure, hallucination audit."
 license: MIT
 compatibility: Needs the Webcite MCP server (https://api.webcite.co/mcp, OAuth sign-in) or a Webcite API key in WEBCITE_API_KEY for the REST API at https://api.webcite.co.
 ---

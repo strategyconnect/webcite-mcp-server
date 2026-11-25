@@ -1,6 +1,6 @@
 ---
 name: webcite-check-figures
-description: Use when the user wants financial figures extracted from a spreadsheet, financial model, PDF or deck with their units and periods, totals recomputed, or numbers that conflict across documents found. Reads and cross-checks figures with Webcite. Triggers: extract figures, check the numbers, do these totals add up, conflicting figures.
+description: "Use when the user wants financial figures extracted from a spreadsheet, financial model, PDF or deck with their units and periods, totals recomputed, or numbers that conflict across documents found. Reads and cross-checks figures with Webcite. Triggers: extract figures, check the numbers, do these totals add up, conflicting figures."
 license: MIT
 compatibility: Needs the Webcite MCP server (https://api.webcite.co/mcp, OAuth sign-in) or a Webcite API key in WEBCITE_API_KEY for the REST API at https://api.webcite.co.
 ---

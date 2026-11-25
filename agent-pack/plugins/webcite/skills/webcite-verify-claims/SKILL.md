@@ -1,6 +1,6 @@
 ---
 name: webcite-verify-claims
-description: Use when the user asks to fact-check, verify or source a claim, statistic or statement, asks whether something is true, or wants citations added to generated text. Verifies a claim against web sources with Webcite and returns citations, a stance for each source and a verdict. Triggers: fact-check, verify, is this true, cite sources, hallucination check.
+description: "Use when the user asks to fact-check, verify or source a claim, statistic or statement, asks whether something is true, or wants citations added to generated text. Verifies a claim against web sources with Webcite and returns citations, a stance for each source and a verdict. Triggers: fact-check, verify, is this true, cite sources, hallucination check."
 license: MIT
 compatibility: Needs the Webcite MCP server (https://api.webcite.co/mcp, OAuth sign-in) or a Webcite API key in WEBCITE_API_KEY for the REST API at https://api.webcite.co.
 ---

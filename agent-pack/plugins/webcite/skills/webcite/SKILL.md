@@ -1,6 +1,6 @@
 ---
 name: webcite
-description: Use when a task involves reading documents or checking facts and you need to choose the right Webcite workflow: parsing a PDF, scan or office file to Markdown, verifying a claim, checking quotes, fact-checking a whole document, or checking figures. Routes to the matching Webcite skill.
+description: "Use when a task involves reading documents or checking facts and you need to choose the right Webcite workflow: parsing a PDF, scan or office file to Markdown, verifying a claim, checking quotes, fact-checking a whole document, or checking figures. Routes to the matching Webcite skill."
 license: MIT
 compatibility: Needs the Webcite MCP server (https://api.webcite.co/mcp, OAuth sign-in) or a Webcite API key in WEBCITE_API_KEY for the REST API at https://api.webcite.co.
 ---

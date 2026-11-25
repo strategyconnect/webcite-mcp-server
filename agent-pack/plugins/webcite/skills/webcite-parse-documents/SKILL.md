@@ -1,6 +1,6 @@
 ---
 name: webcite-parse-documents
-description: Use when the user wants a PDF, scanned page, image, spreadsheet, Word or PowerPoint file converted to Markdown or text, OCR on a scan, tables pulled out, or a document split into citation-ready chunks for RAG. Parses documents with Webcite page by page with page and sheet locations. Triggers: pdf to markdown, OCR, parse document, extract text, chunk for RAG.
+description: "Use when the user wants a PDF, scanned page, image, spreadsheet, Word or PowerPoint file converted to Markdown or text, OCR on a scan, tables pulled out, or a document split into citation-ready chunks for RAG. Parses documents with Webcite page by page with page and sheet locations. Triggers: pdf to markdown, OCR, parse document, extract text, chunk for RAG."
 license: MIT
 compatibility: Needs the Webcite MCP server (https://api.webcite.co/mcp, OAuth sign-in) or a Webcite API key in WEBCITE_API_KEY for the REST API at https://api.webcite.co.
 ---
