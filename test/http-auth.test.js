@@ -11,8 +11,8 @@ const { createCredentialCheck } = require('../dist/credential-check.js');
 const BALANCE = '/api/v1/payment/credits/balance';
 const CHALLENGE = /^Bearer error="invalid_token", .*resource_metadata="http:\/\/127\.0\.0\.1:\d+\/\.well-known\/oauth-protected-resource\/mcp", scope="webcite:mcp"$/;
 
-async function withApp(apiBaseUrl, fn) {
-  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl });
+async function withApp(apiBaseUrl, fn, credentialCheckDeadlineMs) {
+  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl, credentialCheckDeadlineMs });
   const server = http.createServer((req, res) => void handler(req, res));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const post = (key, method = 'tools/list', params = {}) => fetch(`http://127.0.0.1:${server.address().port}/mcp`, {
@@ -159,6 +159,22 @@ test('a check slower than the deadline lets a valid key through; the same key an
     assert.ok(!slow.reason.includes('wc_slow_valid'));
     delayMs = 0;
     assert.deepEqual(await check('wc_fast_valid'), { status: 'valid' });
+  } finally { await backend.close(); }
+});
+
+test('end to end: a valid key whose check misses the deadline gets 200 and the tool list, not 503', async () => {
+  const backend = await startAuthBackend(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return [200, { credits: {} }];
+  });
+  try {
+    const lines = await captureErrors(() => withApp(backend.url, async (post) => {
+      const res = await post('wc_valid_slow_check');
+      assert.equal(res.status, 200);
+      assert.match(await res.text(), /"tools":\[/);
+    }, 50));
+    assert.equal(lines.filter((l) => /credential check skipped \(credential check did not answer within 50 ms\)/.test(l)).length, 1, lines.join('\n'));
+    assert.ok(lines.every((l) => !l.includes('wc_valid_slow_check')), lines.join('\n'));
   } finally { await backend.close(); }
 });
 

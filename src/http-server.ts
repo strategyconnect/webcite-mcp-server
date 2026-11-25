@@ -62,6 +62,8 @@ function applyServedProtocolVersion(req: IncomingMessage): void {
 export function createRemoteMcpApp(options?: {
   apiBaseUrl?: string;
   profile?: ReturnType<typeof resolveProfile>;
+  /** Longest a request waits for its credential check (default 5 s); tests shorten it. */
+  credentialCheckDeadlineMs?: number;
 }): {
   handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 } {
@@ -69,7 +71,7 @@ export function createRemoteMcpApp(options?: {
   const profile = options?.profile ?? resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public');
   const resourceMetadata = `${new URL(apiBaseUrl).origin}/.well-known/oauth-protected-resource/mcp`;
   const challenge = `resource_metadata="${resourceMetadata}", scope="${OAUTH_SCOPE}"`;
-  const checkCredential = createCredentialCheck(apiBaseUrl);
+  const checkCredential = createCredentialCheck(apiBaseUrl, { deadlineMs: options?.credentialCheckDeadlineMs });
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
