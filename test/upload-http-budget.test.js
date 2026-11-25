@@ -2,9 +2,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createRemoteMcpApp } = require('../dist/http-server.js');
+const { startAuthBackend } = require('./fixtures/auth-backend.js');
 
 test('hosted JSON transport admits a 20MB base64 envelope and rejects bodies above 30MB', async () => {
-  const app = createRemoteMcpApp({ profile: 'public' });
+  const backend = await startAuthBackend();
+  const app = createRemoteMcpApp({ profile: 'public', apiBaseUrl: backend.url });
   const server = http.createServer((req, res) => { void app.handler(req, res); });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
@@ -17,5 +19,5 @@ test('hosted JSON transport admits a 20MB base64 envelope and rejects bodies abo
       assert.equal(response.status, expected);
       await response.text();
     }
-  } finally { await new Promise(resolve => server.close(resolve)); }
+  } finally { await new Promise(resolve => server.close(resolve)); await backend.close(); }
 });

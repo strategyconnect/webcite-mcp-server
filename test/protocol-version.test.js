@@ -2,19 +2,22 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createRemoteMcpApp } = require('../dist/http-server.js');
+const { startAuthBackend } = require('./fixtures/auth-backend.js');
 const { SUPPORTED_PROTOCOL_VERSIONS, LATEST_PROTOCOL_VERSION } = require('@modelcontextprotocol/sdk/types.js');
 
 // Hosted logs, 11 to 24 November 2026: Claude sent MCP-Protocol-Version: 2026-07-28 and the
 // SDK answered 400 "Unsupported protocol version" (a 198-byte body) on 621 of 2,054 requests.
 
 async function withServer(fn) {
-  const { handler } = createRemoteMcpApp({ profile: 'public' });
+  const backend = await startAuthBackend();
+  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: backend.url });
   const server = http.createServer((req, res) => void handler(req, res));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
     return await fn(`http://127.0.0.1:${server.address().port}`);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await backend.close();
   }
 }
 

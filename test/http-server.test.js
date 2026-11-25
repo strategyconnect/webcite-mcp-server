@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const { extractApiKey, createRemoteMcpApp } = require('../dist/http-server.js');
+const { startAuthBackend } = require('./fixtures/auth-backend.js');
 
 test('extractApiKey reads bearer and x-api-key', () => {
   assert.equal(
@@ -103,7 +104,7 @@ test('OAuth access tokens are introspected; inactive or foreign tokens get 401 i
   }
 });
 
-test('OAuth token still works when introspection is unreachable (the API validates it)', async () => {
+test('an unchecked OAuth token gets 503, not 200 or 401, when introspection is unreachable', async () => {
   const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: 'http://127.0.0.1:9' });
   const server = http.createServer((req, res) => void handler(req, res));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -113,7 +114,8 @@ test('OAuth token still works when introspection is unreachable (the API validat
       headers: { authorization: 'Bearer webcite_oat_x', 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
     });
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 503);
+    assert.ok(res.headers.get('retry-after'));
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -144,8 +146,9 @@ test('stateless hosted tools recover missing and obsolete IDs and isolate reques
       assert.equal(response.status,200);const result=(await payload(response)).result;
       assert.notEqual(result.isError,true,JSON.stringify(result));assert.match(result.content[0].text,new RegExp(String(remaining)));
     }
-    assert.deepEqual(seen,['account-a','account-b']);
-    const invalid=await post(5,'tools/call',{name:'get_credit_balance',arguments:{}},'invalid-key','obsolete-before-restart');assert.equal((await payload(invalid)).result.isError,true);
+    // Each key is checked once (cached), then its own tool call runs with it.
+    assert.deepEqual(seen,['account-a','account-a','account-b','account-b']);
+    const invalid=await post(5,'tools/call',{name:'get_credit_balance',arguments:{}},'invalid-key','obsolete-before-restart');assert.equal(invalid.status,401);assert.match(invalid.headers.get('www-authenticate'),/^Bearer error="invalid_token"/);assert.equal(seen.at(-1),'invalid-key');
     const conflicting=await fetch(endpoint,{method:'POST',headers:{authorization:'Bearer account-a','x-api-key':'account-b','content-type':'application/json'},body:'{}'});assert.equal(conflicting.status,400);assert.equal((await conflicting.json()).error,'conflicting_api_keys');
     for(const method of ['GET','DELETE']) {const response=await fetch(endpoint,{method,headers:{authorization:'Bearer account-a',accept:'text/event-stream','mcp-session-id':'obsolete-before-restart'}});assert.equal(response.status,405);assert.equal(response.headers.get('allow'),'POST');}
     const bad=await fetch(endpoint,{method:'POST',headers:{authorization:'Bearer account-a'},body:'{'});assert.equal(bad.status,400);assert.equal((await bad.json()).error,'invalid_json');
@@ -153,7 +156,8 @@ test('stateless hosted tools recover missing and obsolete IDs and isolate reques
 });
 
 test('hosted upload advertises bytes and refuses server file paths', async () => {
-  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: 'http://127.0.0.1:1' });
+  const backend = await startAuthBackend();
+  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: backend.url });
   const server = http.createServer((req, res) => { void handler(req, res); });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const endpoint = `http://127.0.0.1:${server.address().port}/mcp`;
@@ -181,6 +185,7 @@ test('hosted upload advertises bytes and refuses server file paths', async () =>
     assert.match(rejected.body.result.content[0].text, /not file_path/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await backend.close();
   }
 });
 
@@ -241,12 +246,14 @@ test('actual StreamableHTTP client keeps read-only tools working across app rest
     app=createRemoteMcpApp(options);
     assert.equal((await client.listTools()).tools.length,34);
     assert.notEqual((await client.callTool({name:'get_credit_balance',arguments:{}})).isError,true);
-    assert.equal(calls,2);
+    // One credential check per app instance (cached), plus one balance call per tool call.
+    assert.equal(calls,4);
   } finally {await client.close();await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>backend.close(resolve));}
 });
 
 test('hosted ?profile= and ?read_only=true narrow one connection; the plain URL serves the default list', async () => {
-  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: 'http://127.0.0.1:1' });
+  const backend = await startAuthBackend();
+  const { handler } = createRemoteMcpApp({ profile: 'public', apiBaseUrl: backend.url });
   const server = http.createServer((req, res) => { void handler(req, res); });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}/mcp`;
@@ -277,5 +284,6 @@ test('hosted ?profile= and ?read_only=true narrow one connection; the plain URL 
     assert.notEqual(guide.isError, true);
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    await backend.close();
   }
 });
