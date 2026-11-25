@@ -63,8 +63,15 @@ Optional later: add GoDaddy A record `mcp` → prod IP and a dedicated vhost; un
 
 Two ways, both billed to the same account credits:
 
-- **OAuth 2.1** (the first choice in ChatGPT, Claude **Sign in** and MCP Inspector): a 401 without credentials carries `WWW-Authenticate: Bearer resource_metadata="https://api.webcite.co/.well-known/oauth-protected-resource/mcp", scope="webcite:mcp"`. The authorization server is the Webcite API (`https://api.webcite.co`, metadata at `/.well-known/oauth-authorization-server`): dynamic client registration, PKCE S256, consent at webcite.co, 1 hour access tokens (`webcite_oat_...`) and rotating 30 day refresh tokens. This server introspects OAuth access tokens (cached up to 60 s) and answers 401 `invalid_token` for an expired or revoked one. Design: webcite-backend `docs/plans/2026-11-24-mcp-oauth.md`.
+- **OAuth 2.1** (the first choice in ChatGPT, Claude **Sign in** and MCP Inspector): a 401 without credentials carries `WWW-Authenticate: Bearer resource_metadata="https://api.webcite.co/.well-known/oauth-protected-resource/mcp", scope="webcite:mcp"`. The authorization server is the Webcite API (`https://api.webcite.co`, metadata at `/.well-known/oauth-authorization-server`): dynamic client registration, PKCE S256, consent at webcite.co, 1 hour access tokens (`webcite_oat_...`) and rotating 30 day refresh tokens. This server introspects OAuth access tokens and answers 401 `invalid_token` for an expired or revoked one. Design: webcite-backend `docs/plans/2026-11-24-mcp-oauth.md`.
 - **API key** (for clients without OAuth; unchanged): `Authorization: Bearer <api_key>` or `x-api-key: <api_key>`. Keys are created at https://webcite.co/api-keys. In Claude, choose **No sign-in** and add the header under Request headers.
+
+Every request is authenticated before its JSON-RPC message is handled (`src/credential-check.ts`):
+
+- OAuth access tokens: `POST /api/v1/oauth/introspect` (live and `aud` equal to this `/mcp` endpoint). API keys: `GET /api/v1/payment/credits/balance` with `x-api-key`, read-only and free; the API's auth guard answers 401 for an unknown, expired or revoked key, and any non-401 answer below 500 (200, 404 without a subscription, 403 for an app-scoped key) means the key is accepted.
+- An invalid, expired or revoked credential gets 401 with `WWW-Authenticate: Bearer error="invalid_token", error_description="...", resource_metadata="...", scope="webcite:mcp"` (the keyless challenge plus the RFC 6750 error), and no JSON-RPC handling.
+- Cache window: a valid answer is kept 60 s (capped at the token's `exp`), an invalid answer 30 s, keyed by sha256 of the credential. A revocation takes effect within 60 s.
+- API outage (network error, timeout, 5xx or 429 from the check): a credential validated inside the window is still served; one whose last check was invalid still gets 401; any other credential gets 503 with `Retry-After: 10` and a JSON-RPC error (`-32000`, "Authentication is temporarily unavailable"), never 401, so clients do not start re-authentication. Each 503 logs `MCP credential check unavailable (<reason>)`; credentials are never logged.
 
 A client can narrow its own tool list with `?profile=core|docs|research|public` and `?read_only=true` on the `/mcp` URL. Both only remove tools from the served profile; unknown values are ignored.
 

@@ -10,6 +10,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
 import { WebCiteApiClient } from './api-client.js';
+import { createCredentialCheck } from './credential-check.js';
 import { createMcpServer, runSmoke } from './index.js';
 import { parseToolSelection, resolveProfile } from './profiles.js';
 import { SERVER_VERSION } from './version.js';
@@ -17,42 +18,8 @@ import { SERVER_VERSION } from './version.js';
 const DEFAULT_API_URL = 'https://api.webcite.co';
 const DEFAULT_PORT = 8787;
 const OAUTH_SCOPE = 'webcite:mcp';
-/** Access tokens from Webcite's OAuth server; plain API keys never take this path. */
-const OAUTH_TOKEN_PREFIX = 'webcite_oat_';
-const INTROSPECTION_CACHE_MS = 60_000;
-
-/**
- * Is this OAuth access token live and issued for this MCP endpoint? Asks the API's introspection
- * endpoint and caches a live answer for up to a minute. Returns undefined when the API cannot be
- * reached, so the request continues and the API validates the token itself.
- */
-function createTokenCheck(apiBaseUrl: string) {
-  const cache = new Map<string, number>();
-  const audience = `${new URL(apiBaseUrl).origin}/mcp`;
-  return async (token: string): Promise<boolean | undefined> => {
-    const until = cache.get(token);
-    if (until && until > Date.now()) return true;
-    try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/v1/oauth/introspect`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ token }).toString(),
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) return undefined;
-      const body = (await res.json()) as { active?: boolean; aud?: string; exp?: number };
-      const live = body.active === true && body.aud === audience;
-      if (live) {
-        // ponytail: unbounded only in theory; entries die with their token, sweep when the map grows.
-        if (cache.size > 10_000) cache.clear();
-        cache.set(token, Math.min(Date.now() + INTROSPECTION_CACHE_MS, (body.exp ?? 0) * 1000));
-      }
-      return live;
-    } catch {
-      return undefined;
-    }
-  };
-}
+/** Seconds a client should wait before retrying while the credential check is unavailable. */
+const AUTH_RETRY_AFTER_S = 10;
 
 export function extractApiKey(req: IncomingMessage): string | undefined {
   const headerKey = req.headers['x-api-key'];
@@ -104,7 +71,7 @@ export function createRemoteMcpApp(options?: {
   const profile = options?.profile ?? resolveProfile(process.env.WEBCITE_MCP_PROFILE ?? 'public');
   const resourceMetadata = `${new URL(apiBaseUrl).origin}/.well-known/oauth-protected-resource/mcp`;
   const challenge = `resource_metadata="${resourceMetadata}", scope="${OAUTH_SCOPE}"`;
-  const tokenIsLive = createTokenCheck(apiBaseUrl);
+  const checkCredential = createCredentialCheck(apiBaseUrl);
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
@@ -167,12 +134,29 @@ export function createRemoteMcpApp(options?: {
       );
       return;
     }
-    if (apiKey.startsWith(OAUTH_TOKEN_PREFIX) && (await tokenIsLive(apiKey)) === false) {
+    // Every request proves its credential before any JSON-RPC handling (cached, see credential-check.ts).
+    const credential = await checkCredential(apiKey);
+    if (credential.status === 'invalid') {
       res.writeHead(401, {
         'content-type': 'application/json',
-        'www-authenticate': `Bearer error="invalid_token", error_description="The access token is expired or revoked", ${challenge}`,
+        'www-authenticate': `Bearer error="invalid_token", error_description="The API key or access token is invalid, expired or revoked", ${challenge}`,
       });
-      res.end(JSON.stringify({ error: 'invalid_token' }));
+      res.end(JSON.stringify({
+        error: 'invalid_token',
+        message: 'This API key or access token is invalid, expired or revoked. Sign in again with OAuth, or create an API key at https://webcite.co/api-keys.',
+        get_key: 'https://webcite.co/api-keys',
+      }));
+      return;
+    }
+    if (credential.status === 'unavailable') {
+      // Not 401: the credential may be fine, and a 401 would send clients into re-authentication.
+      console.error(`MCP credential check unavailable (${credential.reason}); answered 503`);
+      res.writeHead(503, { 'content-type': 'application/json', 'retry-after': String(AUTH_RETRY_AFTER_S) });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32000, message: `Authentication is temporarily unavailable. Retry in ${AUTH_RETRY_AFTER_S} seconds.` },
+      }));
       return;
     }
 
