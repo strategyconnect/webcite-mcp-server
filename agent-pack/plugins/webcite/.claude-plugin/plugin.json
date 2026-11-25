@@ -1,0 +1,22 @@
+{
+  "name": "webcite",
+  "version": "1.0.0",
+  "description": "Webcite for AI agents: parse PDFs, scans and office files to Markdown, verify claims against sources with citations and verdicts, check quotes, fact-check whole documents and cross-check figures, through the hosted Webcite MCP server.",
+  "author": {
+    "name": "Webcite",
+    "email": "support@webcite.co",
+    "url": "https://webcite.co"
+  },
+  "homepage": "https://webcite.co/api-docs/mcp",
+  "license": "MIT",
+  "keywords": [
+    "webcite",
+    "mcp",
+    "pdf-to-markdown",
+    "document-parsing",
+    "ocr",
+    "claim-verification",
+    "fact-checking",
+    "citations"
+  ]
+}

@@ -8,6 +8,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
 import { WebCiteApiClient } from './api-client.js';
 import { createMcpServer, runSmoke } from './index.js';
 import { parseToolSelection, resolveProfile } from './profiles.js';
@@ -69,6 +70,30 @@ export function extractApiKey(req: IncomingMessage): string | undefined {
   return undefined;
 }
 
+/**
+ * The MCP-Protocol-Version this server answers a request under. A well-formed revision newer than
+ * the latest one the SDK implements (Claude sends 2026-07-28) is served at LATEST_PROTOCOL_VERSION,
+ * the version initialize negotiates for it, instead of a 400. Supported versions, a missing header
+ * and malformed or unknown older values are left to the SDK, which answers the last two with 400.
+ */
+export function servedProtocolVersion(header: string | undefined): string | undefined {
+  return header !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(header) && header > LATEST_PROTOCOL_VERSION
+    ? LATEST_PROTOCOL_VERSION
+    : header;
+}
+
+/** Rewrites the header in place on this request: the transport reads rawHeaders, Node code reads headers. */
+function applyServedProtocolVersion(req: IncomingMessage): void {
+  const raw = req.headers['mcp-protocol-version'];
+  const sent = Array.isArray(raw) ? raw[0] : raw;
+  const served = servedProtocolVersion(sent);
+  if (served === sent || served === undefined) return;
+  req.headers['mcp-protocol-version'] = served;
+  for (let i = 0; i < req.rawHeaders.length; i += 2) {
+    if (req.rawHeaders[i].toLowerCase() === 'mcp-protocol-version') req.rawHeaders[i + 1] = served;
+  }
+}
+
 export function createRemoteMcpApp(options?: {
   apiBaseUrl?: string;
   profile?: ReturnType<typeof resolveProfile>;
@@ -112,7 +137,8 @@ export function createRemoteMcpApp(options?: {
       return;
     }
 
-    if (url.pathname !== '/mcp') {
+    // /mcp/ is the same endpoint as /mcp.
+    if (url.pathname !== '/mcp' && url.pathname !== '/mcp/') {
       res.writeHead(404, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ error: 'not_found', hint: 'POST/GET https://api.webcite.co/mcp' }));
       return;
@@ -178,6 +204,7 @@ export function createRemoteMcpApp(options?: {
 
         // Backend job IDs carry durable state. A fresh transport avoids lost browser
         // session headers or process restarts blocking otherwise authenticated tools.
+        applyServedProtocolVersion(req);
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         const server = createMcpServer(new WebCiteApiClient(apiKey, apiBaseUrl), profile, true, parseToolSelection(url.searchParams));
         res.once('close', () => { void server.close().catch(error => console.error('MCP transport close failed', error)); });

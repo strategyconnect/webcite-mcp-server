@@ -1,6 +1,6 @@
 {
   "name": "webcite-mcp-server",
-  "version": "1.9.66",
+  "version": "1.9.67",
   "mcpName": "co.webcite/webcite",
   "description": "Webcite MCP server for AI apps and agents: parse PDFs, scans and office files to Markdown with OCR, verify claims against sources with verdicts, bind citations to the passages they quote, search sources, and review whole documents and their figures.",
   "main": "dist/index.js",

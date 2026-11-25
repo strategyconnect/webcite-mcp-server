@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "webcite": {
+      "type": "http",
+      "url": "https://api.webcite.co/mcp"
+    }
+  }
+}

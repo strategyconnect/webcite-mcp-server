@@ -123,9 +123,26 @@ export function toolAnnotations(name: string): ToolAnnotations {
   };
 }
 
+/**
+ * Tools Claude Code loads up front instead of deferring to tool search, through
+ * the per-tool `_meta["anthropic/alwaysLoad"]` key (https://code.claude.com/docs/en/mcp).
+ * Four, inside Anthropic's guidance of keeping 3 to 5 tools non-deferred. Other clients ignore the key.
+ */
+export const ALWAYS_LOADED_TOOL_NAMES: readonly string[] = [
+  'webcite_guide',
+  'verify_claim',
+  'extract_document',
+  'review_document',
+];
+
 export function withAnnotations<D extends { name: string }>(
   tool: D,
-): D & { title: string; annotations: ToolAnnotations } {
+): D & { title: string; annotations: ToolAnnotations; _meta?: Record<string, unknown> } {
   const annotations = toolAnnotations(tool.name);
-  return { ...tool, title: annotations.title, annotations };
+  return {
+    ...tool,
+    title: annotations.title,
+    annotations,
+    ...(ALWAYS_LOADED_TOOL_NAMES.includes(tool.name) ? { _meta: { 'anthropic/alwaysLoad': true } } : {}),
+  };
 }
