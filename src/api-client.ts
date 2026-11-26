@@ -188,7 +188,7 @@ export class WebCiteApiClient {
 
   private responseFailure(response: Response, message: string): ApiClientError {
     return new ApiClientError(response.status, message,
-      creditUsage(withCreditHeaders({}, response.headers)));
+      creditUsage(withCreditHeaders({}, response.headers)), { local: true });
   }
 
   private async responseJson<T>(response: Response, signal?: AbortSignal | null): Promise<T> {
@@ -521,7 +521,7 @@ export class WebCiteApiClient {
         typeof data.source_version_id !== 'string' || !data.source_version_id.trim() || data.source_version_id !== data.source_version_id.trim() || data.source_version_id.length > 191 ||
         typeof data.asset_url !== 'string' || !data.asset_url.trim() || typeof data.filename !== 'string' || !data.filename.trim() || data.filename.length > 255 ||
         !Number.isSafeInteger(data.size) || (data.size as number) <= 0 || (data.size as number) > 100 * 1024 * 1024)
-      throw new ApiClientError(502, 'URL upload response did not contain usable stored asset references', creditUsage(result));
+      throw new ApiClientError(502, 'URL upload response did not contain usable stored asset references', creditUsage(result), { local: true });
     return { ...data, ...(creditUsage(result) ? { credit_usage: creditUsage(result) } : {}) } as UploadResponse;
   }
 
@@ -560,7 +560,7 @@ export class WebCiteApiClient {
     };
     const data = result?.data;
     if (result.successCode !== 200 || typeof data?.asset_id !== 'string' || !data.asset_id) {
-      throw new ApiClientError(502, 'Upload response did not contain a usable asset_id');
+      throw new ApiClientError(502, 'Upload response did not contain a usable asset_id', undefined, { local: true });
     }
     const usage = creditUsage(result);
     return {
@@ -576,7 +576,7 @@ export class WebCiteApiClient {
   async registerSourceBytes(assetId: string, fileBuffer: Uint8Array, fileName: string): Promise<Record<string, unknown>> {
     const result = await this.postFile('/api/v2/sources', fileBuffer, fileName, assetId) as Record<string, unknown>;
     if (typeof result?.sourceVersionId !== 'string' || !result.sourceVersionId || result.assetId !== assetId)
-      throw new ApiClientError(502, 'Source registration returned no usable sourceVersionId or a mismatched assetId');
+      throw new ApiClientError(502, 'Source registration returned no usable sourceVersionId or a mismatched assetId', undefined, { local: true });
     return result;
   }
 

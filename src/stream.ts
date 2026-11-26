@@ -1,7 +1,7 @@
 import { creditUsage, type CreditUsage } from './credit-usage.js';
 /** Consume the backend result and explicit terminal marker. Partial evidence is not a result. */
 import type { SSEEvent, VerifyClaimResponse } from './types.js';
-import { ToolFailure } from './errors.js';
+import { safeErrorText, ToolFailure } from './errors.js';
 import { validateVerification } from './verification-response.js';
 
 export async function collectStreamEvents(
@@ -29,17 +29,20 @@ export async function collectStreamEvents(
     });
   try {
     for await (const event of stream) {
-      events.push(event);
       if (event.credit_usage !== undefined) receipt = creditUsage(event);
       const envelope = event.data && typeof event.data === 'object'
         ? event.data as Record<string, unknown> : undefined;
       const kind = event.event === 'message' ? envelope?.type : event.event;
       if (kind === 'error' || kind === 'accounting_error') {
-        const reason = `Verification stream reported ${kind}${envelope?.message ? `: ${envelope.message}` : ''}`;
+        // A backend error event is shown only by its kind and a safe message (no model, provider or host).
+        const message = safeErrorText(envelope?.message);
+        events.push({ ...event, data: { type: kind, ...(message ? { message } : {}) } });
+        const reason = `Verification stream reported ${kind}${message ? `: ${message}` : ''}`;
         const creditError = /insufficient credits|credit.balance.exhausted|INSUFFICIENT_CREDITS/i
           .test(JSON.stringify(envelope ?? {}));
         throw incomplete(reason, creditError);
       }
+      events.push(event);
       if (kind === 'result' || kind === 'complete') {
         result = validateVerification(event.event === 'message' ? envelope?.data : event.data);
         resultReceipt = creditUsage(result);
@@ -62,7 +65,7 @@ export async function collectStreamEvents(
       });
     }
     if (!events.length) throw error;
-    throw incomplete(`Verification stream disconnected: ${error instanceof Error ? error.message : 'unknown error'}`);
+    throw incomplete(`Verification stream disconnected${error instanceof Error && safeErrorText(error.message) ? `: ${error.message}` : ''}`);
   }
   if (!result || !done) throw incomplete('Verification stream ended without a result and completion marker');
   return { result: { ...result, ...(currentReceipt() ? { credit_usage: currentReceipt() } : {}), ...(usage ? { stream_usage: usage,

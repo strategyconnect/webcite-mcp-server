@@ -53,7 +53,46 @@ test('malformed stored response remains failure with its known upload receipt', 
 
 test('uncertain storage refusal is not retried or turned into upload success', async () => {
   await withFetch(() => new Response(JSON.stringify({message:'Storage unavailable'}), {status:503}), async (api,calls) => {
-    await assert.rejects(handlers.upload_url({url:'https://example.org/report.pdf'},api), /Storage unavailable/);
+    // A 5xx body is never shown (audit M7); the client gets the status and a reference instead.
+    await assert.rejects(handlers.upload_url({url:'https://example.org/report.pdf'},api), /Webcite API error \(503\)/);
     assert.equal(calls.length,1);
+  });
+});
+
+// Security audit 2026-11-26 (lane 4) L2: private, loopback, link-local and metadata hosts reached the
+// backend guard. The backend guard stays; this is defence in depth at the MCP layer.
+const dns = require('node:dns');
+for (const url of ['https://127.0.0.1/x', 'https://[::1]/x', 'https://10.0.0.5/x', 'https://169.254.169.254/latest/meta-data',
+  'https://metadata.google.internal/x', 'https://localhost/x', 'https://[::ffff:127.0.0.1]/x', 'https://192.168.1.10/x',
+  'https://172.16.0.1/x', 'https://100.64.0.1/x', 'https://[fd00::1]/x', 'https://[fe80::1]/x', 'https://0.0.0.0/x',
+  'https://2130706433/x', 'https://svc.cluster.local/x']) {
+  test('private or metadata host refused before API dispatch: ' + url, async () => {
+    await withFetch(() => { throw new Error('must not dispatch'); }, async (api, calls) => {
+      await assert.rejects(handlers.upload_url({ url }, api), /public/);
+      assert.equal(calls.length, 0);
+    });
+  });
+}
+
+test('a hostname that resolves to a private address is refused; one that resolves publicly is sent (control)', async (t) => {
+  const answers = { 'rebind.example': [{ address: '10.1.2.3', family: 4 }], 'public.example': [{ address: '93.184.215.14', family: 4 }],
+    'mixed.example': [{ address: '93.184.215.14', family: 4 }, { address: '::1', family: 6 }] };
+  t.mock.method(dns.promises, 'lookup', async (host) => answers[host] ?? []);
+  await withFetch(() => { throw new Error('must not dispatch'); }, async (api, calls) => {
+    await assert.rejects(handlers.upload_url({ url: 'https://rebind.example/x.pdf' }, api), /public/);
+    await assert.rejects(handlers.upload_url({ url: 'https://mixed.example/x.pdf' }, api), /public/);
+    assert.equal(calls.length, 0);
+  });
+  await withFetch(() => new Response(JSON.stringify(stored)), async (api, calls) => {
+    await handlers.upload_url({ url: 'https://public.example/x.pdf' }, api);
+    assert.equal(calls.length, 1);
+  });
+});
+
+test('a DNS failure at the MCP layer leaves the decision to the backend guard (no new rejection)', async (t) => {
+  t.mock.method(dns.promises, 'lookup', async () => { throw Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' }); });
+  await withFetch(() => new Response(JSON.stringify(stored)), async (api, calls) => {
+    await handlers.upload_url({ url: 'https://unresolvable.example/x.pdf' }, api);
+    assert.equal(calls.length, 1);
   });
 });

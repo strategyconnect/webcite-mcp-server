@@ -20,6 +20,7 @@ import {
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ToolFailure, WebCiteApiClient } from './api-client.js';
+import { errorReference } from './errors.js';
 import { handlers } from './handlers.js';
 import { ALL_TOOLS } from './tools.js';
 import { SERVER_VERSION } from './version.js';
@@ -147,12 +148,16 @@ export function createMcpServer(
         };
       }
 
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      // An unexpected error can name an internal host or a dependency; the client gets a reference only.
+      const request_id = errorReference();
+      console.error(`MCP tool ${name} failed (reference ${request_id})`, error);
+      const message = `The tool could not complete this request. Reference: ${request_id}.`;
       return {
         content: [{ type: 'text', text: `Error: ${message}` }],
         structuredContent: {
           code: 'api_error',
           message,
+          details: { request_id },
           actionable:
             'Inspect the error and any saved operation before repeating a chargeable call. If retrying a JSON verification, reuse its original Idempotency-Key and identical inputs.',
         },
