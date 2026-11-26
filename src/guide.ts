@@ -55,6 +55,8 @@ const TOOL_HINTS =
   'Each tool lists a title and MCP behaviour hints. Read-only tools (the guide, balance and saved-result reads) change nothing. Paid checks and uploads add records and spend credits but do not change or delete existing data. No MCP tool deletes data. On servers implementing data deletion, the REST API deletes an uploaded file and everything derived from it (stored bytes, extracted text and units, embeddings, search entries and the 24-hour cached read) with `DELETE /api/v1/files/{asset_id}`, and verification results with `DELETE /api/v1/citations/{id}` or `POST /api/v1/citations/delete` (up to 100 ids). These calls are free; reviews and citations that used a deleted file stay until deleted themselves. A 503 from a file delete means part of it failed after retries; repeat the call to finish. Folder repair, learning apply and operation settle, release and resolve change existing state and are marked destructive.';
 const API_TIMEOUT =
   'Local SDK and self-hosted MCP API requests allow up to 15 minutes (900000 ms) for response headers and body by default. Set `WEBCITE_API_TIMEOUT_MS` to a positive integer of milliseconds to change it; invalid values fall back to the default with a warning.';
+const HOSTED_ERRORS =
+  'Tool errors never show a raw API body. A 5xx or unexpected error returns a generic message and `details.request_id` (also in the message as "Reference: mcp_..."); quote it to support. A 4xx shows only its message, and `details.error_code` when the API sent one. Hosted MCP: while the credential check cannot answer, discovery (`initialize`, `tools/list`) still works, but a tool call waits for the check and returns HTTP 503 `credential_check_unavailable` with Retry-After if it still cannot answer; retry it. An address that keeps sending invalid keys gets HTTP 429 `too_many_failed_auth` with Retry-After. `upload_url` refuses private, loopback, link-local and metadata hosts.';
 const STATED_FX_EVIDENCE =
   'On serving verification releases implementing claim-stated FX comparison, one unambiguous claim-stated equality or unit ratio between ISO currencies can retain auditable conversion arithmetic. The rate is never fetched or assumed; an ambiguous pair quote or conflicting stated rates remains unresolved. Conflicting or missing printed currency/scale declarations cannot supply bare source figures. Existing evidence comparability guards run before stance adjustment. Conversions use only explicitly printed source currency and scale. The arithmetic does not certify the claim or independently promote a citation stance; a rate that cannot establish the proposed support or contradiction leaves that conclusion unresolved.';
 
@@ -104,6 +106,7 @@ const BILLING_REFERENCE = [
   MCP_PROFILES,
   TOOL_HINTS,
   API_TIMEOUT,
+  HOSTED_ERRORS,
   VERIFICATION_TIMEOUT,
   AGENT_CHECKPOINTS,
   DURABLE_API_BASE,

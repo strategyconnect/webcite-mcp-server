@@ -74,6 +74,7 @@ import {
 } from './formatters.js';
 import { collectStreamEvents } from './stream.js';
 import { renderWebciteGuide } from './guide.js';
+import { isNonPublicHost } from './url-guard.js';
 import type {
   FindContradictionsOptions,
   NumberInventoryOptions,
@@ -2147,6 +2148,8 @@ export const handlers: Record<string, ToolHandler> = {
         (parsed.port && parsed.port !== '443') ||
         (filename !== undefined && (typeof filename !== 'string' || !filename.trim() || filename.length > 255)))
       throw new ToolFailure('invalid_argument', 'Use a public HTTPS URL without credentials and an optional display filename');
+    if (await isNonPublicHost(parsed.hostname))
+      throw new ToolFailure('invalid_argument', 'The URL must point to a public web server, not a private, loopback, link-local or metadata address');
     const result = await wrapApi(client.uploadUrl({ url, ...(filename !== undefined ? { filename: filename as string } : {}) }));
     return ok(`# File Uploaded Successfully\n**Asset ID:** ${result.asset_id}\n**Source version ID:** ${result.source_version_id}\n**Filename:** ${result.filename}\n**Size:** ${result.size} bytes\n${creditUsage(result) ? '' : 'Request credit usage: unknown; preserve the upload receipt.'}`, { ...result });
   },
@@ -2258,7 +2261,7 @@ export const handlers: Record<string, ToolHandler> = {
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 400 && /Unsupported document type/i.test(error.body)) {
         throw new ToolFailure('invalid_argument', 'analyze_document rejected this file format on the current backend.', {
-          details: { status: error.status, body: error.body },
+          details: { status: error.status, request_id: error.request_id },
           actionable: 'If this image format is unsupported here, use extract_document to inspect its text, then review_document for a saved full review. Do not retry analyze_document on the same unsupported file.',
         });
       }

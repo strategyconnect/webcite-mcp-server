@@ -10,6 +10,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
 import { WebCiteApiClient } from './api-client.js';
+import { clientIp, createFailedAuthLimit, type FailedAuthLimitOptions } from './auth-limit.js';
 import { createCredentialCheck } from './credential-check.js';
 import { createMcpServer, runSmoke } from './index.js';
 import { parseToolSelection, resolveProfile } from './profiles.js';
@@ -18,6 +19,19 @@ import { SERVER_VERSION } from './version.js';
 const DEFAULT_API_URL = 'https://api.webcite.co';
 const DEFAULT_PORT = 8787;
 const OAUTH_SCOPE = 'webcite:mcp';
+/** JSON-RPC methods that run no tool: served while a credential check is undecided (see #487). */
+const DISCOVERY_METHODS = new Set(['initialize', 'ping', 'tools/list']);
+
+export { clientIp };
+
+/** True when every message in the body is discovery or a notification, so no tool can run. */
+function discoveryOnly(body: unknown): boolean {
+  const messages = Array.isArray(body) ? body : [body];
+  return messages.length > 0 && messages.every((m) => {
+    const method = (m as { method?: unknown } | null)?.method;
+    return typeof method === 'string' && (DISCOVERY_METHODS.has(method) || method.startsWith('notifications/'));
+  });
+}
 
 export function extractApiKey(req: IncomingMessage): string | undefined {
   const headerKey = req.headers['x-api-key'];
@@ -64,6 +78,8 @@ export function createRemoteMcpApp(options?: {
   profile?: ReturnType<typeof resolveProfile>;
   /** Longest a request waits for its credential check (default 5 s); tests shorten it. */
   credentialCheckDeadlineMs?: number;
+  /** Uncached credential checks per client IP that did not prove valid (default 20 per minute). */
+  failedAuthLimit?: FailedAuthLimitOptions;
 }): {
   handler: (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 } {
@@ -72,6 +88,19 @@ export function createRemoteMcpApp(options?: {
   const resourceMetadata = `${new URL(apiBaseUrl).origin}/.well-known/oauth-protected-resource/mcp`;
   const challenge = `resource_metadata="${resourceMetadata}", scope="${OAUTH_SCOPE}"`;
   const checkCredential = createCredentialCheck(apiBaseUrl, { deadlineMs: options?.credentialCheckDeadlineMs });
+  const failedAuth = createFailedAuthLimit(options?.failedAuthLimit);
+
+  const sendInvalidToken = (res: ServerResponse) => {
+    res.writeHead(401, {
+      'content-type': 'application/json',
+      'www-authenticate': `Bearer error="invalid_token", error_description="The API key or access token is invalid, expired or revoked", ${challenge}`,
+    });
+    res.end(JSON.stringify({
+      error: 'invalid_token',
+      message: 'This API key or access token is invalid, expired or revoked. Sign in again with OAuth, or create an API key at https://webcite.co/api-keys.',
+      get_key: 'https://webcite.co/api-keys',
+    }));
+  };
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
@@ -134,23 +163,23 @@ export function createRemoteMcpApp(options?: {
       );
       return;
     }
-    // Every request proves its credential before any JSON-RPC handling (cached, see credential-check.ts).
-    const credential = await checkCredential(apiKey);
-    if (credential.status === 'invalid') {
-      res.writeHead(401, {
-        'content-type': 'application/json',
-        'www-authenticate': `Bearer error="invalid_token", error_description="The API key or access token is invalid, expired or revoked", ${challenge}`,
-      });
-      res.end(JSON.stringify({
-        error: 'invalid_token',
-        message: 'This API key or access token is invalid, expired or revoked. Sign in again with OAuth, or create an API key at https://webcite.co/api-keys.',
-        get_key: 'https://webcite.co/api-keys',
-      }));
-      return;
+    // A client IP that keeps presenting unproven credentials is refused before the API is asked.
+    const ip = clientIp(req);
+    const counted = ip !== undefined && !checkCredential.isCached(apiKey);
+    if (counted) {
+      const taken = failedAuth.take(ip);
+      if (!taken.ok) {
+        res.writeHead(429, { 'content-type': 'application/json', 'retry-after': String(taken.retryAfterS) });
+        res.end(JSON.stringify({ error: 'too_many_failed_auth', message: 'Too many requests with an invalid API key or access token from this address. Retry later with a valid credential.' }));
+        return;
+      }
     }
-    if (credential.status === 'unavailable') {
-      // Undecided is not invalid: serve the request as before the check existed; a tool call still meets the API's own auth.
-      console.error(`MCP credential check skipped (${credential.reason}); request passed to the MCP handler`);
+    // Every request proves its credential before any JSON-RPC handling (cached, see credential-check.ts).
+    let credential = await checkCredential(apiKey);
+    if (counted && credential.status === 'valid') failedAuth.refund(ip);
+    if (credential.status === 'invalid') {
+      sendInvalidToken(res);
+      return;
     }
 
     try {
@@ -177,6 +206,25 @@ export function createRemoteMcpApp(options?: {
             res.end(JSON.stringify({ error: 'invalid_json' }));
             return;
           }
+        }
+
+        if (credential.status === 'unavailable' && !discoveryOnly(body)) {
+          // A tool call never runs on an undecided credential: wait for the check itself instead of the deadline.
+          credential = await checkCredential(apiKey, { wait: true });
+          if (counted && credential.status === 'valid') failedAuth.refund(ip);
+          if (credential.status === 'invalid') {
+            sendInvalidToken(res);
+            return;
+          }
+          if (credential.status === 'unavailable') {
+            console.error(`MCP credential check unavailable (${credential.reason}); tool request held`);
+            res.writeHead(503, { 'content-type': 'application/json', 'retry-after': '5' });
+            res.end(JSON.stringify({ error: 'credential_check_unavailable', message: 'Webcite could not confirm this API key or access token just now. Retry shortly.' }));
+            return;
+          }
+        } else if (credential.status === 'unavailable') {
+          // Undecided is not invalid: discovery is served as before the check existed (#487); no tool runs.
+          console.error(`MCP credential check skipped (${credential.reason}); request passed to the MCP handler`);
         }
 
         // Backend job IDs carry durable state. A fresh transport avoids lost browser
