@@ -2,6 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/webcite-mcp-server)](https://www.npmjs.com/package/webcite-mcp-server)
 [![MCP Registry](https://img.shields.io/badge/MCP_Registry-co.webcite%2Fwebcite-blue)](https://registry.modelcontextprotocol.io/v0.1/servers?search=co.webcite/webcite)
+[![strategyconnect/webcite-mcp-server MCP server](https://glama.ai/mcp/servers/strategyconnect/webcite-mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/strategyconnect/webcite-mcp-server)
 
 Webcite ([webcite.co](https://webcite.co)) is an evidence suite for AI apps and agents. It parses documents, verifies claims against sources and binds each citation to the passage it quotes. This package is its MCP server; the same jobs are available through the public REST API.
 
