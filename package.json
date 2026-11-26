@@ -51,7 +51,7 @@
   "author": "Webcite",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "undici": "^6.29.0"
   },
   "devDependencies": {
