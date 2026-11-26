@@ -1,12 +1,12 @@
 {
   "profile": "core",
-  "server_version": "1.9.67",
-  "instructions": "Webcite reads documents and checks claims against sources. Use it to: (1) convert a PDF, scan, spreadsheet or office file to Markdown with page and sheet locations (upload_file or upload_url, then extract_document); (2) verify one factual claim against web sources with citations and a verdict (verify_claim); (3) check that quotes appear in their sources (verify_batch); (4) fact-check every claim in a document with a coverage report (review_document, then get_document_review_job and get_document_review); (5) extract and cross-check figures (extract_figures, analyze_conflicts); (6) find sources without a verdict (search_sources). webcite_guide with workflow=choose lists each workflow with inputs and cost.\n\nWhen a user asks to audit an entire uploaded document or every figure on a slide, use review_document directly with its existing asset_id, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.\nKeep returned extraction structuredContent and reuse it in the conversation; repeated extract calls incur the stated per-call credits.\n\nWorkflows:\n1) Plain fact → verify_claim({ claim })\n2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch\n3) Figures / conflicts → extract_document first; analyze_document accepts PDF, spreadsheet and JPEG/PNG/WebP images. Image figures are OCR/model reads and need source review. extract_figures finds recognized metrics only; zero metrics is not a full numeric audit.\n4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); upload original bytes only if needed, then review_document with stable thread_id (no mandatory balance or extraction preflight), get_document_review_job until terminal, then get_document_review for saved results and coverage. No fixed claim count. Preserve completed results and unchecked source spans on errors or credit exhaustion. extract_figures only recognizes known metrics.\n5) Find the original source behind an image or slide → webcite_guide({ workflow: 'source_trace' }); extract_document, search_sources using exact table values and units, then get_source_preview on candidate URLs. Use verify_claim with confirmed source_urls for claim truth. ask_document is numerical Q&A over supplied text, not an external-source finder.\n\nDo not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.\nNever invent citation URLs. Prefer get_source_preview to show evidence.\nLocal and hosted profiles default to public. Use WEBCITE_MCP_PROFILE=core|docs|research|full to change local discovery.\n\nReporting saved results: Compact fields omitted are unknown, not absent. Report known material_claims (physical rows excluding duplicates), total_claims (all physical rows), duplicate_claims and non_factual_claims separately. Material counts can include non-factual rows and do not imply all rows are factual assertions. A duplicate display alias can have a different id; original_claim_id is its stored original identity and duplicate_of_id identifies the canonical assertion. Display aliases do not change stored IDs, citations or paid operations. Report pending, failed, rejected and uncovered counts separately. pending_claims is unfinished work and includes failed_claims; failed is a subset, never add it again to a total. Counts do not establish attempt history; do not call other unfinished rows never attempted without recorded attempt data. A provider access error does not rule out incomplete extraction or source coverage. Null or missing counts are unknown, never zero. Do not group unknown rejected or uncovered counts with known zero pending or failed counts. A completed job means processing finished; it does not prove complete source coverage. For a queued or running review, obey poll_after_ms with waits of at most 30 seconds. Never multiply remaining claims by per-claim latency into a long blind sleep. Stop polling immediately on a terminal status and report failed or interrupted work. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them, not routinely.",
+  "server_version": "1.9.68",
+  "instructions": "Webcite reads documents and checks claims against sources. Use it to: (1) convert a PDF, scan, spreadsheet or office file to Markdown with page and sheet locations (upload_file or upload_url, then extract_document); (2) verify one factual claim against web sources with citations and a verdict (verify_claim); (3) check that quotes appear in their sources (verify_batch); (4) fact-check every claim in a document with a coverage report (review_document, then get_document_review_job and get_document_review); (5) extract and cross-check figures (extract_figures, analyze_conflicts); (6) find sources without a verdict (search_sources). webcite_guide with workflow=choose lists each workflow with inputs and cost.\n\nTo audit an entire uploaded document or every figure on a slide, use review_document with its existing asset_id, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.\nReuse returned extraction structuredContent; each repeated extract call is charged again.\n\nWorkflows:\n1) Plain fact → verify_claim({ claim })\n2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch\n3) Figures / conflicts → extract_document first; analyze_document accepts PDF, spreadsheet and JPEG/PNG/WebP. Image figures are OCR/model reads and need source review. extract_figures finds recognized metrics only; zero metrics is not a full numeric audit.\n4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); upload original bytes only if needed, then review_document with stable thread_id (no mandatory balance or extraction preflight), get_document_review_job until terminal, then get_document_review for saved results and coverage. No fixed claim count. Preserve completed results and unchecked source spans on errors or credit exhaustion.\n5) Find the original source behind an image or slide → webcite_guide({ workflow: 'source_trace' }); extract_document, search_sources using exact table values and units, then get_source_preview on candidate URLs. Use verify_claim with confirmed source_urls for claim truth. ask_document is numerical Q&A over supplied text, not an external-source finder.\n\nDo not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.\nNever invent citation URLs. Prefer get_source_preview to show evidence.\nProfiles default to public; WEBCITE_MCP_PROFILE=core|docs|research|full changes local discovery.\n\nReporting saved results: Compact fields omitted are unknown, not absent. Report known material_claims (physical rows excluding duplicates), total_claims (all physical rows), duplicate_claims and non_factual_claims separately. Material counts can include non-factual rows and do not imply every row is factual. A duplicate display alias can have a different id; original_claim_id is its stored original identity and duplicate_of_id identifies the canonical assertion. Display aliases do not change stored IDs, citations or paid operations. Report pending, failed, rejected and uncovered counts separately. pending_claims is unfinished work and includes failed_claims; failed is a subset, never add it again to a total. Counts do not establish attempt history; without attempt data, do not call unfinished rows never attempted. A provider access error does not rule out incomplete extraction or source coverage. Null or missing counts are unknown, never zero. Do not group unknown rejected or uncovered counts with known zero pending or failed counts. A completed job means processing finished; it does not prove complete source coverage. For a queued or running review, obey poll_after_ms with waits of at most 30 seconds. Never multiply remaining claims by per-claim latency into a long blind sleep. Stop polling immediately on a terminal status and report failed or interrupted work. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them.",
   "tools": [
     {
       "name": "webcite_guide",
       "title": "Choose a Webcite workflow",
-      "description": "Lists Webcite workflows (parse a document, verify a claim, check quotes, review a whole document, check figures, trace a source) with inputs, order and cost. workflow=choose lists the options; workflow=source_trace covers finding the original source of a screenshot or slide; workflow=document_review covers checking every claim in an uploaded file; workflow=billing covers plan allocations and prices. Costs 0 credits.",
+      "description": "Lists Webcite workflows (parse a document, verify a claim, check quotes, review a whole document, check figures, trace a source) with inputs, order and cost. workflow=choose lists the options; workflow=source_trace covers finding the original source of a screenshot or slide; workflow=document_review covers checking every claim in an uploaded file; workflow=billing covers plan allocations and prices. Costs 0 credits. Related: get_credit_balance reads the balance of this account rather than plan prices.",
       "annotations": {
         "title": "Choose a Webcite workflow",
         "readOnlyHint": true,
@@ -43,7 +43,7 @@
     {
       "name": "get_credit_balance",
       "title": "Get credit balance",
-      "description": "Read the authenticated account credit balance for an explicit balance question or an unresolved credit refusal. A routine document review does not require this call; use inline credit_usage from normal responses. Costs 0 credits. Returns remaining, used and total credits; no billing change is made.",
+      "description": "Read the authenticated account credit balance for an explicit balance question or an unresolved credit refusal. A routine document review does not require this call; use inline credit_usage from normal responses. Costs 0 credits. Returns how many credits are left (remaining), used and total; no billing change is made. Related: webcite_guide with workflow=billing explains plan allocations and prices rather than this account's balance.",
       "annotations": {
         "title": "Get credit balance",
         "readOnlyHint": true,
@@ -58,7 +58,7 @@
     {
       "name": "verify_claim",
       "title": "Verify a claim against sources",
-      "description": "Fact-check one claim against web sources: returns citations, a stance for each source (supports/contradicts/neutral) and a verdict.\n\nUse this when you need to:\n- Fact-check one specific claim (whole-document review is a separate tool, review_document)\n- Find sources that support or contradict a statement\n- Get a confidence score for a claim's accuracy\n\nCredits: 2-4 depending on options (search: 2, +stance: 1, +verdict: 1)",
+      "description": "Fact-check one claim against web sources: returns citations, a stance for each source (supports/contradicts/neutral) and a verdict.\n\nUse this when you need to:\n- Fact-check one specific claim (whole-document review is a separate tool, review_document)\n- Find sources that support or contradict a statement\n- Check whether a statement is true, with a confidence score\n\nRelated: verify_claim_stream adds the intermediate stream events; verify_batch matches quotes to sources you supply, with no verdict; verify_numeric_claim covers arithmetic on retained figures; search_sources skips stance and verdict.\n\nCredits: 2-4 depending on options (search: 2, +stance: 1, +verdict: 1)",
       "annotations": {
         "title": "Verify a claim against sources",
         "readOnlyHint": false,
@@ -91,6 +91,7 @@
           "filters": {
             "type": "object",
             "additionalProperties": false,
+            "description": "Optional source constraints. A source whose required metadata is unknown does not match.",
             "properties": {
               "source_type": {
                 "type": "array",
@@ -98,24 +99,30 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Allowed source types (1 to 20), e.g. \"Government Document\", \"Dataset\", \"Journal\", \"Report\"."
               },
               "is_primary_source": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "true: primary sources only; false: non-primary only."
               },
               "official_country": {
                 "type": "string",
-                "pattern": "^[a-z]{2}$"
+                "pattern": "^[a-z]{2}$",
+                "description": "Two-letter lower-case country code, e.g. \"us\", for official sources of that country."
               },
               "publication_year": {
                 "type": "object",
                 "additionalProperties": false,
+                "description": "Inclusive publication-year range.",
                 "properties": {
                   "from": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Earliest year (4 digits)."
                   },
                   "to": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Latest year (4 digits), not before from."
                   }
                 }
               },
@@ -125,7 +132,8 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Only these domains and their subdomains (1 to 20)."
               },
               "exclude_domain": {
                 "type": "array",
@@ -133,7 +141,8 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Never these domains, their subdomains or redirects into them (1 to 20)."
               }
             }
           },
@@ -165,7 +174,7 @@
     {
       "name": "search_sources",
       "title": "Search for sources",
-      "description": "Search the web for sources on a query and return citations, without stance or verdict.\n\nUse this when you need to:\n- Find sources on a topic quickly\n- Trace an original report from a screenshot or slide using its distinctive values, units and years; returns candidate URLs\n- Get raw search results for further analysis\n- Save credits by skipping analysis\n\nCredits: 2 (search only)",
+      "description": "Search the web for sources on a query and return citations, without stance or verdict.\n\nUse this when you need to:\n- Find sources or references to cite on a topic quickly\n- Find official or primary sources, using filters for country, domain and year\n- Trace an original report from a screenshot or slide using its distinctive values, units and years; returns candidate URLs\n- Get raw search results for further analysis\n- Save credits by skipping analysis\n\nRelated: verify_claim also searches but judges each source and returns a verdict on the claim; get_source_preview opens one known source at its quoted passage.\n\nCredits: 2 (search only)",
       "annotations": {
         "title": "Search for sources",
         "readOnlyHint": false,
@@ -177,11 +186,12 @@
         "properties": {
           "query": {
             "type": "string",
-            "description": "Search query or claim to find sources for"
+            "description": "Search query or claim to find sources for. For source tracing, include the exact values, units and years."
           },
           "filters": {
             "type": "object",
             "additionalProperties": false,
+            "description": "Optional source constraints. A source whose required metadata is unknown does not match.",
             "properties": {
               "source_type": {
                 "type": "array",
@@ -189,24 +199,30 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Allowed source types (1 to 20), e.g. \"Government Document\", \"Dataset\", \"Journal\", \"Report\"."
               },
               "is_primary_source": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "true: primary sources only; false: non-primary only."
               },
               "official_country": {
                 "type": "string",
-                "pattern": "^[a-z]{2}$"
+                "pattern": "^[a-z]{2}$",
+                "description": "Two-letter lower-case country code, e.g. \"us\", for official sources of that country."
               },
               "publication_year": {
                 "type": "object",
                 "additionalProperties": false,
+                "description": "Inclusive publication-year range.",
                 "properties": {
                   "from": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Earliest year (4 digits)."
                   },
                   "to": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Latest year (4 digits), not before from."
                   }
                 }
               },
@@ -216,7 +232,8 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Only these domains and their subdomains (1 to 20)."
               },
               "exclude_domain": {
                 "type": "array",
@@ -224,7 +241,8 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Never these domains, their subdomains or redirects into them (1 to 20)."
               }
             }
           },
@@ -244,7 +262,7 @@
     {
       "name": "get_source_preview",
       "title": "Preview the source behind a citation",
-      "description": "Open a citation at its quoted passage in the source, to show the evidence.\n\nUse this when you need to:\n- Show the exact passage a citation came from (not just the URL)\n- Get a deep link that scrolls to the quote (web) or opens the cited PDF page\n- Verify a quote is actually present in its source before relying on it\n\nWorks for two source types:\n- **Web** (pass `url`): returns a text-fragment deep link (url#:~:text=quote).\n- **Document** (pass `asset_id` from upload_file): returns the cited page's extracted text and an asset_url#page=N link. Spreadsheets return the sheet grid.\n\nEvery preview reports **bindBack**: whether the quote was found in the source (grounded) and how it matched (exact / normalized / unbound). A quote that cannot be bound back is never reported as grounded.\n\nCredits: 1",
+      "description": "Open a citation at its quoted passage in the source, to show the evidence.\n\nUse this when you need to:\n- Show the exact passage a citation came from (not just the URL)\n- Get a deep link that scrolls to the quote (web) or opens the cited PDF page\n- Verify a quote is actually present in its source before relying on it\n\nWorks for two source types:\n- **Web** (pass `url`): returns a text-fragment deep link (url#:~:text=quote).\n- **Document** (pass `asset_id` from upload_file): returns the cited page's extracted text and an asset_url#page=N link. Spreadsheets return the sheet grid.\n\nEvery preview reports **bindBack**: whether the quote was found in the source (grounded) and how it matched (exact / normalized / unbound). A quote that cannot be bound back is never reported as grounded.\n\nRelated: verify_batch checks many quotes at once and returns a verification band per item; read_source_unit reads a stored source unit by its IDs rather than by URL, page or quote; get_citation returns a saved verification record, not the source passage.\n\nCredits: 1",
       "annotations": {
         "title": "Preview the source behind a citation",
         "readOnlyHint": true,
@@ -256,7 +274,7 @@
         "properties": {
           "url": {
             "type": "string",
-            "description": "Web source URL to preview (provide this OR asset_id)."
+            "description": "Web source URL to preview, as cited (provide this OR asset_id)."
           },
           "asset_id": {
             "type": "string",
@@ -264,11 +282,11 @@
           },
           "page": {
             "type": "number",
-            "description": "1-based page (PDF) or sheet index (spreadsheet). Default: 1"
+            "description": "1-based page (PDF) or sheet index (spreadsheet), for an asset_id source. Default: 1"
           },
           "quote": {
             "type": "string",
-            "description": "The cited quote to bind back against the source and highlight."
+            "description": "The cited quote to bind back against the source and highlight. Without it the preview shows the page but cannot report the quote as grounded."
           }
         }
       }
@@ -276,7 +294,7 @@
     {
       "name": "verify_batch",
       "title": "Verify several claims",
-      "description": "Check that quotes appear in the sources you provide (text, URL or uploaded file), many at once. Each item is a quote plus its source: inline text, a URL, or an uploaded asset.\n\nPer item you get back whether the quote is grounded, how it matched (exact / normalized / fuzzy / unbound), the best-matching passage and score even when unbound, a verification band, and a feedback_token.\n\nA fuzzy match is capped at needs_review and never reported as verified.\n\nUse this when you need to:\n- Check every citation in a document at once\n- Confirm quotes you (or another model) produced actually appear in their sources\n- Get feedback tokens so a human can accept or reject each result\n\nDeterministic — no model calls. Credits: 1 per item — the work is per item, so a 200-claim batch costs 200. Max 200 items per call.",
+      "description": "Check that quotes appear in the sources you provide (text, URL or uploaded file), many at once. Each item is a quote plus its source: inline text, a URL, or an uploaded asset.\n\nPer item you get back whether the quote is grounded, how it matched (exact / normalized / fuzzy / unbound), the best-matching passage and score even when unbound, a verification band, and a feedback_token.\n\nA fuzzy match is capped at needs_review and never reported as verified.\n\nUse this when you need to:\n- Check every citation in a document at once\n- Confirm quotes you (or another model) produced actually appear in their sources\n- Get feedback tokens so a human can accept or reject each result\n\nRelated: verify_claim returns a verdict from web search; get_source_preview shows one quote in place with a deep link; verify_feedback records a human verdict on one of these results.\n\nDeterministic — no model calls. Credits: 1 per item — the work is per item, so a 200-claim batch costs 200. Max 200 items per call.",
       "annotations": {
         "title": "Verify several claims",
         "readOnlyHint": false,
@@ -308,15 +326,15 @@
                 },
                 "url": {
                   "type": "string",
-                  "description": "A web source URL to resolve and check against."
+                  "description": "A web source URL to resolve and check against. Provide this, or source_text, or asset_id."
                 },
                 "asset_id": {
                   "type": "string",
-                  "description": "An uploaded asset ID (from upload_file) to check against."
+                  "description": "An uploaded asset ID (from upload_file or upload_url) to check against. Provide this, or source_text, or url."
                 },
                 "page": {
                   "type": "number",
-                  "description": "1-based page, for an asset source."
+                  "description": "1-based page, for an asset source. Omit to search the whole asset."
                 }
               },
               "required": [
@@ -333,7 +351,7 @@
     {
       "name": "upload_file",
       "title": "Upload a file",
-      "description": "Upload a PDF, scan, image, spreadsheet or office file to Webcite and get an asset_id for extraction or review.\n\nUse this when you need to:\n- Verify claims against a specific document\n- Provide additional context for fact-checking\n- Upload research papers or reports for analysis\n\nReturns a file ID you can pass as asset_id to get_source_preview, extract_document, extract_figures, classify_document and analyze_document.\n\nCredits: 1",
+      "description": "Upload a PDF, scan, image, spreadsheet or office file to Webcite and get an asset_id for extraction or review.\n\nUse this when you need to:\n- Verify claims against a specific document\n- Provide additional context for fact-checking\n- Upload research papers or reports for analysis\n\nReturns a file ID you can pass as asset_id to get_source_preview, extract_document, extract_figures, classify_document and analyze_document.\n\nRelated: upload_url fetches a file from a public HTTPS link instead of a local path; extract_document, extract_figures and classify_document can also read a file directly from asset_url without an upload.\n\nCredits: 1",
       "annotations": {
         "title": "Upload a file",
         "readOnlyHint": false,
@@ -345,7 +363,7 @@
         "properties": {
           "file_path": {
             "type": "string",
-            "description": "Absolute path to the file to upload"
+            "description": "Absolute path to a local file to upload (PDF, image, spreadsheet, docx, pptx, html or txt)."
           }
         },
         "required": [
@@ -356,7 +374,7 @@
     {
       "name": "extract_document",
       "title": "Extract a document to Markdown",
-      "description": "Parse a PDF, scan, spreadsheet or office file to Markdown page by page (OCR included), with the page or sheet each part came from. Returns normalized text with provenance: whole-doc markdown, per-page/sheet units carrying their page or sheet, and (for spreadsheets) sheet names.\n\nHandles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deterministic-first; scanned PDFs and images fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.\n\nOnly the text display is truncated. Some MCP clients omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.\n\nExtraction does not fact-check claims; whole-document or whole-slide external fact-checking is done by review_document, which reads the stored source itself.\n\nOptional visual_rendition: true creates model-generated layout evidence for an owned JPEG/PNG and exact source_version_id. Supply an explicit idempotency_key and preserve it on uncertain recovery. Returns a partial representation and source_units IDs for read_source_unit without replacing the selected source. The dedicated visual endpoint refuses on an unsupported server; never fall back to ordinary extraction. Default extraction is unchanged. Inspect operation receipts for provider usage; a layout role is not certification.\n\nCredits: 1",
+      "description": "Parse a PDF, scan, spreadsheet or office file to Markdown page by page (OCR included), with the page or sheet each part came from. Returns normalized text with provenance: whole-doc markdown, per-page/sheet units carrying their page or sheet, and (for spreadsheets) sheet names.\n\nHandles PDF, spreadsheets, docx, pptx, html, txt and JPEG/PNG/WebP images. Deterministic-first; scanned PDFs and images fall back to vision OCR. Check the returned read status and issue: empty text is not proof that a document has no data.\n\nOnly the text display is truncated. Some MCP clients omit structuredContent. Keep source_version_id from upload_file; get_latest_representation and read_source_unit retrieve saved units by ID. If the IDs are unavailable, extract_pages costs 1 credit. Do not treat a truncated display as full coverage.\n\nExtraction does not fact-check claims; whole-document or whole-slide external fact-checking is done by review_document, which reads the stored source itself.\n\nRelated: extract_pages returns chunks for RAG indexing instead of whole-document Markdown; extract_figures returns financial metrics only; analyze_document checks figures for internal conflicts.\n\nOptional visual_rendition: true creates model-generated layout evidence for an owned JPEG/PNG and exact source_version_id. Supply an explicit idempotency_key and preserve it on uncertain recovery. Returns a partial representation and source_units IDs for read_source_unit without replacing the selected source. The dedicated visual endpoint refuses on an unsupported server; never fall back to ordinary extraction. Default extraction is unchanged. Inspect operation receipts for provider usage; a layout role is not certification.\n\nCredits: 1",
       "annotations": {
         "title": "Extract a document to Markdown",
         "readOnlyHint": false,
@@ -406,7 +424,7 @@
     {
       "name": "extract_figures",
       "title": "Extract figures from a document",
-      "description": "Extract financial figures from a document with units, periods and source locations. Returns recognized financial metrics as tagged, source-grounded figures: the value normalized to its canonical unit, what it means (`metric`), `unit`, optional `entity`/`period`, a confidence `band`, whether it was confirmed against the cited cell (`bound`), and full `provenance` (asset, sheet, cell, page). This is not a complete inventory of every number.\n\nThis is deterministic financial-model reading: header scale (\"$M\" / \"'000\"), accounting negatives, period columns (FY2023 vs FY2024) and unit declarations are all honoured, so a percentage is never mis-read as a currency.\n\nReads spreadsheets (cell-level), PDFs with a text layer (grounded and cited by page), and other text formats deterministically. Scanned pages and images go through vision OCR first, then grounding, and are marked as model reads.\n\nThe output is in the figures format analyze_conflicts accepts. Credits: 2",
+      "description": "Extract financial figures from a document with units, periods and source locations. Returns recognized financial metrics as tagged, source-grounded figures: the value normalized to its canonical unit, what it means (`metric`), `unit`, optional `entity`/`period`, a confidence `band`, whether it was confirmed against the cited cell (`bound`), and full `provenance` (asset, sheet, cell, page). This is not a complete inventory of every number.\n\nThis is deterministic financial-model reading: header scale (\"$M\" / \"'000\"), accounting negatives, period columns (FY2023 vs FY2024) and unit declarations are all honoured, so a percentage is never mis-read as a currency.\n\nReads spreadsheets (cell-level), PDFs with a text layer (grounded and cited by page), and other text formats deterministically. Scanned pages and images go through vision OCR first, then grounding, and are marked as model reads.\n\nThe output is in the figures format analyze_conflicts accepts.\n\nRelated: analyze_document reads the figures and also checks them for conflicts and recomputations; extract_document returns all text, not only metrics.\n\nCredits: 2",
       "annotations": {
         "title": "Extract figures from a document",
         "readOnlyHint": false,
@@ -430,7 +448,7 @@
     {
       "name": "list_citations",
       "title": "List saved citations",
-      "description": "List your past verification results. Useful for reviewing previous fact-checks or continuing a research session.\n\nCredits: 1",
+      "description": "List your past claim verifications, with each record's ID, prompt and date. Paginated; filter by thread_id to continue one session.\n\nRelated: get_citation returns the full saved result (sources, stances, verdict) for one ID from this list; get_document_review reads saved whole-document reviews, which are not listed here.\n\nCredits: 1",
       "annotations": {
         "title": "List saved citations",
         "readOnlyHint": true,
@@ -463,7 +481,7 @@
     {
       "name": "get_citation",
       "title": "Get a saved citation",
-      "description": "Get the full details of a specific past verification by its ID.\n\nCredits: 1",
+      "description": "Get one saved claim verification by its citation ID, with its prompt, sources, stances and verdict. Reads the stored result; nothing is re-verified.\n\nRelated: list_citations finds the IDs; get_source_preview opens a cited source at its quoted passage.\n\nCredits: 1",
       "annotations": {
         "title": "Get a saved citation",
         "readOnlyHint": true,
@@ -475,7 +493,7 @@
         "properties": {
           "citation_id": {
             "type": "string",
-            "description": "The citation ID to retrieve"
+            "description": "The citation ID to retrieve, as returned by list_citations or a verification result."
           }
         },
         "required": [
@@ -486,7 +504,7 @@
     {
       "name": "analyze_conflicts",
       "title": "Check figures for conflicts",
-      "description": "Recompute totals and flag figures that conflict across the figures you supply. Input: figures already extracted (the extract_figures output format, or your own pipeline). The engine:\n\n- **recomputes** every derivable metric from its primitives (gross margin from revenue and COGS, growth from two periods) and flags where the stated value does not match the computed one;\n- **detects cross-document conflicts** — figures for the same metric/entity/period that disagree beyond the metric's tolerance;\n- **flags semantic conflicts** — values that are each plausible alone but jointly impossible;\n- returns a **review** flag with the concrete reasons a human should look.\n\nDeterministic, with no model calls, so a conflict either exists or it does not. Works on supplied figures only; uploaded files are read by analyze_document. Credits: 1.",
+      "description": "Recompute totals and flag figures that conflict across the figures you supply. Input: figures already extracted (the extract_figures output format, or your own pipeline). The engine:\n\n- **recomputes** every derivable metric from its primitives (gross margin from revenue and COGS, growth from two periods) and flags where the stated value does not match the computed one;\n- **detects cross-document conflicts** — figures for the same metric/entity/period that disagree beyond the metric's tolerance;\n- **flags semantic conflicts** — values that are each plausible alone but jointly impossible;\n- returns a **review** flag with the concrete reasons a human should look.\n\nDeterministic, with no model calls, so a conflict either exists or it does not. Works on supplied figures only.\n\nRelated: analyze_document takes a file instead of figures; extract_figures produces input in this format.\n\nCredits: 1.",
       "annotations": {
         "title": "Check figures for conflicts",
         "readOnlyHint": false,
@@ -498,7 +516,7 @@
         "properties": {
           "figures": {
             "type": "array",
-            "description": "Figures extracted across one or more documents.",
+            "description": "Figures extracted across one or more documents, in the extract_figures output format.",
             "items": {
               "type": "object",
               "properties": {
@@ -535,17 +553,20 @@
                   "description": "Where the value came from.",
                   "properties": {
                     "assetId": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Asset ID of the source document."
                     },
                     "documentName": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Display name of the source document."
                     },
                     "page": {
                       "type": "number",
                       "description": "1-based page."
                     },
                     "sheet": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Sheet name, for a spreadsheet."
                     },
                     "cell": {
                       "type": "string",
@@ -557,7 +578,7 @@
                         "rule",
                         "model"
                       ],
-                      "description": "How the value was extracted."
+                      "description": "How the value was extracted: rule (deterministic) or model (OCR or model read)."
                     }
                   },
                   "required": [
@@ -584,7 +605,7 @@
     {
       "name": "upload_url",
       "title": "Upload a file from a URL",
-      "description": "Upload a file from a public HTTPS URL to Webcite and get an asset_id for extraction or review. Stores the original file bytes, including through hosted MCP. No caller credentials or headers are forwarded. Private addresses, unsafe redirects, unsupported formats, empty files and files over 100 MB are refused. This does not access a local file or a private chat attachment. Save asset_id, asset_url and source_version_id; use the owned asset_id for review and extraction. An uncertain failure does not prove that no upload charge occurred; preserve the receipt rather than automatically repeating it. Credits: 1 for a stored upload.",
+      "description": "Upload a file from a public HTTPS URL to Webcite and get an asset_id for extraction or review. Stores the original file bytes, including through hosted MCP. No caller credentials or headers are forwarded. Private addresses, unsafe redirects, unsupported formats, empty files and files over 100 MB are refused. This does not access a local file or a private chat attachment. Save asset_id, asset_url and source_version_id; use the owned asset_id for review and extraction. An uncertain failure does not prove that no upload charge occurred; preserve the receipt rather than automatically repeating it.\n\nRelated: upload_file takes a local file instead of a link.\n\nCredits: 1 for a stored upload.",
       "annotations": {
         "title": "Upload a file from a URL",
         "readOnlyHint": false,
@@ -597,13 +618,13 @@
           "url": {
             "type": "string",
             "maxLength": 8192,
-            "description": "Public HTTPS URL of the original file."
+            "description": "Public HTTPS URL of the original file, up to 8,192 characters; at most 100 MB."
           },
           "filename": {
             "type": "string",
             "minLength": 1,
             "maxLength": 255,
-            "description": "Optional display filename matching the fetched format."
+            "description": "Optional display filename, 1 to 255 characters, whose extension matches the fetched format (for example report.pdf)."
           }
         },
         "required": [
@@ -614,7 +635,7 @@
     {
       "name": "get_document_review",
       "title": "Get a saved document review",
-      "description": "Read a document review: claims, verdicts, citations and passages not covered. Reads the saved review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review.",
+      "description": "Read a document review: claims, verdicts, citations and passages not covered. Reads the saved review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review. Related: get_document_review_job reports job status and progress, not results; review_document starts a review; get_citation reads a single-claim verification.",
       "annotations": {
         "title": "Get a saved document review",
         "readOnlyHint": true,
@@ -626,47 +647,52 @@
         "properties": {
           "review_id": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Saved review ID, as returned by review_document or get_document_review_job."
           },
           "offset": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Claim offset, 0 or more. Default 0."
           },
           "limit": {
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Claims per page, 1 to 100. Continue with next_offset until all claims are read."
+            "description": "Claims per page, 1 to 100 (default 50). Continue with next_offset until all claims are read."
           },
           "gap_offset": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Uncovered-passage offset, 0 or more. Default 0."
           },
           "gap_limit": {
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Uncovered passages per page, 1 to 100. Continue with next_gap_offset."
+            "description": "Uncovered passages per page, 1 to 100 (default 20). Continue with next_gap_offset."
           },
           "rejected_offset": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Rejected-candidate offset, 0 or more. Default 0."
           },
           "rejected_limit": {
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Rejected claim candidates per page, 1 to 100. Continue with next_rejected_offset."
+            "description": "Rejected claim candidates per page, 1 to 100 (default 20). Continue with next_rejected_offset."
           },
           "disposition_offset": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Nonclaim-disposition offset, 0 or more. Default 0."
           },
           "disposition_limit": {
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Explicit nonclaim dispositions per page. Continue with next_disposition_offset."
+            "description": "Explicit nonclaim dispositions per page, 1 to 100 (default 20). Continue with next_disposition_offset."
           }
         },
         "required": [
@@ -677,7 +703,7 @@
     {
       "name": "get_document_review_job",
       "title": "Get document review progress",
-      "description": "Check progress of a document review job. Reads the durable job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Terminal statuses are complete, partial_coverage, credits_exhausted and failed. Returns the job status, progress and review_id; saved claims and uncovered source spans are read by review_id with get_document_review.",
+      "description": "Check progress of a document review job. Reads the durable job by job_id at zero credits. Queued, running, waiting_parse and waiting_review are nonterminal. Terminal statuses are complete, partial_coverage, credits_exhausted and failed. Returns the job status, progress and review_id; saved claims and uncovered source spans are read by review_id with get_document_review. Related: review_document starts or resumes the job; get_ask_result reports an ask_document job, not a review.",
       "annotations": {
         "title": "Get document review progress",
         "readOnlyHint": true,
@@ -689,7 +715,8 @@
         "properties": {
           "job_id": {
             "type": "string",
-            "minLength": 36
+            "minLength": 36,
+            "description": "Review job ID returned by review_document: a 36-character UUID or 64 hex characters."
           }
         },
         "required": [
@@ -700,7 +727,7 @@
     {
       "name": "review_document",
       "title": "Fact-check a whole document",
-      "description": "Fact-check every material claim in an uploaded document and report coverage; starts a job and returns a job_id. Fits requests such as \"audit this document\" or \"check every figure on this slide\". Input: the existing asset_id(s), a prompt and a stable thread_id. The server parses the stored source itself, so no separate extraction step is needed. Unlike separate single-claim checks, it covers every claim and saves progress. Starts a durable full review and immediately returns a job_id; job status comes from get_document_review_job and saved result pages from get_document_review. Repeating the same input reuses its job without a new charge. A failed or credit-exhausted review resumes on the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); completed claims and the failed job receipt are preserved. Full coverage is reported only when coverage_complete is true.",
+      "description": "Fact-check every material claim in an uploaded document and report coverage; starts a job and returns a job_id. Fits requests such as \"audit this document\" or \"check every figure on this slide\". Input: the existing asset_id(s), a prompt and a stable thread_id. The server parses the stored source itself, so no separate extraction step is needed. Unlike separate single-claim checks, it covers every claim and saves progress. Starts a durable full review and immediately returns a job_id; job status comes from get_document_review_job and saved result pages from get_document_review. Repeating the same input reuses its job without a new charge. A failed or credit-exhausted review resumes on the same thread and exact inputs with retry_failed: true and the returned retry_idempotency_key (or the original key); completed claims and the failed job receipt are preserved. Full coverage is reported only when coverage_complete is true. Related: verify_claim covers a single claim; extract_document only parses; analyze_document stays within the numbers of the file.",
       "annotations": {
         "title": "Fact-check a whole document",
         "readOnlyHint": false,
@@ -724,7 +751,8 @@
             "items": {
               "type": "string",
               "minLength": 1
-            }
+            },
+            "description": "One or more distinct uploaded asset IDs (from upload_file or upload_url) to review together."
           },
           "thread_id": {
             "type": "string",
@@ -749,6 +777,7 @@
           "filters": {
             "type": "object",
             "additionalProperties": false,
+            "description": "Optional source constraints. A source whose required metadata is unknown does not match.",
             "properties": {
               "source_type": {
                 "type": "array",
@@ -756,24 +785,30 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Allowed source types (1 to 20), e.g. \"Government Document\", \"Dataset\", \"Journal\", \"Report\"."
               },
               "is_primary_source": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "true: primary sources only; false: non-primary only."
               },
               "official_country": {
                 "type": "string",
-                "pattern": "^[a-z]{2}$"
+                "pattern": "^[a-z]{2}$",
+                "description": "Two-letter lower-case country code, e.g. \"us\", for official sources of that country."
               },
               "publication_year": {
                 "type": "object",
                 "additionalProperties": false,
+                "description": "Inclusive publication-year range.",
                 "properties": {
                   "from": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Earliest year (4 digits)."
                   },
                   "to": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Latest year (4 digits), not before from."
                   }
                 }
               },
@@ -783,7 +818,8 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Only these domains and their subdomains (1 to 20)."
               },
               "exclude_domain": {
                 "type": "array",
@@ -791,7 +827,8 @@
                   "type": "string"
                 },
                 "minItems": 1,
-                "maxItems": 20
+                "maxItems": 20,
+                "description": "Never these domains, their subdomains or redirects into them (1 to 20)."
               }
             }
           },

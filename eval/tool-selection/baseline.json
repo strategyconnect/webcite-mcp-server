@@ -5,27 +5,27 @@
     "public": {
       "summary": {
         "profile": "public",
-        "server_version": "1.9.67",
+        "server_version": "1.9.68",
         "tools": 34,
         "positive_cases": 40,
         "negative_cases": 8,
         "expected_tool_in_profile": 40,
-        "lexical_top1_accuracy_pct": 70,
-        "lexical_top5_recall_pct": 90,
+        "lexical_top1_accuracy_pct": 82.5,
+        "lexical_top5_recall_pct": 100,
         "by_job": {
           "parse": {
             "cases": 8,
-            "top1": 3,
-            "top5": 7
+            "top1": 4,
+            "top5": 8
           },
           "verify": {
             "cases": 7,
-            "top1": 5,
-            "top5": 6
+            "top1": 6,
+            "top5": 7
           },
           "quotes": {
             "cases": 6,
-            "top1": 5,
+            "top1": 6,
             "top5": 6
           },
           "review": {
@@ -40,8 +40,8 @@
           },
           "search": {
             "cases": 6,
-            "top1": 4,
-            "top5": 4
+            "top1": 6,
+            "top5": 6
           }
         }
       },
@@ -53,29 +53,29 @@
             "upload_url"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "upload_file",
-          "lexical_top1_correct": false,
-          "lexical_top5_hit": false,
+          "lexical_top1": "upload_url",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
           "lexical_top5": [
             {
+              "name": "upload_url",
+              "score": 8.339
+            },
+            {
               "name": "upload_file",
-              "score": 7.01
+              "score": 8.04
             },
             {
               "name": "extract_document",
-              "score": 7.006
-            },
-            {
-              "name": "get_source_preview",
-              "score": 6.151
-            },
-            {
-              "name": "verify_claim",
-              "score": 5.033
+              "score": 6.448
             },
             {
               "name": "verify_claim_stream",
-              "score": 4.714
+              "score": 5.909
+            },
+            {
+              "name": "ask_document",
+              "score": 5.646
             }
           ]
         },
@@ -92,23 +92,23 @@
           "lexical_top5": [
             {
               "name": "extract_document",
-              "score": 10.964
-            },
-            {
-              "name": "extract_figures",
-              "score": 10.24
-            },
-            {
-              "name": "get_source_preview",
-              "score": 9.454
-            },
-            {
-              "name": "document_gaps",
-              "score": 7.806
+              "score": 10.189
             },
             {
               "name": "ask_document",
-              "score": 7.35
+              "score": 9.443
+            },
+            {
+              "name": "get_source_preview",
+              "score": 9.231
+            },
+            {
+              "name": "extract_figures",
+              "score": 9.181
+            },
+            {
+              "name": "extract_pages",
+              "score": 9.096
             }
           ]
         },
@@ -125,23 +125,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 11.103
+              "score": 11.44
             },
             {
               "name": "classify_document",
-              "score": 8.503
+              "score": 8.527
             },
             {
               "name": "get_source_preview",
-              "score": 7.437
+              "score": 7.464
             },
             {
               "name": "extract_document",
-              "score": 6.861
+              "score": 7.253
             },
             {
               "name": "analyze_document",
-              "score": 6.13
+              "score": 6.062
             }
           ]
         },
@@ -152,29 +152,29 @@
             "upload_file"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "analyze_document",
+          "lexical_top1": "register_source",
           "lexical_top1_correct": false,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "analyze_document",
-              "score": 9.66
+              "name": "register_source",
+              "score": 9.622
             },
             {
               "name": "upload_file",
-              "score": 8.631
+              "score": 9.377
+            },
+            {
+              "name": "analyze_document",
+              "score": 9.121
             },
             {
               "name": "document_gaps",
-              "score": 8.126
-            },
-            {
-              "name": "extract_figures",
-              "score": 7.931
+              "score": 7.574
             },
             {
               "name": "extract_document",
-              "score": 7.891
+              "score": 7.331
             }
           ]
         },
@@ -191,23 +191,23 @@
           "lexical_top5": [
             {
               "name": "extract_pages",
-              "score": 16.29
+              "score": 16.111
+            },
+            {
+              "name": "extract_document",
+              "score": 8.741
             },
             {
               "name": "get_source_preview",
-              "score": 8.386
-            },
-            {
-              "name": "get_document_review",
-              "score": 8.212
+              "score": 8.485
             },
             {
               "name": "classify_document",
-              "score": 7.964
+              "score": 8.403
             },
             {
               "name": "extract_figures",
-              "score": 7.879
+              "score": 7.46
             }
           ]
         },
@@ -224,23 +224,23 @@
           "lexical_top5": [
             {
               "name": "upload_url",
-              "score": 7.556
+              "score": 11.21
             },
             {
-              "name": "get_document_review_job",
-              "score": 5.136
+              "name": "upload_file",
+              "score": 5.45
             },
             {
               "name": "extract_document",
-              "score": 4.87
+              "score": 5.064
             },
             {
               "name": "search_sources",
-              "score": 4.709
+              "score": 4.678
             },
             {
-              "name": "verify_claim_stream",
-              "score": 4.62
+              "name": "register_source",
+              "score": 4.421
             }
           ]
         },
@@ -257,23 +257,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 13.519
+              "score": 11.882
             },
             {
               "name": "review_document",
-              "score": 8.906
+              "score": 9.233
             },
             {
               "name": "classify_document",
-              "score": 8.343
-            },
-            {
-              "name": "analyze_document",
-              "score": 7.298
+              "score": 8.07
             },
             {
               "name": "record_review_nonclaim",
-              "score": 6.262
+              "score": 6.862
+            },
+            {
+              "name": "extract_document",
+              "score": 6.132
             }
           ]
         },
@@ -290,23 +290,23 @@
           "lexical_top5": [
             {
               "name": "extract_pages",
-              "score": 11.166
+              "score": 12.819
             },
             {
               "name": "extract_document",
-              "score": 9.897
+              "score": 9.569
             },
             {
               "name": "classify_document",
-              "score": 7.06
+              "score": 8.035
+            },
+            {
+              "name": "ask_document",
+              "score": 6.044
             },
             {
               "name": "extract_figures",
-              "score": 6.985
-            },
-            {
-              "name": "upload_file",
-              "score": 4.291
+              "score": 6.037
             }
           ]
         },
@@ -323,23 +323,23 @@
           "lexical_top5": [
             {
               "name": "verify_claim",
-              "score": 9.136
+              "score": 8.803
             },
             {
               "name": "review_document",
-              "score": 8.691
+              "score": 8.184
             },
             {
               "name": "verify_batch",
-              "score": 7.705
+              "score": 7.652
             },
             {
               "name": "extract_document",
-              "score": 7.001
+              "score": 6.724
             },
             {
-              "name": "search_sources",
-              "score": 6.326
+              "name": "verify_claim_stream",
+              "score": 6.301
             }
           ]
         },
@@ -350,29 +350,29 @@
             "verify_claim"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "review_document",
-          "lexical_top1_correct": false,
+          "lexical_top1": "verify_claim_stream",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
+              "name": "verify_claim_stream",
+              "score": 5.815
+            },
+            {
               "name": "review_document",
-              "score": 5.156
+              "score": 5.075
             },
             {
               "name": "verify_claim",
-              "score": 4.665
-            },
-            {
-              "name": "verify_numeric_claim",
-              "score": 4.53
-            },
-            {
-              "name": "verify_batch",
-              "score": 4.112
+              "score": 4.893
             },
             {
               "name": "extract_document",
-              "score": 4.092
+              "score": 4.28
+            },
+            {
+              "name": "verify_numeric_claim",
+              "score": 3.952
             }
           ]
         },
@@ -389,23 +389,23 @@
           "lexical_top5": [
             {
               "name": "verify_claim",
-              "score": 14.795
+              "score": 14.74
             },
             {
               "name": "verify_batch",
-              "score": 10.349
+              "score": 8.699
+            },
+            {
+              "name": "ask_document",
+              "score": 7.078
             },
             {
               "name": "get_source_preview",
-              "score": 7.866
+              "score": 6.524
             },
             {
               "name": "upload_file",
-              "score": 6.253
-            },
-            {
-              "name": "extract_pages",
-              "score": 5.437
+              "score": 5.632
             }
           ]
         },
@@ -418,27 +418,27 @@
           "expected_in_profile": true,
           "lexical_top1": "verify_batch",
           "lexical_top1_correct": false,
-          "lexical_top5_hit": false,
+          "lexical_top5_hit": true,
           "lexical_top5": [
             {
               "name": "verify_batch",
-              "score": 7.09
+              "score": 7.116
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.878
             },
             {
               "name": "upload_url",
-              "score": 5.675
-            },
-            {
-              "name": "extract_figures",
-              "score": 5.344
-            },
-            {
-              "name": "get_source_preview",
-              "score": 4.907
+              "score": 5.045
             },
             {
               "name": "review_document",
-              "score": 4.398
+              "score": 4.515
+            },
+            {
+              "name": "webcite_guide",
+              "score": 4.414
             }
           ]
         },
@@ -455,23 +455,23 @@
           "lexical_top5": [
             {
               "name": "verify_claim_stream",
-              "score": 13.694
-            },
-            {
-              "name": "get_source_preview",
-              "score": 7.947
+              "score": 32.652
             },
             {
               "name": "verify_claim",
-              "score": 6.927
+              "score": 7.52
             },
             {
-              "name": "review_document",
-              "score": 6.753
+              "name": "get_source_preview",
+              "score": 7.347
             },
             {
               "name": "analyze_conflicts",
-              "score": 6.431
+              "score": 7
+            },
+            {
+              "name": "review_document",
+              "score": 6.274
             }
           ]
         },
@@ -488,23 +488,23 @@
           "lexical_top5": [
             {
               "name": "verify_claim",
-              "score": 11.082
+              "score": 10.563
             },
             {
-              "name": "search_sources",
-              "score": 5.548
-            },
-            {
-              "name": "document_gaps",
-              "score": 5.454
+              "name": "ask_document",
+              "score": 5.645
             },
             {
               "name": "record_review_nonclaim",
-              "score": 5.111
+              "score": 5.301
             },
             {
-              "name": "revise_document_claim_analysis",
-              "score": 4.596
+              "name": "search_sources",
+              "score": 5.151
+            },
+            {
+              "name": "document_gaps",
+              "score": 5.11
             }
           ]
         },
@@ -521,23 +521,23 @@
           "lexical_top5": [
             {
               "name": "verify_feedback",
-              "score": 11.15
-            },
-            {
-              "name": "verify_batch",
-              "score": 5.97
-            },
-            {
-              "name": "verify_claim",
-              "score": 5.898
+              "score": 8.489
             },
             {
               "name": "get_source_preview",
-              "score": 5.492
+              "score": 7.394
             },
             {
-              "name": "record_review_nonclaim",
-              "score": 5.118
+              "name": "verify_batch",
+              "score": 6.582
+            },
+            {
+              "name": "verify_claim",
+              "score": 5.379
+            },
+            {
+              "name": "get_citation",
+              "score": 4.715
             }
           ]
         },
@@ -554,23 +554,23 @@
           "lexical_top5": [
             {
               "name": "verify_batch",
-              "score": 23.172
+              "score": 22.374
             },
             {
               "name": "get_source_preview",
-              "score": 13.535
-            },
-            {
-              "name": "verify_claim",
-              "score": 7.751
-            },
-            {
-              "name": "extract_document",
-              "score": 7.429
+              "score": 13.174
             },
             {
               "name": "verify_claim_stream",
-              "score": 7.07
+              "score": 12.543
+            },
+            {
+              "name": "verify_claim",
+              "score": 8.896
+            },
+            {
+              "name": "accuracy_report",
+              "score": 7.61
             }
           ]
         },
@@ -581,29 +581,29 @@
             "verify_batch"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "get_source_preview",
-          "lexical_top1_correct": false,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "get_source_preview",
-              "score": 5.446
-            },
-            {
               "name": "verify_batch",
-              "score": 5.331
+              "score": 4.258
             },
             {
               "name": "extract_figures",
-              "score": 5.042
+              "score": 4.234
             },
             {
-              "name": "extract_document",
-              "score": 4.506
+              "name": "get_source_preview",
+              "score": 4.169
+            },
+            {
+              "name": "document_gaps",
+              "score": 3.897
             },
             {
               "name": "verify_claim",
-              "score": 4.446
+              "score": 3.838
             }
           ]
         },
@@ -620,23 +620,23 @@
           "lexical_top5": [
             {
               "name": "get_source_preview",
-              "score": 15.565
+              "score": 13.928
             },
             {
               "name": "verify_batch",
-              "score": 7.118
-            },
-            {
-              "name": "get_review_source_span",
-              "score": 5.955
-            },
-            {
-              "name": "record_review_nonclaim",
-              "score": 5.202
+              "score": 6.154
             },
             {
               "name": "get_citation",
-              "score": 4.32
+              "score": 5.956
+            },
+            {
+              "name": "get_review_source_span",
+              "score": 5.539
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 4.593
             }
           ]
         },
@@ -653,23 +653,23 @@
           "lexical_top5": [
             {
               "name": "verify_batch",
-              "score": 10.963
-            },
-            {
-              "name": "document_gaps",
-              "score": 9.038
+              "score": 9.222
             },
             {
               "name": "get_source_preview",
-              "score": 8.405
+              "score": 8.933
             },
             {
-              "name": "webcite_guide",
-              "score": 6.975
+              "name": "document_gaps",
+              "score": 8.016
+            },
+            {
+              "name": "verify_claim",
+              "score": 6.962
             },
             {
               "name": "review_document",
-              "score": 6.576
+              "score": 6.609
             }
           ]
         },
@@ -686,23 +686,23 @@
           "lexical_top5": [
             {
               "name": "get_source_preview",
-              "score": 10.809
+              "score": 10.08
             },
             {
               "name": "verify_batch",
-              "score": 8.718
+              "score": 8.683
             },
             {
               "name": "extract_pages",
-              "score": 5.269
+              "score": 5.162
             },
             {
               "name": "record_review_nonclaim",
-              "score": 5.249
+              "score": 4.44
             },
             {
-              "name": "get_citation",
-              "score": 4.32
+              "name": "document_gaps",
+              "score": 4.157
             }
           ]
         },
@@ -719,23 +719,23 @@
           "lexical_top5": [
             {
               "name": "list_citations",
-              "score": 11.074
+              "score": 5.949
             },
             {
               "name": "analyze_document",
-              "score": 4.427
+              "score": 4.499
             },
             {
-              "name": "review_document",
-              "score": 4.139
+              "name": "get_citation",
+              "score": 4.456
             },
             {
               "name": "document_gaps",
-              "score": 3.654
+              "score": 3.791
             },
             {
-              "name": "upload_file",
-              "score": 3.001
+              "name": "review_document",
+              "score": 3.543
             }
           ]
         },
@@ -752,23 +752,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 15.341
+              "score": 15.547
             },
             {
               "name": "webcite_guide",
-              "score": 9.979
+              "score": 9.819
             },
             {
               "name": "verify_batch",
-              "score": 9.546
+              "score": 9.554
             },
             {
               "name": "extract_document",
-              "score": 9.219
+              "score": 9.509
             },
             {
               "name": "analyze_document",
-              "score": 8.338
+              "score": 8.826
             }
           ]
         },
@@ -785,23 +785,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 10.514
+              "score": 10.616
             },
             {
               "name": "verify_claim",
-              "score": 9.215
-            },
-            {
-              "name": "search_sources",
-              "score": 8.816
+              "score": 8.443
             },
             {
               "name": "verify_batch",
-              "score": 8.371
+              "score": 8.165
             },
             {
-              "name": "get_source_preview",
-              "score": 5.76
+              "name": "verify_numeric_claim",
+              "score": 7.574
+            },
+            {
+              "name": "analyze_document",
+              "score": 7.468
             }
           ]
         },
@@ -818,23 +818,23 @@
           "lexical_top5": [
             {
               "name": "get_document_review_job",
-              "score": 6.93
+              "score": 5.862
             },
             {
               "name": "review_document",
-              "score": 6.923
+              "score": 5.843
             },
             {
-              "name": "ask_document",
-              "score": 5.026
+              "name": "get_ask_result",
+              "score": 5.398
             },
             {
-              "name": "verify_batch",
-              "score": 4.773
+              "name": "get_document_review",
+              "score": 4.802
             },
             {
-              "name": "accuracy_report",
-              "score": 4.457
+              "name": "get_credit_balance",
+              "score": 4.69
             }
           ]
         },
@@ -851,23 +851,23 @@
           "lexical_top5": [
             {
               "name": "get_document_review",
-              "score": 14.98
-            },
-            {
-              "name": "record_review_nonclaim",
-              "score": 5.698
+              "score": 12.34
             },
             {
               "name": "get_source_preview",
-              "score": 4.896
+              "score": 4.694
             },
             {
-              "name": "verify_claim",
-              "score": 4.314
+              "name": "get_review_source_span",
+              "score": 4.516
             },
             {
-              "name": "extract_document",
-              "score": 4.156
+              "name": "list_citations",
+              "score": 4.352
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 4.001
             }
           ]
         },
@@ -884,23 +884,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 8.747
+              "score": 9.067
+            },
+            {
+              "name": "upload_url",
+              "score": 7.946
             },
             {
               "name": "analyze_document",
-              "score": 7.705
-            },
-            {
-              "name": "verify_batch",
-              "score": 6.856
+              "score": 7.651
             },
             {
               "name": "verify_claim",
-              "score": 6.833
+              "score": 6.684
             },
             {
-              "name": "webcite_guide",
-              "score": 5.174
+              "name": "upload_file",
+              "score": 6.466
             }
           ]
         },
@@ -917,23 +917,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 8.48
-            },
-            {
-              "name": "extract_figures",
-              "score": 8.432
+              "score": 8.491
             },
             {
               "name": "extract_document",
-              "score": 7.908
+              "score": 7.865
+            },
+            {
+              "name": "extract_figures",
+              "score": 7.67
             },
             {
               "name": "verify_batch",
-              "score": 6.503
+              "score": 6.524
             },
             {
               "name": "analyze_document",
-              "score": 6.308
+              "score": 5.823
             }
           ]
         },
@@ -950,23 +950,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 7.976
+              "score": 7.92
             },
             {
               "name": "extract_document",
-              "score": 6.503
-            },
-            {
-              "name": "verify_batch",
-              "score": 6.18
+              "score": 6.234
             },
             {
               "name": "analyze_document",
-              "score": 5.623
+              "score": 5.961
             },
             {
-              "name": "get_document_review_job",
-              "score": 4.813
+              "name": "verify_batch",
+              "score": 5.567
+            },
+            {
+              "name": "get_source_preview",
+              "score": 4.892
             }
           ]
         },
@@ -983,23 +983,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 14.664
+              "score": 12.208
             },
             {
               "name": "analyze_conflicts",
-              "score": 11.028
+              "score": 10.767
             },
             {
               "name": "extract_document",
-              "score": 8.267
+              "score": 8.468
             },
             {
               "name": "extract_pages",
-              "score": 4.85
+              "score": 7.373
             },
             {
               "name": "verify_batch",
-              "score": 4.253
+              "score": 4.906
             }
           ]
         },
@@ -1016,23 +1016,23 @@
           "lexical_top5": [
             {
               "name": "analyze_conflicts",
-              "score": 14.04
+              "score": 13.573
+            },
+            {
+              "name": "accuracy_report",
+              "score": 8.277
             },
             {
               "name": "document_gaps",
-              "score": 8.737
+              "score": 7.37
             },
             {
               "name": "analyze_document",
-              "score": 8.091
+              "score": 6.9
             },
             {
-              "name": "extract_figures",
-              "score": 5.985
-            },
-            {
-              "name": "verify_claim",
-              "score": 5.38
+              "name": "ask_document",
+              "score": 5.652
             }
           ]
         },
@@ -1049,23 +1049,23 @@
           "lexical_top5": [
             {
               "name": "document_gaps",
-              "score": 8.769
+              "score": 8.835
             },
             {
               "name": "extract_figures",
-              "score": 7.507
+              "score": 6.526
+            },
+            {
+              "name": "analyze_document",
+              "score": 5.921
             },
             {
               "name": "analyze_conflicts",
-              "score": 7.478
-            },
-            {
-              "name": "classify_document",
-              "score": 4.687
+              "score": 5.761
             },
             {
               "name": "ask_document",
-              "score": 4.214
+              "score": 4.613
             }
           ]
         },
@@ -1082,23 +1082,23 @@
           "lexical_top5": [
             {
               "name": "verify_numeric_claim",
-              "score": 15.58
+              "score": 18.98
             },
             {
               "name": "analyze_conflicts",
-              "score": 10.083
+              "score": 11.769
             },
             {
               "name": "verify_claim",
-              "score": 7.932
-            },
-            {
-              "name": "extract_figures",
-              "score": 6.888
+              "score": 10.786
             },
             {
               "name": "analyze_document",
-              "score": 6.878
+              "score": 6.693
+            },
+            {
+              "name": "webcite_guide",
+              "score": 5.847
             }
           ]
         },
@@ -1115,23 +1115,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 12.545
-            },
-            {
-              "name": "analyze_document",
-              "score": 9.126
+              "score": 10.355
             },
             {
               "name": "upload_file",
-              "score": 7.864
+              "score": 9.044
             },
             {
               "name": "extract_document",
-              "score": 7.667
+              "score": 8.375
             },
             {
-              "name": "ask_document",
-              "score": 6.63
+              "name": "get_review_source_span",
+              "score": 8.305
+            },
+            {
+              "name": "analyze_document",
+              "score": 7.698
             }
           ]
         },
@@ -1148,23 +1148,23 @@
           "lexical_top5": [
             {
               "name": "classify_document",
-              "score": 10.085
+              "score": 10.794
             },
             {
-              "name": "analyze_document",
-              "score": 8.893
+              "name": "ask_document",
+              "score": 8.98
             },
             {
               "name": "extract_figures",
-              "score": 8.086
+              "score": 8.241
             },
             {
               "name": "analyze_conflicts",
-              "score": 7.62
+              "score": 7.811
             },
             {
               "name": "review_document",
-              "score": 7.074
+              "score": 7.551
             }
           ]
         },
@@ -1181,23 +1181,23 @@
           "lexical_top5": [
             {
               "name": "search_sources",
-              "score": 15.87
+              "score": 12.793
             },
             {
               "name": "verify_claim",
-              "score": 10.813
+              "score": 9.641
             },
             {
               "name": "document_gaps",
-              "score": 6.249
+              "score": 6.481
             },
             {
-              "name": "verify_feedback",
-              "score": 5.816
+              "name": "list_citations",
+              "score": 6.145
             },
             {
-              "name": "review_document",
-              "score": 4.505
+              "name": "get_citation",
+              "score": 6.1
             }
           ]
         },
@@ -1214,23 +1214,23 @@
           "lexical_top5": [
             {
               "name": "webcite_guide",
-              "score": 8.256
+              "score": 9.539
+            },
+            {
+              "name": "get_source_preview",
+              "score": 7.52
+            },
+            {
+              "name": "verify_claim_stream",
+              "score": 7.161
             },
             {
               "name": "analyze_conflicts",
-              "score": 7.63
+              "score": 7.069
             },
             {
-              "name": "extract_figures",
-              "score": 7.604
-            },
-            {
-              "name": "classify_document",
-              "score": 7.507
-            },
-            {
-              "name": "document_gaps",
-              "score": 7.371
+              "name": "verify_batch",
+              "score": 6.9
             }
           ]
         },
@@ -1247,23 +1247,23 @@
           "lexical_top5": [
             {
               "name": "search_sources",
-              "score": 8.444
+              "score": 8.986
             },
             {
               "name": "verify_claim",
-              "score": 8.065
-            },
-            {
-              "name": "get_source_preview",
-              "score": 5.828
+              "score": 7.636
             },
             {
               "name": "verify_claim_stream",
-              "score": 5.815
+              "score": 7.537
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.382
             },
             {
               "name": "review_document",
-              "score": 5.391
+              "score": 4.979
             }
           ]
         },
@@ -1280,23 +1280,23 @@
           "lexical_top5": [
             {
               "name": "webcite_guide",
-              "score": 16.088
+              "score": 14.623
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 8.496
             },
             {
               "name": "review_document",
-              "score": 7.73
+              "score": 8.261
+            },
+            {
+              "name": "upload_url",
+              "score": 8
             },
             {
               "name": "classify_document",
-              "score": 7.606
-            },
-            {
-              "name": "upload_file",
-              "score": 7.323
-            },
-            {
-              "name": "analyze_conflicts",
-              "score": 7.212
+              "score": 7.396
             }
           ]
         },
@@ -1307,29 +1307,29 @@
             "get_credit_balance"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "verify_batch",
-          "lexical_top1_correct": false,
-          "lexical_top5_hit": false,
+          "lexical_top1": "get_credit_balance",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
           "lexical_top5": [
             {
+              "name": "get_credit_balance",
+              "score": 11.249
+            },
+            {
               "name": "verify_batch",
-              "score": 4.79
+              "score": 3.89
             },
             {
               "name": "document_gaps",
-              "score": 3.588
+              "score": 3.847
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.307
             },
             {
               "name": "accuracy_report",
-              "score": 3.27
-            },
-            {
-              "name": "webcite_guide",
-              "score": 2.818
-            },
-            {
-              "name": "extract_document",
-              "score": 2.455
+              "score": 2.861
             }
           ]
         },
@@ -1340,29 +1340,29 @@
             "search_sources"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "record_review_nonclaim",
-          "lexical_top1_correct": false,
-          "lexical_top5_hit": false,
+          "lexical_top1": "search_sources",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "record_review_nonclaim",
-              "score": 4.902
+              "name": "search_sources",
+              "score": 6.529
             },
             {
-              "name": "ask_document",
-              "score": 4.214
+              "name": "record_review_nonclaim",
+              "score": 4.606
             },
             {
               "name": "document_gaps",
-              "score": 3.654
+              "score": 3.791
             },
             {
               "name": "upload_file",
-              "score": 2.208
+              "score": 3.299
             },
             {
-              "name": "get_citation",
-              "score": 1.971
+              "name": "ask_document",
+              "score": 3.237
             }
           ]
         },
@@ -1377,23 +1377,23 @@
           "lexical_top5": [
             {
               "name": "ask_document",
-              "score": 4.124
+              "score": 3.122
             },
             {
               "name": "classify_document",
-              "score": 0.14
+              "score": 0.028
+            },
+            {
+              "name": "upload_file",
+              "score": 0.028
             },
             {
               "name": "upload_url",
-              "score": 0.137
-            },
-            {
-              "name": "webcite_guide",
-              "score": 0.137
+              "score": 0.028
             },
             {
               "name": "verify_batch",
-              "score": 0.136
+              "score": 0.028
             }
           ]
         },
@@ -1402,29 +1402,29 @@
           "job": "none",
           "expected": [],
           "expected_in_profile": true,
-          "lexical_top1": "upload_file",
+          "lexical_top1": "classify_document",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
-              "name": "upload_file",
-              "score": 3.6
-            },
-            {
               "name": "classify_document",
-              "score": 3.547
+              "score": 3.074
             },
             {
-              "name": "search_sources",
-              "score": 3.461
-            },
-            {
-              "name": "get_source_preview",
-              "score": 3.187
+              "name": "upload_file",
+              "score": 2.869
             },
             {
               "name": "get_credit_balance",
-              "score": 2.77
+              "score": 2.765
+            },
+            {
+              "name": "search_sources",
+              "score": 2.685
+            },
+            {
+              "name": "upload_url",
+              "score": 2.595
             }
           ]
         },
@@ -1439,23 +1439,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 3.095
-            },
-            {
-              "name": "review_document",
-              "score": 2.274
+              "score": 2.904
             },
             {
               "name": "classify_document",
-              "score": 2.175
+              "score": 2.36
+            },
+            {
+              "name": "review_document",
+              "score": 2.201
+            },
+            {
+              "name": "extract_document",
+              "score": 0.954
             },
             {
               "name": "verify_batch",
-              "score": 1.389
-            },
-            {
-              "name": "analyze_document",
-              "score": 1.375
+              "score": 0.95
             }
           ]
         },
@@ -1470,23 +1470,23 @@
           "lexical_top5": [
             {
               "name": "classify_document",
-              "score": 2.711
+              "score": 2.588
+            },
+            {
+              "name": "register_source",
+              "score": 2.246
             },
             {
               "name": "extract_pages",
-              "score": 1.838
-            },
-            {
-              "name": "verify_claim_stream",
-              "score": 1.737
+              "score": 1.8
             },
             {
               "name": "verify_claim",
-              "score": 1.495
+              "score": 1.441
             },
             {
-              "name": "accuracy_report",
-              "score": 0
+              "name": "verify_claim_stream",
+              "score": 1.42
             }
           ]
         },
@@ -1501,23 +1501,23 @@
           "lexical_top5": [
             {
               "name": "document_gaps",
-              "score": 5.337
+              "score": 5.17
             },
             {
               "name": "verify_numeric_claim",
-              "score": 4.695
-            },
-            {
-              "name": "get_source_preview",
-              "score": 3.391
+              "score": 4.418
             },
             {
               "name": "analyze_conflicts",
-              "score": 2.347
+              "score": 3.31
             },
             {
-              "name": "verify_batch",
-              "score": 1.713
+              "name": "get_source_preview",
+              "score": 2.844
+            },
+            {
+              "name": "record_review_nonclaim",
+              "score": 1.858
             }
           ]
         },
@@ -1526,29 +1526,29 @@
           "job": "none",
           "expected": [],
           "expected_in_profile": true,
-          "lexical_top1": "classify_document",
+          "lexical_top1": "ask_document",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
+              "name": "ask_document",
+              "score": 3.122
+            },
+            {
               "name": "classify_document",
-              "score": 0.14
+              "score": 0.028
+            },
+            {
+              "name": "upload_file",
+              "score": 0.028
             },
             {
               "name": "upload_url",
-              "score": 0.137
-            },
-            {
-              "name": "webcite_guide",
-              "score": 0.137
+              "score": 0.028
             },
             {
               "name": "verify_batch",
-              "score": 0.136
-            },
-            {
-              "name": "verify_claim",
-              "score": 0.136
+              "score": 0.028
             }
           ]
         },
@@ -1563,23 +1563,23 @@
           "lexical_top5": [
             {
               "name": "list_citations",
-              "score": 6.024
+              "score": 5.247
             },
             {
               "name": "webcite_guide",
-              "score": 5.4
+              "score": 5.029
+            },
+            {
+              "name": "get_citation",
+              "score": 4.619
             },
             {
               "name": "document_gaps",
-              "score": 2.339
+              "score": 1.721
             },
             {
               "name": "verify_batch",
-              "score": 2.145
-            },
-            {
-              "name": "get_source_preview",
-              "score": 2.053
+              "score": 1.636
             }
           ]
         },
@@ -1588,29 +1588,29 @@
           "job": "none",
           "expected": [],
           "expected_in_profile": true,
-          "lexical_top1": "upload_file",
+          "lexical_top1": "analyze_conflicts",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
-              "name": "upload_file",
-              "score": 4.452
+              "name": "analyze_conflicts",
+              "score": 5.21
+            },
+            {
+              "name": "verify_numeric_claim",
+              "score": 4.925
             },
             {
               "name": "classify_document",
-              "score": 4.381
+              "score": 3.16
             },
             {
-              "name": "analyze_conflicts",
-              "score": 4.304
+              "name": "upload_file",
+              "score": 2.951
             },
             {
               "name": "extract_figures",
-              "score": 3.932
-            },
-            {
-              "name": "extract_pages",
-              "score": 3.804
+              "score": 2.895
             }
           ]
         }
@@ -1619,43 +1619,43 @@
     "core": {
       "summary": {
         "profile": "core",
-        "server_version": "1.9.67",
+        "server_version": "1.9.68",
         "tools": 16,
         "positive_cases": 40,
         "negative_cases": 8,
         "expected_tool_in_profile": 33,
-        "lexical_top1_accuracy_pct": 57.5,
-        "lexical_top5_recall_pct": 90,
+        "lexical_top1_accuracy_pct": 85,
+        "lexical_top5_recall_pct": 95,
         "by_job": {
           "parse": {
             "cases": 8,
-            "top1": 4,
+            "top1": 6,
             "top5": 7
           },
           "verify": {
             "cases": 7,
-            "top1": 3,
-            "top5": 5
+            "top1": 5,
+            "top5": 6
           },
           "quotes": {
             "cases": 6,
-            "top1": 5,
+            "top1": 6,
             "top5": 6
           },
           "review": {
             "cases": 7,
-            "top1": 5,
+            "top1": 6,
             "top5": 7
           },
           "figures": {
             "cases": 6,
-            "top1": 4,
+            "top1": 5,
             "top5": 6
           },
           "search": {
             "cases": 6,
-            "top1": 2,
-            "top5": 5
+            "top1": 6,
+            "top5": 6
           }
         }
       },
@@ -1667,29 +1667,29 @@
             "upload_url"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "extract_document",
-          "lexical_top1_correct": false,
+          "lexical_top1": "upload_url",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
+              "name": "upload_url",
+              "score": 7.224
+            },
+            {
               "name": "extract_document",
-              "score": 5.876
+              "score": 6.008
             },
             {
               "name": "upload_file",
-              "score": 5.395
+              "score": 5.994
             },
             {
               "name": "get_source_preview",
-              "score": 4.675
+              "score": 3.667
             },
             {
               "name": "verify_claim",
-              "score": 4.093
-            },
-            {
-              "name": "upload_url",
-              "score": 3.796
+              "score": 3.209
             }
           ]
         },
@@ -1706,23 +1706,23 @@
           "lexical_top5": [
             {
               "name": "extract_document",
-              "score": 10.332
-            },
-            {
-              "name": "extract_figures",
-              "score": 9.376
+              "score": 10.823
             },
             {
               "name": "get_source_preview",
-              "score": 8.734
+              "score": 9.3
+            },
+            {
+              "name": "extract_figures",
+              "score": 9.254
             },
             {
               "name": "verify_batch",
-              "score": 5.899
+              "score": 6.223
             },
             {
-              "name": "analyze_conflicts",
-              "score": 5.326
+              "name": "review_document",
+              "score": 6.067
             }
           ]
         },
@@ -1739,23 +1739,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 9.719
-            },
-            {
-              "name": "get_source_preview",
-              "score": 6.262
+              "score": 9.681
             },
             {
               "name": "extract_document",
-              "score": 6.255
+              "score": 6.349
+            },
+            {
+              "name": "get_source_preview",
+              "score": 5.942
             },
             {
               "name": "review_document",
-              "score": 4.376
+              "score": 4.49
             },
             {
               "name": "verify_batch",
-              "score": 3.414
+              "score": 3.216
             }
           ]
         },
@@ -1772,23 +1772,23 @@
           "lexical_top5": [
             {
               "name": "upload_file",
-              "score": 7.367
+              "score": 8.325
             },
             {
               "name": "extract_document",
-              "score": 7.305
-            },
-            {
-              "name": "extract_figures",
-              "score": 6.963
+              "score": 6.974
             },
             {
               "name": "upload_url",
-              "score": 6.67
+              "score": 6.428
             },
             {
-              "name": "verify_batch",
-              "score": 6.174
+              "name": "extract_figures",
+              "score": 6.207
+            },
+            {
+              "name": "get_source_preview",
+              "score": 6.16
             }
           ]
         },
@@ -1799,29 +1799,29 @@
             "extract_pages"
           ],
           "expected_in_profile": false,
-          "lexical_top1": "get_source_preview",
-          "lexical_top1_correct": false,
+          "lexical_top1": "extract_document",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "get_source_preview",
-              "score": 7.712
+              "name": "extract_document",
+              "score": 8.155
             },
             {
-              "name": "get_document_review",
-              "score": 7.297
+              "name": "get_source_preview",
+              "score": 7.768
             },
             {
               "name": "extract_figures",
-              "score": 6.96
+              "score": 6.591
             },
             {
-              "name": "extract_document",
-              "score": 6.687
+              "name": "get_document_review",
+              "score": 6.298
             },
             {
               "name": "verify_batch",
-              "score": 5.924
+              "score": 6.213
             }
           ]
         },
@@ -1838,23 +1838,23 @@
           "lexical_top5": [
             {
               "name": "upload_url",
-              "score": 6.19
+              "score": 9.73
             },
             {
               "name": "extract_document",
-              "score": 4.6
+              "score": 4.981
+            },
+            {
+              "name": "upload_file",
+              "score": 4.286
+            },
+            {
+              "name": "get_source_preview",
+              "score": 3.836
             },
             {
               "name": "verify_batch",
-              "score": 4.016
-            },
-            {
-              "name": "get_document_review_job",
-              "score": 3.995
-            },
-            {
-              "name": "search_sources",
-              "score": 3.582
+              "score": 3.742
             }
           ]
         },
@@ -1871,23 +1871,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 12.091
+              "score": 10.842
             },
             {
               "name": "review_document",
-              "score": 7.616
-            },
-            {
-              "name": "verify_batch",
-              "score": 5.17
+              "score": 7.964
             },
             {
               "name": "extract_document",
-              "score": 4.432
+              "score": 5.708
+            },
+            {
+              "name": "verify_batch",
+              "score": 5.179
             },
             {
               "name": "get_source_preview",
-              "score": 3.918
+              "score": 3.658
             }
           ]
         },
@@ -1904,23 +1904,23 @@
           "lexical_top5": [
             {
               "name": "extract_document",
-              "score": 8.829
+              "score": 9.669
             },
             {
               "name": "extract_figures",
-              "score": 5.648
+              "score": 5.468
             },
             {
               "name": "upload_file",
-              "score": 3.476
+              "score": 3.991
             },
             {
-              "name": "analyze_conflicts",
-              "score": 3.312
+              "name": "review_document",
+              "score": 3.659
             },
             {
               "name": "get_source_preview",
-              "score": 3.195
+              "score": 3.047
             }
           ]
         },
@@ -1937,23 +1937,23 @@
           "lexical_top5": [
             {
               "name": "verify_claim",
-              "score": 7.296
+              "score": 7.216
             },
             {
               "name": "review_document",
-              "score": 7.284
-            },
-            {
-              "name": "extract_document",
-              "score": 5.987
+              "score": 6.859
             },
             {
               "name": "verify_batch",
-              "score": 5.978
+              "score": 6.37
+            },
+            {
+              "name": "extract_document",
+              "score": 5.674
             },
             {
               "name": "analyze_conflicts",
-              "score": 5.063
+              "score": 4.885
             }
           ]
         },
@@ -1964,29 +1964,29 @@
             "verify_claim"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "review_document",
-          "lexical_top1_correct": false,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "review_document",
-              "score": 3.826
+              "name": "verify_claim",
+              "score": 3.631
             },
             {
-              "name": "verify_claim",
-              "score": 3.496
+              "name": "review_document",
+              "score": 3.628
             },
             {
               "name": "extract_document",
-              "score": 3.14
+              "score": 3.162
             },
             {
               "name": "verify_batch",
-              "score": 3.005
+              "score": 2.68
             },
             {
               "name": "webcite_guide",
-              "score": 2.465
+              "score": 2.596
             }
           ]
         },
@@ -2003,23 +2003,23 @@
           "lexical_top5": [
             {
               "name": "verify_claim",
-              "score": 12.912
+              "score": 12.887
             },
             {
               "name": "verify_batch",
-              "score": 8.599
+              "score": 7.655
             },
             {
               "name": "get_source_preview",
-              "score": 6.587
+              "score": 5.62
             },
             {
               "name": "upload_file",
-              "score": 5.013
+              "score": 4.889
             },
             {
               "name": "get_citation",
-              "score": 3.395
+              "score": 3.171
             }
           ]
         },
@@ -2032,27 +2032,27 @@
           "expected_in_profile": true,
           "lexical_top1": "verify_batch",
           "lexical_top1_correct": false,
-          "lexical_top5_hit": false,
+          "lexical_top5_hit": true,
           "lexical_top5": [
             {
               "name": "verify_batch",
-              "score": 5.111
+              "score": 4.809
             },
             {
               "name": "upload_url",
-              "score": 4.838
+              "score": 4.272
             },
             {
-              "name": "extract_figures",
-              "score": 4.159
-            },
-            {
-              "name": "get_source_preview",
-              "score": 3.576
+              "name": "verify_claim",
+              "score": 3.939
             },
             {
               "name": "webcite_guide",
-              "score": 3.377
+              "score": 3.012
+            },
+            {
+              "name": "review_document",
+              "score": 2.911
             }
           ]
         },
@@ -2063,29 +2063,29 @@
             "verify_claim_stream"
           ],
           "expected_in_profile": false,
-          "lexical_top1": "get_source_preview",
-          "lexical_top1_correct": false,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "get_source_preview",
-              "score": 7.189
-            },
-            {
-              "name": "review_document",
-              "score": 6.464
-            },
-            {
               "name": "verify_claim",
-              "score": 6.246
+              "score": 7.218
+            },
+            {
+              "name": "get_source_preview",
+              "score": 6.865
             },
             {
               "name": "analyze_conflicts",
-              "score": 5.735
+              "score": 6.553
+            },
+            {
+              "name": "review_document",
+              "score": 5.875
             },
             {
               "name": "verify_batch",
-              "score": 5.534
+              "score": 5.238
             }
           ]
         },
@@ -2102,23 +2102,23 @@
           "lexical_top5": [
             {
               "name": "verify_claim",
-              "score": 9.675
+              "score": 9.427
             },
             {
               "name": "search_sources",
-              "score": 4.619
-            },
-            {
-              "name": "upload_url",
-              "score": 3.687
+              "score": 4.583
             },
             {
               "name": "extract_document",
-              "score": 3.271
+              "score": 3.66
             },
             {
-              "name": "get_source_preview",
-              "score": 3.15
+              "name": "analyze_conflicts",
+              "score": 3.373
+            },
+            {
+              "name": "review_document",
+              "score": 3.253
             }
           ]
         },
@@ -2129,29 +2129,29 @@
             "verify_feedback"
           ],
           "expected_in_profile": false,
-          "lexical_top1": "verify_batch",
+          "lexical_top1": "get_source_preview",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
+              "name": "get_source_preview",
+              "score": 7.544
+            },
+            {
               "name": "verify_batch",
-              "score": 5.267
+              "score": 6.046
             },
             {
               "name": "verify_claim",
-              "score": 5.157
+              "score": 4.548
             },
             {
-              "name": "get_source_preview",
-              "score": 4.612
+              "name": "get_citation",
+              "score": 4.368
             },
             {
-              "name": "review_document",
-              "score": 3.187
-            },
-            {
-              "name": "search_sources",
-              "score": 3.182
+              "name": "list_citations",
+              "score": 3.831
             }
           ]
         },
@@ -2168,23 +2168,23 @@
           "lexical_top5": [
             {
               "name": "verify_batch",
-              "score": 19.225
+              "score": 20.147
             },
             {
               "name": "get_source_preview",
-              "score": 11.595
+              "score": 11.896
             },
             {
               "name": "verify_claim",
-              "score": 7.002
+              "score": 7.617
             },
             {
               "name": "extract_document",
-              "score": 6.6
+              "score": 6.056
             },
             {
-              "name": "webcite_guide",
-              "score": 5.635
+              "name": "search_sources",
+              "score": 5.442
             }
           ]
         },
@@ -2195,29 +2195,29 @@
             "verify_batch"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "get_source_preview",
-          "lexical_top1_correct": false,
+          "lexical_top1": "verify_batch",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "get_source_preview",
-              "score": 4.908
+              "name": "verify_batch",
+              "score": 4.194
             },
             {
-              "name": "verify_batch",
-              "score": 4.854
+              "name": "get_source_preview",
+              "score": 4.038
             },
             {
               "name": "extract_figures",
-              "score": 4.472
-            },
-            {
-              "name": "verify_claim",
-              "score": 4.325
+              "score": 4.024
             },
             {
               "name": "extract_document",
-              "score": 4.16
+              "score": 3.616
+            },
+            {
+              "name": "verify_claim",
+              "score": 3.421
             }
           ]
         },
@@ -2234,23 +2234,23 @@
           "lexical_top5": [
             {
               "name": "get_source_preview",
-              "score": 14.082
+              "score": 11.786
             },
             {
               "name": "verify_batch",
-              "score": 6.781
+              "score": 5.176
             },
             {
               "name": "get_citation",
-              "score": 3.342
+              "score": 4.473
+            },
+            {
+              "name": "search_sources",
+              "score": 3.179
             },
             {
               "name": "review_document",
-              "score": 3.048
-            },
-            {
-              "name": "extract_document",
-              "score": 3.003
+              "score": 2.678
             }
           ]
         },
@@ -2267,23 +2267,23 @@
           "lexical_top5": [
             {
               "name": "verify_batch",
-              "score": 8.878
+              "score": 7.137
             },
             {
               "name": "get_source_preview",
-              "score": 6.925
+              "score": 6.878
+            },
+            {
+              "name": "verify_claim",
+              "score": 6.105
             },
             {
               "name": "review_document",
-              "score": 5.919
-            },
-            {
-              "name": "webcite_guide",
-              "score": 5.771
+              "score": 5.676
             },
             {
               "name": "extract_figures",
-              "score": 5.091
+              "score": 4.772
             }
           ]
         },
@@ -2300,23 +2300,23 @@
           "lexical_top5": [
             {
               "name": "get_source_preview",
-              "score": 9.649
+              "score": 8.838
             },
             {
               "name": "verify_batch",
-              "score": 8.002
+              "score": 7.88
             },
             {
               "name": "upload_file",
-              "score": 3.455
-            },
-            {
-              "name": "get_citation",
-              "score": 3.342
+              "score": 3.399
             },
             {
               "name": "extract_document",
-              "score": 3.291
+              "score": 3.142
+            },
+            {
+              "name": "get_citation",
+              "score": 2.937
             }
           ]
         },
@@ -2333,23 +2333,23 @@
           "lexical_top5": [
             {
               "name": "list_citations",
-              "score": 8.846
+              "score": 4.112
+            },
+            {
+              "name": "get_citation",
+              "score": 3.392
             },
             {
               "name": "review_document",
-              "score": 3.247
-            },
-            {
-              "name": "upload_file",
-              "score": 2.07
-            },
-            {
-              "name": "verify_claim",
-              "score": 1.949
+              "score": 2.813
             },
             {
               "name": "extract_document",
-              "score": 1.774
+              "score": 2.673
+            },
+            {
+              "name": "verify_claim",
+              "score": 2.007
             }
           ]
         },
@@ -2366,23 +2366,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 12.941
-            },
-            {
-              "name": "webcite_guide",
-              "score": 7.909
-            },
-            {
-              "name": "verify_batch",
-              "score": 7.823
+              "score": 12.54
             },
             {
               "name": "extract_document",
-              "score": 7.447
+              "score": 7.589
             },
             {
-              "name": "verify_claim",
-              "score": 6.676
+              "name": "verify_batch",
+              "score": 7.57
+            },
+            {
+              "name": "webcite_guide",
+              "score": 7.438
+            },
+            {
+              "name": "get_source_preview",
+              "score": 6.826
             }
           ]
         },
@@ -2399,23 +2399,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 8.925
+              "score": 8.675
             },
             {
               "name": "verify_claim",
-              "score": 7.319
-            },
-            {
-              "name": "search_sources",
-              "score": 6.304
+              "score": 6.741
             },
             {
               "name": "verify_batch",
-              "score": 6.201
+              "score": 6.36
             },
             {
-              "name": "get_source_preview",
-              "score": 4.682
+              "name": "search_sources",
+              "score": 4.909
+            },
+            {
+              "name": "upload_file",
+              "score": 4.567
             }
           ]
         },
@@ -2432,23 +2432,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 5.629
+              "score": 4.66
             },
             {
               "name": "get_document_review_job",
-              "score": 5.344
+              "score": 4.473
+            },
+            {
+              "name": "get_document_review",
+              "score": 3.672
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 3.571
             },
             {
               "name": "verify_batch",
-              "score": 3.869
-            },
-            {
-              "name": "get_source_preview",
-              "score": 3.009
-            },
-            {
-              "name": "webcite_guide",
-              "score": 2.315
+              "score": 3.08
             }
           ]
         },
@@ -2465,23 +2465,23 @@
           "lexical_top5": [
             {
               "name": "get_document_review",
-              "score": 12.583
+              "score": 11.187
             },
             {
               "name": "get_source_preview",
-              "score": 4.401
+              "score": 4.092
+            },
+            {
+              "name": "list_citations",
+              "score": 3.493
             },
             {
               "name": "extract_document",
-              "score": 3.815
+              "score": 3.107
             },
             {
               "name": "verify_claim",
-              "score": 3.363
-            },
-            {
-              "name": "webcite_guide",
-              "score": 3.216
+              "score": 2.78
             }
           ]
         },
@@ -2498,23 +2498,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 7.454
+              "score": 7.493
+            },
+            {
+              "name": "upload_url",
+              "score": 6.965
             },
             {
               "name": "verify_claim",
-              "score": 5.687
+              "score": 5.462
+            },
+            {
+              "name": "upload_file",
+              "score": 5.063
             },
             {
               "name": "verify_batch",
-              "score": 5.362
-            },
-            {
-              "name": "get_source_preview",
-              "score": 4.182
-            },
-            {
-              "name": "webcite_guide",
-              "score": 4.116
+              "score": 4.629
             }
           ]
         },
@@ -2525,29 +2525,29 @@
             "review_document"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "extract_figures",
-          "lexical_top1_correct": false,
+          "lexical_top1": "review_document",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "extract_figures",
-              "score": 7.705
-            },
-            {
               "name": "review_document",
-              "score": 7.646
+              "score": 7.721
             },
             {
               "name": "extract_document",
-              "score": 7.451
+              "score": 7.491
+            },
+            {
+              "name": "extract_figures",
+              "score": 7.434
             },
             {
               "name": "verify_batch",
-              "score": 6.011
+              "score": 6.483
             },
             {
               "name": "get_source_preview",
-              "score": 4.546
+              "score": 4.549
             }
           ]
         },
@@ -2564,23 +2564,23 @@
           "lexical_top5": [
             {
               "name": "review_document",
-              "score": 6.661
+              "score": 6.274
             },
             {
               "name": "extract_document",
-              "score": 5.727
+              "score": 5.183
             },
             {
               "name": "verify_batch",
-              "score": 5.529
-            },
-            {
-              "name": "webcite_guide",
-              "score": 3.751
+              "score": 4.804
             },
             {
               "name": "get_source_preview",
-              "score": 3.438
+              "score": 4.097
+            },
+            {
+              "name": "get_document_review_job",
+              "score": 3.405
             }
           ]
         },
@@ -2597,23 +2597,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 12.726
+              "score": 11.16
             },
             {
               "name": "analyze_conflicts",
-              "score": 9.527
+              "score": 9.273
             },
             {
               "name": "extract_document",
-              "score": 7.413
+              "score": 8.219
             },
             {
               "name": "verify_batch",
-              "score": 4.07
+              "score": 4.626
             },
             {
               "name": "search_sources",
-              "score": 2.972
+              "score": 2.928
             }
           ]
         },
@@ -2630,23 +2630,23 @@
           "lexical_top5": [
             {
               "name": "analyze_conflicts",
-              "score": 12.347
+              "score": 12.296
             },
             {
               "name": "verify_claim",
-              "score": 5.573
-            },
-            {
-              "name": "extract_figures",
-              "score": 4.983
-            },
-            {
-              "name": "get_source_preview",
-              "score": 3.921
+              "score": 5.311
             },
             {
               "name": "extract_document",
-              "score": 3.451
+              "score": 4.241
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.132
+            },
+            {
+              "name": "list_citations",
+              "score": 3.848
             }
           ]
         },
@@ -2663,23 +2663,23 @@
           "lexical_top5": [
             {
               "name": "analyze_conflicts",
-              "score": 7.344
+              "score": 6.513
             },
             {
               "name": "extract_figures",
-              "score": 6.766
+              "score": 6.171
             },
             {
               "name": "verify_batch",
-              "score": 4.105
+              "score": 4.157
             },
             {
-              "name": "search_sources",
-              "score": 3.35
+              "name": "extract_document",
+              "score": 3.87
             },
             {
-              "name": "verify_claim",
-              "score": 2.733
+              "name": "review_document",
+              "score": 3.625
             }
           ]
         },
@@ -2690,29 +2690,29 @@
             "verify_numeric_claim"
           ],
           "expected_in_profile": false,
-          "lexical_top1": "analyze_conflicts",
-          "lexical_top1_correct": false,
+          "lexical_top1": "verify_claim",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "analyze_conflicts",
-              "score": 8.604
+              "name": "verify_claim",
+              "score": 10.422
             },
             {
-              "name": "verify_claim",
-              "score": 5.913
+              "name": "analyze_conflicts",
+              "score": 9.496
             },
             {
               "name": "review_document",
-              "score": 5.264
-            },
-            {
-              "name": "extract_figures",
-              "score": 5.217
+              "score": 4.666
             },
             {
               "name": "webcite_guide",
-              "score": 4.499
+              "score": 4.26
+            },
+            {
+              "name": "extract_figures",
+              "score": 4.239
             }
           ]
         },
@@ -2729,23 +2729,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 10.789
-            },
-            {
-              "name": "extract_document",
-              "score": 6.703
+              "score": 8.658
             },
             {
               "name": "upload_file",
-              "score": 6.687
+              "score": 7.631
             },
             {
-              "name": "analyze_conflicts",
-              "score": 4.585
+              "name": "extract_document",
+              "score": 7.317
             },
             {
               "name": "get_source_preview",
-              "score": 4.563
+              "score": 4.943
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.58
             }
           ]
         },
@@ -2762,23 +2762,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 6.865
-            },
-            {
-              "name": "analyze_conflicts",
-              "score": 6.238
+              "score": 7.189
             },
             {
               "name": "review_document",
-              "score": 6.058
+              "score": 6.667
             },
             {
-              "name": "get_credit_balance",
-              "score": 5.552
+              "name": "analyze_conflicts",
+              "score": 6.51
             },
             {
               "name": "extract_document",
-              "score": 5.211
+              "score": 5.249
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 4.806
             }
           ]
         },
@@ -2795,23 +2795,23 @@
           "lexical_top5": [
             {
               "name": "search_sources",
-              "score": 12.935
+              "score": 10.597
             },
             {
               "name": "verify_claim",
-              "score": 9.254
-            },
-            {
-              "name": "review_document",
-              "score": 4.037
-            },
-            {
-              "name": "get_source_preview",
-              "score": 3.936
+              "score": 8.033
             },
             {
               "name": "verify_batch",
-              "score": 2.81
+              "score": 4.957
+            },
+            {
+              "name": "list_citations",
+              "score": 4.748
+            },
+            {
+              "name": "get_citation",
+              "score": 4.738
             }
           ]
         },
@@ -2822,29 +2822,29 @@
             "webcite_guide"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "analyze_conflicts",
-          "lexical_top1_correct": false,
+          "lexical_top1": "webcite_guide",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "analyze_conflicts",
-              "score": 6.629
-            },
-            {
               "name": "webcite_guide",
-              "score": 6.423
-            },
-            {
-              "name": "extract_figures",
-              "score": 5.638
+              "score": 7.149
             },
             {
               "name": "get_source_preview",
-              "score": 4.725
+              "score": 6.125
             },
             {
-              "name": "review_document",
-              "score": 4.26
+              "name": "verify_batch",
+              "score": 5.816
+            },
+            {
+              "name": "analyze_conflicts",
+              "score": 5.752
+            },
+            {
+              "name": "extract_figures",
+              "score": 4.902
             }
           ]
         },
@@ -2855,29 +2855,29 @@
             "search_sources"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "verify_claim",
-          "lexical_top1_correct": false,
+          "lexical_top1": "search_sources",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
-              "name": "verify_claim",
-              "score": 7.752
+              "name": "search_sources",
+              "score": 7.935
             },
             {
-              "name": "search_sources",
-              "score": 7.512
+              "name": "verify_claim",
+              "score": 7.003
             },
             {
               "name": "review_document",
-              "score": 5.439
+              "score": 4.793
+            },
+            {
+              "name": "verify_batch",
+              "score": 4.785
             },
             {
               "name": "get_source_preview",
-              "score": 4.968
-            },
-            {
-              "name": "extract_document",
-              "score": 2.876
+              "score": 4.294
             }
           ]
         },
@@ -2894,23 +2894,23 @@
           "lexical_top5": [
             {
               "name": "webcite_guide",
-              "score": 12.645
+              "score": 10.952
             },
             {
               "name": "review_document",
-              "score": 6.538
+              "score": 6.528
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 5.911
+            },
+            {
+              "name": "upload_url",
+              "score": 5.723
             },
             {
               "name": "analyze_conflicts",
-              "score": 5.825
-            },
-            {
-              "name": "upload_file",
-              "score": 5.286
-            },
-            {
-              "name": "extract_document",
-              "score": 5.245
+              "score": 5.666
             }
           ]
         },
@@ -2921,29 +2921,29 @@
             "get_credit_balance"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "verify_batch",
-          "lexical_top1_correct": false,
-          "lexical_top5_hit": false,
+          "lexical_top1": "get_credit_balance",
+          "lexical_top1_correct": true,
+          "lexical_top5_hit": true,
           "lexical_top5": [
             {
+              "name": "get_credit_balance",
+              "score": 8.737
+            },
+            {
               "name": "verify_batch",
-              "score": 4.26
-            },
-            {
-              "name": "extract_document",
-              "score": 2.143
-            },
-            {
-              "name": "webcite_guide",
-              "score": 2.052
+              "score": 3.168
             },
             {
               "name": "get_source_preview",
-              "score": 1.712
+              "score": 2.737
             },
             {
-              "name": "upload_file",
-              "score": 1.409
+              "name": "extract_document",
+              "score": 2.267
+            },
+            {
+              "name": "webcite_guide",
+              "score": 1.776
             }
           ]
         },
@@ -2954,29 +2954,29 @@
             "search_sources"
           ],
           "expected_in_profile": true,
-          "lexical_top1": "upload_file",
-          "lexical_top1_correct": false,
+          "lexical_top1": "search_sources",
+          "lexical_top1_correct": true,
           "lexical_top5_hit": true,
           "lexical_top5": [
             {
+              "name": "search_sources",
+              "score": 5.945
+            },
+            {
               "name": "upload_file",
-              "score": 2.034
+              "score": 2.941
             },
             {
               "name": "verify_batch",
-              "score": 1.701
+              "score": 2.211
             },
             {
-              "name": "get_citation",
-              "score": 1.602
+              "name": "extract_document",
+              "score": 1.524
             },
             {
-              "name": "get_document_review_job",
-              "score": 1.37
-            },
-            {
-              "name": "search_sources",
-              "score": 1.273
+              "name": "webcite_guide",
+              "score": 0.914
             }
           ]
         },
@@ -2985,29 +2985,29 @@
           "job": "none",
           "expected": [],
           "expected_in_profile": true,
-          "lexical_top1": "upload_url",
+          "lexical_top1": "upload_file",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
+              "name": "upload_file",
+              "score": 0.06
+            },
+            {
               "name": "upload_url",
-              "score": 0.057
+              "score": 0.059
             },
             {
               "name": "verify_batch",
-              "score": 0.057
+              "score": 0.059
             },
             {
               "name": "verify_claim",
-              "score": 0.057
+              "score": 0.058
             },
             {
-              "name": "webcite_guide",
+              "name": "get_source_preview",
               "score": 0.057
-            },
-            {
-              "name": "extract_figures",
-              "score": 0.056
             }
           ]
         },
@@ -3022,23 +3022,23 @@
           "lexical_top5": [
             {
               "name": "upload_file",
-              "score": 1.865
+              "score": 1.491
             },
             {
               "name": "search_sources",
-              "score": 1.818
-            },
-            {
-              "name": "get_source_preview",
-              "score": 1.706
-            },
-            {
-              "name": "get_credit_balance",
-              "score": 1.59
+              "score": 1.406
             },
             {
               "name": "upload_url",
-              "score": 1.49
+              "score": 1.361
+            },
+            {
+              "name": "get_source_preview",
+              "score": 1.314
+            },
+            {
+              "name": "get_credit_balance",
+              "score": 1.301
             }
           ]
         },
@@ -3053,23 +3053,23 @@
           "lexical_top5": [
             {
               "name": "extract_figures",
-              "score": 2.826
+              "score": 2.602
             },
             {
               "name": "review_document",
-              "score": 2.151
-            },
-            {
-              "name": "verify_batch",
-              "score": 1.16
+              "score": 2.017
             },
             {
               "name": "extract_document",
-              "score": 1.139
+              "score": 0.82
             },
             {
-              "name": "webcite_guide",
-              "score": 1.044
+              "name": "verify_batch",
+              "score": 0.813
+            },
+            {
+              "name": "verify_claim",
+              "score": 0.809
             }
           ]
         },
@@ -3084,7 +3084,7 @@
           "lexical_top5": [
             {
               "name": "verify_claim",
-              "score": 2.066
+              "score": 2.094
             },
             {
               "name": "analyze_conflicts",
@@ -3109,29 +3109,29 @@
           "job": "none",
           "expected": [],
           "expected_in_profile": true,
-          "lexical_top1": "get_source_preview",
+          "lexical_top1": "analyze_conflicts",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
-              "name": "get_source_preview",
-              "score": 3.067
+              "name": "analyze_conflicts",
+              "score": 3.251
             },
             {
-              "name": "analyze_conflicts",
-              "score": 2.148
+              "name": "get_source_preview",
+              "score": 2.832
             },
             {
               "name": "verify_batch",
-              "score": 1.43
+              "score": 1.333
             },
             {
               "name": "webcite_guide",
-              "score": 1.398
+              "score": 1.239
             },
             {
               "name": "review_document",
-              "score": 1.164
+              "score": 1.051
             }
           ]
         },
@@ -3140,29 +3140,29 @@
           "job": "none",
           "expected": [],
           "expected_in_profile": true,
-          "lexical_top1": "upload_url",
+          "lexical_top1": "upload_file",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
+              "name": "upload_file",
+              "score": 0.06
+            },
+            {
               "name": "upload_url",
-              "score": 0.057
+              "score": 0.059
             },
             {
               "name": "verify_batch",
-              "score": 0.057
+              "score": 0.059
             },
             {
               "name": "verify_claim",
-              "score": 0.057
+              "score": 0.058
             },
             {
-              "name": "webcite_guide",
+              "name": "get_source_preview",
               "score": 0.057
-            },
-            {
-              "name": "extract_figures",
-              "score": 0.056
             }
           ]
         },
@@ -3171,29 +3171,29 @@
           "job": "none",
           "expected": [],
           "expected_in_profile": true,
-          "lexical_top1": "list_citations",
+          "lexical_top1": "webcite_guide",
           "lexical_top1_correct": false,
           "lexical_top5_hit": false,
           "lexical_top5": [
             {
-              "name": "list_citations",
-              "score": 4.699
+              "name": "webcite_guide",
+              "score": 4.217
             },
             {
-              "name": "webcite_guide",
-              "score": 4.501
+              "name": "list_citations",
+              "score": 3.892
+            },
+            {
+              "name": "get_citation",
+              "score": 3.488
             },
             {
               "name": "verify_batch",
-              "score": 1.734
+              "score": 1.439
             },
             {
               "name": "get_source_preview",
-              "score": 1.669
-            },
-            {
-              "name": "review_document",
-              "score": 1.513
+              "score": 1.292
             }
           ]
         },
@@ -3208,23 +3208,23 @@
           "lexical_top5": [
             {
               "name": "analyze_conflicts",
-              "score": 3.579
-            },
-            {
-              "name": "upload_file",
-              "score": 2.748
-            },
-            {
-              "name": "extract_figures",
-              "score": 2.489
+              "score": 4.571
             },
             {
               "name": "upload_url",
-              "score": 2.404
+              "score": 1.901
             },
             {
-              "name": "get_source_preview",
-              "score": 2.307
+              "name": "upload_file",
+              "score": 1.856
+            },
+            {
+              "name": "extract_figures",
+              "score": 1.788
+            },
+            {
+              "name": "extract_document",
+              "score": 1.689
             }
           ]
         }
@@ -3232,7 +3232,7 @@
     }
   },
   "instructions": {
-    "length": 4274,
+    "length": 4086,
     "opening_paragraph_chars": 712,
     "tools_named_in_opening": [
       "upload_file",
@@ -3283,10 +3283,10 @@
       },
       {
         "criterion": "Whole instructions fit inside the current 4,096-character limit (Claude Code truncates beyond it)",
-        "pass": false
+        "pass": true
       }
     ],
-    "passed": 7,
+    "passed": 8,
     "total": 9
   }
 }
