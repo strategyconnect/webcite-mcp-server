@@ -172,6 +172,16 @@ Upload original image, PDF or PowerPoint bytes and wait for parsing before revie
 
 Preserve saved review, citation, job and operation IDs on a timeout or uncertain outcome. Read retained progress before retrying and reuse an explicit idempotency key only with the same request. Package publication does not deploy the hosted API, frontend or MCP binary. Check their actual serving identities before asserting that reported cases are fixed in production.
 
+## 1.9.68 release notes
+
+Tool names, input schemas, order and behaviour are unchanged; the default `public` profile serves the same 34 tools in the same order.
+
+- Each default tool description has a `Related:` line naming its nearest neighbours and how they differ, for example `verify_claim`, `verify_claim_stream`, `verify_batch` and `verify_numeric_claim`; `upload_file` and `upload_url`; `get_document_review`, `get_document_review_job` and `review_document`.
+- Every argument of the default tools is described with its constraints, including the shared source `filters`.
+- Five first sentences now say what the tool returns: `list_citations`, `get_citation`, `verify_claim_stream`, `ask_document` and `get_ask_result`.
+- The server instructions are trimmed to 4,086 characters, inside the 4,096-character limit some clients apply, with every caveat kept.
+- The offline tool-selection eval rises from 70.0% to 82.5% top-1 and from 90.0% to 100.0% top-5 on the default profile.
+
 ## 1.9.67 release notes
 
 Tool names, input schemas, order and behaviour are unchanged; the default `public` profile serves the same 34 tools in the same order with the same descriptions.
