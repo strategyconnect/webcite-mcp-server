@@ -34,13 +34,13 @@ node eval/tool-selection/run.cjs --snapshot --json eval/tool-selection/baseline.
 
 **Server instructions.** Checked against the criteria in the AEO research: the first sentence says what Webcite does; each of the six jobs names its tool in the opening paragraph and within the first 600 characters; `webcite_guide` is named; every tool named in the opening is served by the default and `core` profiles; the reporting caveats come after the job list; the job list fits Claude Code's former 2,048-character limit; the whole text fits the current 4,096-character limit.
 
-## Baseline (1.9.68, offline)
+## Baseline (1.9.69, offline)
 
 | Profile | Tools | Expected tool served | Top-1 | Top-5 |
 | --- | --- | --- | --- | --- |
-| public (default) | 34 | 40 of 40 | 82.5% | 100.0% |
+| public (default) | 34 | 40 of 40 | 85.0% | 100.0% |
 | core | 16 | 33 of 40 | 85.0% | 95.0% |
 
-1.9.67 scored 70.0% top-1 and 90.0% top-5 on `public`, and 57.5% and 90.0% on `core`. 1.9.68 ends each default tool description with a `Related:` line naming its nearest neighbours and how they differ, and describes every argument. No case scores worse than in 1.9.67.
+1.9.68 scored 82.5% top-1 and 100.0% top-5 on `public`, and 85.0% and 95.0% on `core`. 1.9.69 adds the ID chain, units and error results to the descriptions of the source and review tools; no case scores worse than in 1.9.68. 1.9.67 scored 70.0% and 90.0% on `public`, and 57.5% and 90.0% on `core`.
 
 Server instructions: 8 of 9 criteria pass. The whole text is 4,086 characters, inside the 4,096-character limit. The opening paragraph is 712 characters, so `analyze_conflicts`, `search_sources` and `webcite_guide` still fall after character 600.

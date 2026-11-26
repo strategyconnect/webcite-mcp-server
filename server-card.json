@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
   "name": "co.webcite/webcite",
-  "version": "1.9.68",
+  "version": "1.9.69",
   "title": "Webcite",
   "description": "Parse documents to Markdown with OCR, verify claims and bind citations to their sources.",
   "icons": [

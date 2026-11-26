@@ -172,6 +172,15 @@ Upload original image, PDF or PowerPoint bytes and wait for parsing before revie
 
 Preserve saved review, citation, job and operation IDs on a timeout or uncertain outcome. Read retained progress before retrying and reuse an explicit idempotency key only with the same request. Package publication does not deploy the hosted API, frontend or MCP binary. Check their actual serving identities before asserting that reported cases are fixed in production.
 
+## 1.9.69 release notes
+
+Tool names, input schemas, order and count are unchanged; the default `public` profile serves the same 34 tools in the same order with the same first sentences.
+
+- 33 of the 34 default tools declare an MCP `outputSchema`. Each schema is `anyOf` a result branch and an error branch: the result branch requires and types only the fields the server checks or the API always returns, and the error branch describes the `code`, `message`, `details` and `actionable` payload of an `isError` result. Text content is unchanged for clients that ignore `structuredContent`. `webcite_guide` returns Markdown only, so it declares none.
+- A test calls every default tool through the MCP SDK client, which rejects `structuredContent` that does not match the declared schema, and checks each success and error result with a strict JSON Schema validator. Error results must not validate as a success.
+- The source and review tools (`get_latest_representation`, `publish_text_representation`, `read_source_unit`, `register_source`, `prepare_ocr_rescue`, `verify_numeric_claim`, `get_review_source_span`, `record_review_nonclaim`, `revise_document_claim_analysis`, `get_document_review`, `get_ask_result`, `extract_pages`) describe which call returns which ID, which IDs must come from the same source, offsets and limits, what "latest" means (exactly one representation; two or more is a 409 refusal), and the error returned for IDs that do not belong together or a source that is not owned.
+- The offline tool-selection eval scores 85.0% top-1 and 100.0% top-5 on the default profile (82.5% and 100.0% in 1.9.68), and 85.0% and 95.0% on `core` (unchanged).
+
 ## 1.9.68 release notes
 
 Tool names, input schemas, order and behaviour are unchanged; the default `public` profile serves the same 34 tools in the same order.

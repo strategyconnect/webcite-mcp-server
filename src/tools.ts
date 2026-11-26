@@ -7,6 +7,7 @@
 
 import { WEBCITE_GUIDE_TOOL } from './guide.js';
 import { withAnnotations, type ToolAnnotations } from './tool-annotations.js';
+import { OUTPUT_SCHEMAS } from './output-schemas.js';
 
 export interface ToolDefinition {
   name: string;
@@ -16,6 +17,8 @@ export interface ToolDefinition {
     properties: Record<string, unknown>;
     required?: string[];
   };
+  /** Shape of structuredContent (result or error); see output-schemas.ts. */
+  outputSchema?: Record<string, unknown>;
   title?: string;
   annotations?: ToolAnnotations;
 }
@@ -624,7 +627,7 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'get_document_review',
-    description: 'Read a document review: claims, verdicts, citations and passages not covered. Reads the saved review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review. Related: get_document_review_job reports job status and progress, not results; review_document starts a review; get_citation reads a single-claim verification.',
+    description: 'Read a document review: claims, verdicts, citations and passages not covered. Reads the saved review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review; an unknown review or one you do not own returns not_found. Related: get_document_review_job reports job status and progress, not results; review_document starts a review; get_citation reads a single-claim verification.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1, description: 'Saved review ID, as returned by review_document or get_document_review_job.' },
       offset: { type: 'integer', minimum: 0, description: 'Claim offset, 0 or more. Default 0.' },
@@ -639,7 +642,7 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'get_review_source_span',
-    description: 'Read the exact text of one owned saved uncovered source passage for review, including an inactive failed residual review. A role may be unknown; this read does not establish structural or nonclaim proof. Exact source and saved gap binding are required within the attestation size limit. Related: get_document_review lists the uncovered passages and their offsets; record_review_nonclaim records a nonclaim assessment for the passage. Costs 0 credits.',
+    description: 'Read the exact text of one owned saved uncovered source passage for review, including an inactive failed residual review. A role may be unknown; this read does not establish structural or nonclaim proof. asset_id, start and end must exactly match one uncovered_source_spans entry that get_document_review lists for that review. Offsets are 0-based character positions (UTF-16) into the review\'s stored source, end exclusive, at most 16,000 apart. A span that is not a saved gap, or an asset outside that review, returns api_error 400; a running review or changed source returns api_error 409; an unknown review or one you do not own returns not_found. Related: get_document_review lists the uncovered passages and their offsets; record_review_nonclaim records a nonclaim assessment for the passage. Costs 0 credits.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1, description: 'Saved review ID that holds the uncovered passage.' },
       asset_id: { type: 'string', format: 'uuid', description: 'Asset ID (UUID) of the reviewed source, as listed with the uncovered passage.' },
@@ -649,7 +652,7 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'revise_document_claim_analysis',
-    description: 'Re-evaluate one owned, settled saved claim using retained snippets and the current evidence policy, without new research, model calls or credits. The review must be inactive. Requires original_result_hash, as returned for the claim by get_document_review. Idempotent for the original result and policy version. Preserves the original result and credit receipt; missing scope assessment remains inconclusive. Related: review_document with retry_failed resumes unfinished claims with new research; verify_claim checks a claim afresh.',
+    description: 'Re-evaluate one owned, settled saved claim using retained snippets and the current evidence policy, without new research, model calls or credits. The review must be inactive. Requires original_result_hash, as returned for the claim by get_document_review. Idempotent for the original result and policy version. Preserves the original result and credit receipt; missing scope assessment remains inconclusive. claim_id must be a claim of review_id: a claim outside the review returns api_error 409 Saved claim analysis not found, a different hash 409 Original analysis changed, an active review 409, and an unknown review or one you do not own not_found. Related: review_document with retry_failed resumes unfinished claims with new research; verify_claim checks a claim afresh.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1, description: 'Saved review ID; the review must be inactive.' },
       claim_id: { type: 'string', minLength: 1, description: 'Saved claim ID within that review, as returned by get_document_review.' },
@@ -658,7 +661,7 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'record_review_nonclaim',
-    description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. The assessment must cover the full passage text (get_review_source_span returns it); a structural role alone never proves nonclaim. Optional visual_evidence references stored model layout for the same immutable source; the server rechecks literal offsets and geometry. An isolated page footer can qualify, factual/numeric headings cannot. Agent actions are not analyst approval. Failed residual-only reviews may reconcile retained complete extraction responses without new generation; missing evidence refuses. Leave assertion-bearing passages uncovered and source partial. Records rationale and authenticated reviewer identity. Related: get_review_source_span reads the passage without recording anything. Costs 0 credits.',
+    description: 'Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. The assessment must cover the full passage text (get_review_source_span returns it); a structural role alone never proves nonclaim. Optional visual_evidence references stored model layout for the same immutable source; the server rechecks literal offsets and geometry. An isolated page footer can qualify, factual/numeric headings cannot. Agent actions are not analyst approval. Failed residual-only reviews may reconcile retained complete extraction responses without new generation; missing evidence refuses. Leave assertion-bearing passages uncovered and source partial. Records rationale and authenticated reviewer identity. review_id, asset_id, start and end must match one saved uncovered span exactly, as for get_review_source_span; otherwise api_error 400. Related: get_review_source_span reads the passage without recording anything. Costs 0 credits.',
     inputSchema: { type: 'object', properties: {
       review_id: { type: 'string', minLength: 1, description: 'Saved review ID that holds the uncovered passage.' },
       asset_id: { type: 'string', format: 'uuid', description: 'Asset ID (UUID) of the reviewed source.' },
@@ -698,7 +701,7 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'register_source',
-    description: 'Register original text or CSV bytes for an uploaded, owned asset. Returns a retained sourceVersionId for source representation and numeric verification. Related: upload_file and upload_url create the asset; publish_text_representation turns the registered version into readable units.',
+    description: 'Register original text or CSV bytes for an uploaded, owned asset. Returns a retained sourceVersionId and the assetId for source representation and numeric verification. The bytes are not compared with the asset\'s existing content: they become a new retained version and the asset\'s selected version, and identical bytes return the earlier version. An asset you do not own returns unauthorized (Source access denied). Related: upload_file and upload_url create the asset; publish_text_representation turns the registered version into readable units.',
     inputSchema: { type: 'object', properties: {
       asset_id: { type: 'string', minLength: 1, description: 'Owned asset ID to attach the original bytes to.' },
       filename: { type: 'string', minLength: 1, description: 'File name with an extension matching the bytes (for example data.csv), up to 255 characters.' },
@@ -707,7 +710,7 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'read_source_unit',
-    description: 'Read one owned immutable source unit by the IDs returned from a source representation. Returns its text and numeric content, which identify the figure_index values for numeric verification. Related: get_latest_representation lists the unit IDs; get_source_preview opens a page or URL by quote instead of by unit ID.',
+    description: 'Read one owned immutable source unit by the IDs returned from a source representation. All three IDs must come from one chain: source_version_id from upload_file, upload_url or register_source, and representation_id and source_unit_id from the same get_latest_representation or publish_text_representation result (or a visual rendition). If the unit does not belong to that representation, or the representation belongs to another version, the result is not_found (anchor_unresolved). A missing, unavailable or other account\'s source version returns not_found (Source version unavailable); an asset you do not own returns unauthorized (Source access denied). Returns its text and numeric content, which identify the figure_index values for numeric verification. Related: get_latest_representation lists the unit IDs; get_source_preview opens a page or URL by quote instead of by unit ID.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1, description: 'Owned source version ID.' },
       representation_id: { type: 'string', minLength: 1, description: 'Representation ID from get_latest_representation, publish_text_representation or a visual rendition.' },
@@ -716,14 +719,14 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'publish_text_representation',
-    description: 'Publish a deterministic text or CSV representation of an owned retained source. Returns representation and source unit IDs for verify_numeric_claim. Related: get_latest_representation looks up an existing representation without creating one. No model call.',
+    description: 'Publish a deterministic text or CSV representation of an owned retained source. Returns representation and source unit IDs for verify_numeric_claim, shaped like the get_latest_representation result. Accepts plain or CSV sources of at most 1 MiB of UTF-8; form feeds split pages, at most 2,000 units; other sources return api_error 400. Repeating the call returns the same representation. A missing, unavailable or other account\'s source version returns not_found (Source version unavailable); an asset you do not own returns unauthorized (Source access denied). Related: get_latest_representation looks up an existing representation without creating one. No model call.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1, description: 'Owned retained source version ID, as returned by register_source.' },
     }, required: ['source_version_id'] },
   },
   {
     name: 'get_latest_representation',
-    description: 'Locate the latest representation and source unit IDs of an owned retained source. These IDs address source units for evidence reads and numeric verification. Returns IDs only; read_source_unit returns a unit\'s text, and get_source_preview shows a cited passage. Related: publish_text_representation creates a representation when none exists.',
+    description: 'Locate the latest representation and source unit IDs of an owned retained source. These IDs address source units for evidence reads and numeric verification. ID chain: upload_file, upload_url or register_source returns source_version_id; it returns its representationId and each unit\'s sourceUnitId, locator and state (units sorted by unit key, so page:10 precedes page:2; at most 2,000; no content). "Latest" does not mean "newest": it succeeds only when the version has exactly one representation (or one selected analysis); with two or more it returns api_error 409 Representation selection required, and with none not_found. A missing, unavailable or other account\'s source version returns not_found (Source version unavailable); an asset you do not own returns unauthorized (Source access denied). Returns IDs only; read_source_unit returns a unit\'s text, and get_source_preview shows a cited passage. Related: publish_text_representation creates a representation when none exists.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1, description: 'Owned retained source version ID, as returned by upload_file, upload_url or register_source.' },
     }, required: ['source_version_id'] },
@@ -741,18 +744,18 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'get_ask_result',
-    description: 'Read the status and answer of an ask_document job by its job ID. Returns queued, running, done or failed status and the checked result when ready. Costs 0 credits. Related: get_document_review_job reports document review jobs, not ask_document jobs.',
+    description: 'Read the status and answer of an ask_document job by its job ID. Returns queued, running, done or failed status and the checked result when ready; a failed job carries an error code and message. An unknown job or one you do not own returns not_found. Costs 0 credits. Related: get_document_review_job reports document review jobs, not ask_document jobs.',
     inputSchema: { type: 'object', properties: { id: { type: 'string', minLength: 1, description: 'Job ID returned by ask_document.' } }, required: ['id'] },
   },
   {
     name: 'extract_pages',
-    description: 'Split an uploaded document into citation-ready chunks with page, sheet or section anchors, for RAG indexing. Returns the chunks, plus extraction state and reason even when no chunks exist. Related: extract_document returns whole-document Markdown with per-page units for reading; extract_figures returns financial metrics. Costs 1 credit.',
+    description: 'Split an uploaded document into citation-ready chunks with page, sheet or section anchors, for RAG indexing. Returns the chunks, plus extraction state and reason even when no chunks exist. An asset you do not own returns not_found (Asset not found). Related: extract_document returns whole-document Markdown with per-page units for reading; extract_figures returns financial metrics. Costs 1 credit.',
     inputSchema: { type: 'object', properties: { ...assetRefProperties,
       mode: { type: 'string', enum: ['standard', 'lite'], description: 'lite or standard. When mode is omitted, accounts created on or after 20 November 2026 (04:00 UTC) read in lite and older accounts read in standard. lite is the faster, lower-cost read (balance estimate 0.12 credits a page); standard is the higher-accuracy read (0.75 credits a page), better on complex tables, handwriting and scans. Either can always be sent explicitly.' }, } },
   },
   {
     name: 'prepare_ocr_rescue',
-    description: 'Prepare judged OCR rescue for an owned OCR source representation before previewing unresolved citations. A new successful preparation costs 5 credits; retained replays cost 0 credits. Requires the backend OCR feature; return unavailable states honestly. Related: get_source_preview previews citations; extract_document is the ordinary extraction, with OCR fallback.',
+    description: 'Prepare judged OCR rescue for an owned OCR source representation before previewing unresolved citations. A new successful preparation costs 5 credits; retained replays cost 0 credits. Requires the backend OCR feature; return unavailable states honestly. representation_id must be a representation of source_version_id (from get_latest_representation), otherwise not_found. Returns either attempted false with code disabled or not_ocr, or prepared, calibrationKey, candidateCount and decidedAt. Related: get_source_preview previews citations; extract_document is the ordinary extraction, with OCR fallback.',
     inputSchema: { type: 'object', properties: {
       source_version_id: { type: 'string', minLength: 1, description: 'Owned source version ID.' },
       representation_id: { type: 'string', minLength: 1, description: 'ID of the OCR source representation to prepare.' },
@@ -760,7 +763,7 @@ Credits: 1 for a stored upload.`,
   },
   {
     name: 'verify_numeric_claim',
-    description: 'Assess arithmetic against one or two retained figures from owned source units. This is arithmetic scope, not full semantic verification. Returns the numeric assessment for the claim against the cited figures. Related: verify_claim checks a claim against web sources; analyze_conflicts recomputes metrics across many supplied figures.',
+    description: 'Assess arithmetic against one or two retained figures from owned source units. This is arithmetic scope, not full semantic verification. Each operand\'s three IDs must belong together as for read_source_unit, or the result is not_found; figure_index is 0-based over the values within the unit\'s first 20,000 characters (CSV year columns skipped); an out-of-range or ambiguous index returns api_error 400. Returns outcome supported, contradicted, escalate or not_applicable, with scope arithmetic_only. Related: verify_claim checks a claim against web sources; analyze_conflicts recomputes metrics across many supplied figures.',
     inputSchema: { type: 'object', properties: {
       claim: { type: 'string', minLength: 1, maxLength: 10000, description: 'The sentence whose arithmetic to check, 1 to 10,000 characters.' },
       operands: { type: 'array', minItems: 1, maxItems: 2, description: 'One or two retained figures the claim relies on.', items: { type: 'object',
@@ -2449,7 +2452,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
   ...TOOLS,
   ...PUBLIC_EXTRA_TOOLS,
   ...CONTEXT_TOOLS,
-].map(withAnnotations);
+].map((tool) => withAnnotations(OUTPUT_SCHEMAS[tool.name] ? { ...tool, outputSchema: OUTPUT_SCHEMAS[tool.name] } : tool));
 
 /** HTTP route each context tool maps to — used by tests and docs. */
 export const CONTEXT_ENDPOINT_TOOLS: Record<string, string> = {

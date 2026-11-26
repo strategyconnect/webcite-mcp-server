@@ -397,7 +397,7 @@ export function renderWebciteGuide(input: {
 
 export const WEBCITE_GUIDE_TOOL = {
   name: 'webcite_guide',
-  description: `Lists Webcite workflows (parse a document, verify a claim, check quotes, review a whole document, check figures, trace a source) with inputs, order and cost. workflow=choose lists the options; workflow=source_trace covers finding the original source of a screenshot or slide; workflow=document_review covers checking every claim in an uploaded file; workflow=billing covers plan allocations and prices. Costs 0 credits. Related: get_credit_balance reads the balance of this account rather than plan prices.`,
+  description: `Lists Webcite workflows (parse a document, verify a claim, check quotes, review a whole document, check figures, trace a source) with inputs, order and cost. workflow=choose lists the options; workflow=source_trace covers finding the original source of a screenshot or slide; workflow=document_review covers checking every claim in an uploaded file; workflow=billing covers plan allocations and prices. Returns Markdown only, with no structuredContent. Costs 0 credits. Related: get_credit_balance reads the balance of this account rather than plan prices.`,
   inputSchema: {
     type: 'object' as const,
     properties: {

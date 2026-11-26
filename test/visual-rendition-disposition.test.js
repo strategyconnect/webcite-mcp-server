@@ -109,7 +109,7 @@ test('actual MCP tool boundary exposes same existing names and visual options', 
     readSourceUnit: async (version, rep, unit) => {
       assert.deepEqual([version, rep, unit], ['version-1', 'visual-rep', 'visual-unit-2']);
       return { sourceVersionId: version, representationId: rep, sourceUnitId: unit,
-        unitKey: reference.unit_key, content: 'Contents', state: 'partial', native: { visual_element: { type: 'section_header' } } };
+        unitKey: reference.unit_key, locator: { kind: 'page', page: 1 }, content: 'Contents', state: 'partial', contentHash: 'c'.repeat(64), native: { visual_element: { type: 'section_header' } } };
     },
     getDocumentReviewSourceSpan: async () => ({ asset_id: asset, start: 0, end: 8, source_quote: 'Contents', role: 'unknown' }),
     recordDocumentReviewNonclaim: async (_review, args) => { bound = args; return { ...args,
