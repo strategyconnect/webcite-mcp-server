@@ -1,12 +1,12 @@
 {
   "profile": "public",
-  "server_version": "1.9.68",
+  "server_version": "1.9.69",
   "instructions": "Webcite reads documents and checks claims against sources. Use it to: (1) convert a PDF, scan, spreadsheet or office file to Markdown with page and sheet locations (upload_file or upload_url, then extract_document); (2) verify one factual claim against web sources with citations and a verdict (verify_claim); (3) check that quotes appear in their sources (verify_batch); (4) fact-check every claim in a document with a coverage report (review_document, then get_document_review_job and get_document_review); (5) extract and cross-check figures (extract_figures, analyze_conflicts); (6) find sources without a verdict (search_sources). webcite_guide with workflow=choose lists each workflow with inputs and cost.\n\nTo audit an entire uploaded document or every figure on a slide, use review_document with its existing asset_id, then poll get_document_review_job. Do not substitute a few verify_claim calls for full coverage. Only claim full coverage when the saved review reports coverage_complete=true and no pending claims.\nReuse returned extraction structuredContent; each repeated extract call is charged again.\n\nWorkflows:\n1) Plain fact → verify_claim({ claim })\n2) Quote in a document → upload_file → extract_document → get_source_preview → verify_batch\n3) Figures / conflicts → extract_document first; analyze_document accepts PDF, spreadsheet and JPEG/PNG/WebP. Image figures are OCR/model reads and need source review. extract_figures finds recognized metrics only; zero metrics is not a full numeric audit.\n4) Full document fact-check → webcite_guide({ workflow: 'document_review' }); upload original bytes only if needed, then review_document with stable thread_id (no mandatory balance or extraction preflight), get_document_review_job until terminal, then get_document_review for saved results and coverage. No fixed claim count. Preserve completed results and unchecked source spans on errors or credit exhaustion.\n5) Find the original source behind an image or slide → webcite_guide({ workflow: 'source_trace' }); extract_document, search_sources using exact table values and units, then get_source_preview on candidate URLs. Use verify_claim with confirmed source_urls for claim truth. ask_document is numerical Q&A over supplied text, not an external-source finder.\n\nDo not call context workflow/eval tools unless WEBCITE_MCP_PROFILE=full and the user asks.\nNever invent citation URLs. Prefer get_source_preview to show evidence.\nProfiles default to public; WEBCITE_MCP_PROFILE=core|docs|research|full changes local discovery.\n\nReporting saved results: Compact fields omitted are unknown, not absent. Report known material_claims (physical rows excluding duplicates), total_claims (all physical rows), duplicate_claims and non_factual_claims separately. Material counts can include non-factual rows and do not imply every row is factual. A duplicate display alias can have a different id; original_claim_id is its stored original identity and duplicate_of_id identifies the canonical assertion. Display aliases do not change stored IDs, citations or paid operations. Report pending, failed, rejected and uncovered counts separately. pending_claims is unfinished work and includes failed_claims; failed is a subset, never add it again to a total. Counts do not establish attempt history; without attempt data, do not call unfinished rows never attempted. A provider access error does not rule out incomplete extraction or source coverage. Null or missing counts are unknown, never zero. Do not group unknown rejected or uncovered counts with known zero pending or failed counts. A completed job means processing finished; it does not prove complete source coverage. For a queued or running review, obey poll_after_ms with waits of at most 30 seconds. Never multiply remaining claims by per-claim latency into a long blind sleep. Stop polling immediately on a terminal status and report failed or interrupted work. Do not infer source weighting, prioritization or analysis absence from omissions. Fetch verbose evidence details only when that specific audit requires them.",
   "tools": [
     {
       "name": "webcite_guide",
       "title": "Choose a Webcite workflow",
-      "description": "Lists Webcite workflows (parse a document, verify a claim, check quotes, review a whole document, check figures, trace a source) with inputs, order and cost. workflow=choose lists the options; workflow=source_trace covers finding the original source of a screenshot or slide; workflow=document_review covers checking every claim in an uploaded file; workflow=billing covers plan allocations and prices. Costs 0 credits. Related: get_credit_balance reads the balance of this account rather than plan prices.",
+      "description": "Lists Webcite workflows (parse a document, verify a claim, check quotes, review a whole document, check figures, trace a source) with inputs, order and cost. workflow=choose lists the options; workflow=source_trace covers finding the original source of a screenshot or slide; workflow=document_review covers checking every claim in an uploaded file; workflow=billing covers plan allocations and prices. Returns Markdown only, with no structuredContent. Costs 0 credits. Related: get_credit_balance reads the balance of this account rather than plan prices.",
       "annotations": {
         "title": "Choose a Webcite workflow",
         "readOnlyHint": true,
@@ -967,7 +967,7 @@
     {
       "name": "extract_pages",
       "title": "Extract selected pages",
-      "description": "Split an uploaded document into citation-ready chunks with page, sheet or section anchors, for RAG indexing. Returns the chunks, plus extraction state and reason even when no chunks exist. Related: extract_document returns whole-document Markdown with per-page units for reading; extract_figures returns financial metrics. Costs 1 credit.",
+      "description": "Split an uploaded document into citation-ready chunks with page, sheet or section anchors, for RAG indexing. Returns the chunks, plus extraction state and reason even when no chunks exist. An asset you do not own returns not_found (Asset not found). Related: extract_document returns whole-document Markdown with per-page units for reading; extract_figures returns financial metrics. Costs 1 credit.",
       "annotations": {
         "title": "Extract selected pages",
         "readOnlyHint": false,
@@ -999,7 +999,7 @@
     {
       "name": "get_ask_result",
       "title": "Get a document answer",
-      "description": "Read the status and answer of an ask_document job by its job ID. Returns queued, running, done or failed status and the checked result when ready. Costs 0 credits. Related: get_document_review_job reports document review jobs, not ask_document jobs.",
+      "description": "Read the status and answer of an ask_document job by its job ID. Returns queued, running, done or failed status and the checked result when ready; a failed job carries an error code and message. An unknown job or one you do not own returns not_found. Costs 0 credits. Related: get_document_review_job reports document review jobs, not ask_document jobs.",
       "annotations": {
         "title": "Get a document answer",
         "readOnlyHint": true,
@@ -1023,7 +1023,7 @@
     {
       "name": "get_document_review",
       "title": "Get a saved document review",
-      "description": "Read a document review: claims, verdicts, citations and passages not covered. Reads the saved review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review. Related: get_document_review_job reports job status and progress, not results; review_document starts a review; get_citation reads a single-claim verification.",
+      "description": "Read a document review: claims, verdicts, citations and passages not covered. Reads the saved review by review_id without new analysis or credits. Page claims, uncovered passages, rejected candidates and explicit reviewer dispositions independently. The API key must own the review; an unknown review or one you do not own returns not_found. Related: get_document_review_job reports job status and progress, not results; review_document starts a review; get_citation reads a single-claim verification.",
       "annotations": {
         "title": "Get a saved document review",
         "readOnlyHint": true,
@@ -1115,7 +1115,7 @@
     {
       "name": "get_latest_representation",
       "title": "Get the latest source representation",
-      "description": "Locate the latest representation and source unit IDs of an owned retained source. These IDs address source units for evidence reads and numeric verification. Returns IDs only; read_source_unit returns a unit's text, and get_source_preview shows a cited passage. Related: publish_text_representation creates a representation when none exists.",
+      "description": "Locate the latest representation and source unit IDs of an owned retained source. These IDs address source units for evidence reads and numeric verification. ID chain: upload_file, upload_url or register_source returns source_version_id; it returns its representationId and each unit's sourceUnitId, locator and state (units sorted by unit key, so page:10 precedes page:2; at most 2,000; no content). \"Latest\" does not mean \"newest\": it succeeds only when the version has exactly one representation (or one selected analysis); with two or more it returns api_error 409 Representation selection required, and with none not_found. A missing, unavailable or other account's source version returns not_found (Source version unavailable); an asset you do not own returns unauthorized (Source access denied). Returns IDs only; read_source_unit returns a unit's text, and get_source_preview shows a cited passage. Related: publish_text_representation creates a representation when none exists.",
       "annotations": {
         "title": "Get the latest source representation",
         "readOnlyHint": true,
@@ -1139,7 +1139,7 @@
     {
       "name": "get_review_source_span",
       "title": "Get an unchecked review source span",
-      "description": "Read the exact text of one owned saved uncovered source passage for review, including an inactive failed residual review. A role may be unknown; this read does not establish structural or nonclaim proof. Exact source and saved gap binding are required within the attestation size limit. Related: get_document_review lists the uncovered passages and their offsets; record_review_nonclaim records a nonclaim assessment for the passage. Costs 0 credits.",
+      "description": "Read the exact text of one owned saved uncovered source passage for review, including an inactive failed residual review. A role may be unknown; this read does not establish structural or nonclaim proof. asset_id, start and end must exactly match one uncovered_source_spans entry that get_document_review lists for that review. Offsets are 0-based character positions (UTF-16) into the review's stored source, end exclusive, at most 16,000 apart. A span that is not a saved gap, or an asset outside that review, returns api_error 400; a running review or changed source returns api_error 409; an unknown review or one you do not own returns not_found. Related: get_document_review lists the uncovered passages and their offsets; record_review_nonclaim records a nonclaim assessment for the passage. Costs 0 credits.",
       "annotations": {
         "title": "Get an unchecked review source span",
         "readOnlyHint": true,
@@ -1181,7 +1181,7 @@
     {
       "name": "prepare_ocr_rescue",
       "title": "Prepare an OCR rescue",
-      "description": "Prepare judged OCR rescue for an owned OCR source representation before previewing unresolved citations. A new successful preparation costs 5 credits; retained replays cost 0 credits. Requires the backend OCR feature; return unavailable states honestly. Related: get_source_preview previews citations; extract_document is the ordinary extraction, with OCR fallback.",
+      "description": "Prepare judged OCR rescue for an owned OCR source representation before previewing unresolved citations. A new successful preparation costs 5 credits; retained replays cost 0 credits. Requires the backend OCR feature; return unavailable states honestly. representation_id must be a representation of source_version_id (from get_latest_representation), otherwise not_found. Returns either attempted false with code disabled or not_ocr, or prepared, calibrationKey, candidateCount and decidedAt. Related: get_source_preview previews citations; extract_document is the ordinary extraction, with OCR fallback.",
       "annotations": {
         "title": "Prepare an OCR rescue",
         "readOnlyHint": false,
@@ -1211,7 +1211,7 @@
     {
       "name": "publish_text_representation",
       "title": "Publish a text representation",
-      "description": "Publish a deterministic text or CSV representation of an owned retained source. Returns representation and source unit IDs for verify_numeric_claim. Related: get_latest_representation looks up an existing representation without creating one. No model call.",
+      "description": "Publish a deterministic text or CSV representation of an owned retained source. Returns representation and source unit IDs for verify_numeric_claim, shaped like the get_latest_representation result. Accepts plain or CSV sources of at most 1 MiB of UTF-8; form feeds split pages, at most 2,000 units; other sources return api_error 400. Repeating the call returns the same representation. A missing, unavailable or other account's source version returns not_found (Source version unavailable); an asset you do not own returns unauthorized (Source access denied). Related: get_latest_representation looks up an existing representation without creating one. No model call.",
       "annotations": {
         "title": "Publish a text representation",
         "readOnlyHint": false,
@@ -1235,7 +1235,7 @@
     {
       "name": "read_source_unit",
       "title": "Read a source unit",
-      "description": "Read one owned immutable source unit by the IDs returned from a source representation. Returns its text and numeric content, which identify the figure_index values for numeric verification. Related: get_latest_representation lists the unit IDs; get_source_preview opens a page or URL by quote instead of by unit ID.",
+      "description": "Read one owned immutable source unit by the IDs returned from a source representation. All three IDs must come from one chain: source_version_id from upload_file, upload_url or register_source, and representation_id and source_unit_id from the same get_latest_representation or publish_text_representation result (or a visual rendition). If the unit does not belong to that representation, or the representation belongs to another version, the result is not_found (anchor_unresolved). A missing, unavailable or other account's source version returns not_found (Source version unavailable); an asset you do not own returns unauthorized (Source access denied). Returns its text and numeric content, which identify the figure_index values for numeric verification. Related: get_latest_representation lists the unit IDs; get_source_preview opens a page or URL by quote instead of by unit ID.",
       "annotations": {
         "title": "Read a source unit",
         "readOnlyHint": true,
@@ -1271,7 +1271,7 @@
     {
       "name": "record_review_nonclaim",
       "title": "Mark a review span as not a claim",
-      "description": "Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. The assessment must cover the full passage text (get_review_source_span returns it); a structural role alone never proves nonclaim. Optional visual_evidence references stored model layout for the same immutable source; the server rechecks literal offsets and geometry. An isolated page footer can qualify, factual/numeric headings cannot. Agent actions are not analyst approval. Failed residual-only reviews may reconcile retained complete extraction responses without new generation; missing evidence refuses. Leave assertion-bearing passages uncovered and source partial. Records rationale and authenticated reviewer identity. Related: get_review_source_span reads the passage without recording anything. Costs 0 credits.",
+      "description": "Record an explicit assessment that an exact source-attested heading, table title or navigation passage contains no factual assertion. The assessment must cover the full passage text (get_review_source_span returns it); a structural role alone never proves nonclaim. Optional visual_evidence references stored model layout for the same immutable source; the server rechecks literal offsets and geometry. An isolated page footer can qualify, factual/numeric headings cannot. Agent actions are not analyst approval. Failed residual-only reviews may reconcile retained complete extraction responses without new generation; missing evidence refuses. Leave assertion-bearing passages uncovered and source partial. Records rationale and authenticated reviewer identity. review_id, asset_id, start and end must match one saved uncovered span exactly, as for get_review_source_span; otherwise api_error 400. Related: get_review_source_span reads the passage without recording anything. Costs 0 credits.",
       "annotations": {
         "title": "Mark a review span as not a claim",
         "readOnlyHint": false,
@@ -1350,7 +1350,7 @@
     {
       "name": "register_source",
       "title": "Register a retained source",
-      "description": "Register original text or CSV bytes for an uploaded, owned asset. Returns a retained sourceVersionId for source representation and numeric verification. Related: upload_file and upload_url create the asset; publish_text_representation turns the registered version into readable units.",
+      "description": "Register original text or CSV bytes for an uploaded, owned asset. Returns a retained sourceVersionId and the assetId for source representation and numeric verification. The bytes are not compared with the asset's existing content: they become a new retained version and the asset's selected version, and identical bytes return the earlier version. An asset you do not own returns unauthorized (Source access denied). Related: upload_file and upload_url create the asset; publish_text_representation turns the registered version into readable units.",
       "annotations": {
         "title": "Register a retained source",
         "readOnlyHint": false,
@@ -1529,7 +1529,7 @@
     {
       "name": "revise_document_claim_analysis",
       "title": "Revise a reviewed claim analysis",
-      "description": "Re-evaluate one owned, settled saved claim using retained snippets and the current evidence policy, without new research, model calls or credits. The review must be inactive. Requires original_result_hash, as returned for the claim by get_document_review. Idempotent for the original result and policy version. Preserves the original result and credit receipt; missing scope assessment remains inconclusive. Related: review_document with retry_failed resumes unfinished claims with new research; verify_claim checks a claim afresh.",
+      "description": "Re-evaluate one owned, settled saved claim using retained snippets and the current evidence policy, without new research, model calls or credits. The review must be inactive. Requires original_result_hash, as returned for the claim by get_document_review. Idempotent for the original result and policy version. Preserves the original result and credit receipt; missing scope assessment remains inconclusive. claim_id must be a claim of review_id: a claim outside the review returns api_error 409 Saved claim analysis not found, a different hash 409 Original analysis changed, an active review 409, and an unknown review or one you do not own not_found. Related: review_document with retry_failed resumes unfinished claims with new research; verify_claim checks a claim afresh.",
       "annotations": {
         "title": "Revise a reviewed claim analysis",
         "readOnlyHint": false,
@@ -1565,7 +1565,7 @@
     {
       "name": "verify_numeric_claim",
       "title": "Check arithmetic in a claim",
-      "description": "Assess arithmetic against one or two retained figures from owned source units. This is arithmetic scope, not full semantic verification. Returns the numeric assessment for the claim against the cited figures. Related: verify_claim checks a claim against web sources; analyze_conflicts recomputes metrics across many supplied figures.",
+      "description": "Assess arithmetic against one or two retained figures from owned source units. This is arithmetic scope, not full semantic verification. Each operand's three IDs must belong together as for read_source_unit, or the result is not_found; figure_index is 0-based over the values within the unit's first 20,000 characters (CSV year columns skipped); an out-of-range or ambiguous index returns api_error 400. Returns outcome supported, contradicted, escalate or not_applicable, with scope arithmetic_only. Related: verify_claim checks a claim against web sources; analyze_conflicts recomputes metrics across many supplied figures.",
       "annotations": {
         "title": "Check arithmetic in a claim",
         "readOnlyHint": false,
